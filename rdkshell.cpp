@@ -25,6 +25,7 @@
 #include "compositorcontroller.h"
 #include <unistd.h>
 #include <time.h>
+#include <GLES2/gl2.h>
 
 #define RDKSHELL_FPS 30
 int gCurrentFramerate = RDKSHELL_FPS;
@@ -77,6 +78,8 @@ namespace RdkShell
         }
         #endif
         RdkShell::EssosInstance::instance()->initialize(false);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     }
 
     void run()
@@ -106,6 +109,13 @@ namespace RdkShell
 
     void draw()
     {
+        uint32_t width = 0;
+        uint32_t height = 0;
+        RdkShell::EssosInstance::instance()->resolution(width, height);
+        glViewport( 0, 0, width, height );
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
         RdkShell::CompositorController::draw();
         RdkShell::EssosInstance::instance()->update();
     }
