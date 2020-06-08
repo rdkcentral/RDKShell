@@ -173,6 +173,7 @@ namespace RdkShell
         int hints = WstHints_none;
         hints |= WstHints_applyTransform;
         hints |= WstHints_holePunch;
+        hints |= WstHints_noRotation;
         bool needsHolePunch = false;
         std::vector<WstRect> rects;
 
