@@ -22,7 +22,7 @@ set(CMAKE_CXX_STANDARD 14)
 option(RDKSHELL_BUILD_APP "RDKSHELL_BUILD_APP" ON)
 option(RDKSHELL_SUPPORT_WEBSOCKET_IPC "RDKSHELL_SUPPORT_WEBSOCKET_IPC" OFF)
 
-set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp linuxkeys.cpp)
+set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp linuxkeys.cpp animation.cpp rdkshelldata.cpp)
 set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor)
 
 if (RDKSHELL_SUPPORT_WEBSOCKET_IPC)

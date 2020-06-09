@@ -20,8 +20,12 @@
 #ifndef RDKSHELL_COMPOSITOR_CONTROLLER_H
 #define RDKSHELL_COMPOSITOR_CONTROLLER_H
 
+#include "rdkshelldata.h"
+
 #include <string>
 #include <vector>
+#include <map>
+#include <memory>
 
 namespace RdkShell
 {
@@ -45,10 +49,15 @@ namespace RdkShell
             static bool setVisibility(const std::string& client, const bool visible);
             static bool getOpacity(const std::string& client, unsigned int& opacity);
             static bool setOpacity(const std::string& client, const unsigned int opacity);
+            static bool getScale(const std::string& client, double &scaleX, double &scaleY);
+            static bool setScale(const std::string& client, double scaleX, double scaleY);
             static void onKeyPress(uint32_t keycode, uint32_t flags);
             static void onKeyRelease(uint32_t keycode, uint32_t flags);
             static bool createDisplay(const std::string& client, const std::string& displayName);
+            static bool addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties);
+            static bool removeAnimation(const std::string& client);
             static bool draw();
+            static bool update();
     };
 }
 

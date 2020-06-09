@@ -23,6 +23,7 @@
 #endif
 #include "essosinstance.h"
 #include "compositorcontroller.h"
+#include "animation.h"
 #include <unistd.h>
 #include <time.h>
 #include <GLES2/gl2.h>
@@ -37,6 +38,14 @@ bool gWebsocketIpcEnabled = false;
 
 namespace RdkShell
 {
+
+    double seconds()
+    {
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        return ts.tv_sec + ((double)ts.tv_nsec/1000000000);
+    }
+
     double milliseconds()
     {
         timespec ts;
@@ -118,5 +127,10 @@ namespace RdkShell
 
         RdkShell::CompositorController::draw();
         RdkShell::EssosInstance::instance()->update();
+    }
+
+    void update()
+    {
+        RdkShell::Animator::instance()->animate();
     }
 }

@@ -21,6 +21,7 @@
 
 #include "rdkcompositor.h"
 #include "essosinstance.h"
+#include "animation.h"
 
 #include <memory>
 #include <iostream>
@@ -358,6 +359,35 @@ namespace RdkShell
         return true;
     }
 
+
+    bool CompositorController::getScale(const std::string& client, double &scaleX, double &scaleY)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->scale(scaleX, scaleY);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::setScale(const std::string& client, double scaleX, double scaleY)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setScale(scaleX, scaleY);
+                return true;
+            }
+        }
+        return true;
+    }
+
     void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags)
     {
         //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
@@ -441,5 +471,85 @@ namespace RdkShell
         {
             reverseIterator->compositor->draw();
         }
+    }
+
+    bool CompositorController::addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties)
+    {
+        bool ret = false;
+        RdkShell::Animation animation;
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                int32_t x = 0;
+                int32_t y = 0;
+                uint32_t width = 0;
+                uint32_t height = 0;
+                double scaleX = 1.0;
+                double scaleY = 1.0;
+                if (compositor.compositor != nullptr)
+                {
+                    //retrieve the initial values in case they are not specified in the property set
+                    compositor.compositor->position(x, y);
+                    compositor.compositor->size(width, height);
+                    compositor.compositor->scale(scaleX, scaleY);
+                }
+
+                for ( const auto &property : animationProperties )
+                {
+                    if (property.first == "x")
+                    {
+                        x = property.second.toInteger32();
+                    }
+                    else if (property.first == "y")
+                    {
+                        y = property.second.toInteger32();
+                    }
+                    else if (property.first == "w")
+                    {
+                        width = property.second.toUnsignedInteger32();
+                    }
+                    else if (property.first == "h")
+                    {
+                        height = property.second.toUnsignedInteger32();
+                    }
+                    else if (property.first == "sx")
+                    {
+                        scaleX = property.second.toDouble();
+                    }
+                    else if (property.first == "sy")
+                    {
+                        scaleY = property.second.toDouble();
+                    }
+                }
+
+                animation.compositor = compositor.compositor;
+                animation.endX = x;
+                animation.endY = y;
+                animation.endWidth = width;
+                animation.endHeight = height;
+                animation.endScaleX = scaleX;
+                animation.endScaleY = scaleY;
+                animation.duration = duration;
+                animation.name = client;
+                RdkShell::Animator::instance()->addAnimation(animation);
+                ret = true;
+		break;
+            }
+        }
+        return ret;
+    }
+
+    bool CompositorController::removeAnimation(const std::string& client)
+    {
+        RdkShell::Animator::instance()->fastForwardAnimation(client);
+        return true;
+    }
+
+    bool CompositorController::update()
+    {
+        RdkShell::Animator::instance()->animate();
+        return true;
     }
 }

@@ -40,9 +40,12 @@ namespace RdkShell
             void setSize(uint32_t width, uint32_t height);
             void size(uint32_t &width, uint32_t &height);
             void setOpacity(double opacity);
+            void scale(double &scaleX, double &scaleY);
+            void setScale(double scaleX, double scaleY);
             void opacity(double& opacity);
             void setVisible(bool visible);
             void visible(bool &visible);
+            void setAnimating(bool animating);
 
 
         private:
@@ -60,6 +63,9 @@ namespace RdkShell
             float mMatrix[16];
             double mOpacity;
             bool mVisible;
+            bool mAnimating;
+            double mScaleX;
+            double mScaleY;
     };
 }
 
