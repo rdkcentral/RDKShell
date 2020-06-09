@@ -27,7 +27,7 @@ namespace RdkShell
 {
     RdkCompositor::RdkCompositor() : mDisplayName(), mWstContext(NULL), 
         mWidth(1280), mHeight(720), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
-        mVisible(true)
+        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0)
     {
         float* matrixPointer = mMatrix;
         float matrix[16] = 
@@ -174,6 +174,10 @@ namespace RdkShell
         hints |= WstHints_applyTransform;
         hints |= WstHints_holePunch;
         hints |= WstHints_noRotation;
+        if (mAnimating)
+        {
+            hints |= WstHints_animating;
+        }
         bool needsHolePunch = false;
         std::vector<WstRect> rects;
 
@@ -250,6 +254,27 @@ namespace RdkShell
         mOpacity = opacity;
     }
 
+    void RdkCompositor::scale(double &scaleX, double &scaleY)
+    {
+        scaleX = mScaleX;
+        scaleY = mScaleY;
+    }
+
+    void RdkCompositor::setScale(double scaleX, double scaleY)
+    {
+        if (scaleX >= 0)
+        {
+            mScaleX = scaleX;
+        }
+        if (scaleY >= 0)
+        {
+            mScaleY = scaleY;
+        }
+
+        mMatrix[0] = 1 * mScaleX;
+        mMatrix[5] = 1 * mScaleY;
+    }
+
     void RdkCompositor::setSize(uint32_t width, uint32_t height)
     {
         mWidth = width;
@@ -275,5 +300,10 @@ namespace RdkShell
     void RdkCompositor::visible(bool &visible)
     {
         visible = mVisible;
+    }
+
+    void RdkCompositor::setAnimating(bool animating)
+    {
+        mAnimating = animating;
     }
 }

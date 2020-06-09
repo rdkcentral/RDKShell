@@ -17,18 +17,35 @@
 * limitations under the License.
 **/
 
-#ifndef RDKSHELL_H
-#define RDKSHELL_H
+#pragma once
+
+#include <math.h>
 
 namespace RdkShell
 {
-    void initialize();
-    void run();
-    void update();
-    void draw();
-    double seconds();
-    double milliseconds();
-    double microseconds();
+
+template <typename t>
+inline t minVal(t a1, t a2)
+{
+  return (a1 < a2)?a1:a2;
 }
 
-#endif //RDKSHELL_H
+template <typename t>
+inline t maxVal(t a1, t a2)
+{
+  return (a1 > a2)?a1:a2;
+}
+
+template <typename t>
+inline double clamp(double v, double min, double max)
+{
+  return minVal<t>(max, maxVal<t>(min, v));
+}
+
+double interpLinear(double i)
+{
+  return clamp<double>(i, 0, 1);
+
+}
+
+}
