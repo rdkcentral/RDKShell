@@ -34,7 +34,7 @@ namespace RdkShell
         KeyListenerInfo() : keyCode(-1), flags(0), activate(false), propagate(true) {}
         uint32_t keyCode;
         uint32_t flags;
-	bool activate;
+        bool activate;
         bool propagate;
     };
 
