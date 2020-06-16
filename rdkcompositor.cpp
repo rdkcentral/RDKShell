@@ -18,6 +18,7 @@
 **/
 
 #include "rdkcompositor.h"
+#include "compositorcontroller.h"
 
 #include <iostream>
 #include <string.h>
@@ -77,27 +78,45 @@ namespace RdkShell
 
     void RdkCompositor::onClientStatus(int status, int pid, int detail)
     {
-        switch ( status )
-        {
-            case WstClient_started:
-                std::cout << "client started\n";
-                break;
-            case WstClient_stoppedNormal:
-                std::cout << "client stopped normal\n";
-                break;
-            case WstClient_stoppedAbnormal:
-                std::cout << "client stopped abnormal\n";
-                break;
-            case WstClient_connected:
-                std::cout << "client connected\n";
-                break;
-            case WstClient_disconnected:
-                std::cout << "client disconnected\n";
-                break;
-            default:
-                std::cout << "unknown client status state\n";
-                break;
-        }
+         bool eventFound = true;
+         std::string eventName = "";
+
+         switch ( status )
+         {
+             case WstClient_started:
+                 std::cout << "client started\n";
+                 eventName = RDKSHELL_EVENT_APPLICATION_LAUNCHED;
+                 break;
+             case WstClient_stoppedNormal:
+                 std::cout << "client stopped normal\n";
+                 eventName = RDKSHELL_EVENT_APPLICATION_TERMINATED;
+                 break;
+             case WstClient_stoppedAbnormal:
+                 std::cout << "client stopped abnormal\n";
+                 eventName = RDKSHELL_EVENT_APPLICATION_TERMINATED;
+                 break;
+             case WstClient_connected:
+                 std::cout << "client connected\n";
+                 eventName = RDKSHELL_EVENT_APPLICATION_CONNECTED;
+                 break;
+             case WstClient_disconnected:
+                 std::cout << "client disconnected\n";
+                 eventName = RDKSHELL_EVENT_APPLICATION_DISCONNECTED;
+                 break;
+             case WstClient_firstFrame:
+                 std::cout << "client first frame received\n";
+                 eventName = RDKSHELL_EVENT_APPLICATION_FIRST_FRAME;
+                 break;
+             default:
+                 std::cout << "unknown client status state\n";
+                 eventFound = false;
+                 break;
+         }
+
+         if (eventFound)
+         {
+           CompositorController::onEvent(this, eventName);
+         }
     }
 
     bool RdkCompositor::createDisplay(const std::string& displayName, uint32_t width, uint32_t height)

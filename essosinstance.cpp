@@ -75,7 +75,10 @@ static void essosKeyPressed( void *userData, unsigned int key )
     flags |= (rightShiftPressed || leftShiftPressed) ? RDKSHELL_FLAGS_SHIFT:0;
     flags |= (rightCtrlPressed || leftCtrlPressed) ? RDKSHELL_FLAGS_CONTROL:0;
     flags |= (rightAltPressed || leftAltPressed) ? RDKSHELL_FLAGS_ALT:0;
-    RdkShell::EssosInstance::instance()->onKeyPress(keyCodeFromWayland(key),flags);
+
+    uint32_t mappedKeyCode = key, mappedFlags = 0;
+    bool ret = keyCodeFromWayland(key, flags, mappedKeyCode, mappedFlags);
+    RdkShell::EssosInstance::instance()->onKeyPress(mappedKeyCode, mappedFlags);
 }
 
 static void essosKeyReleased( void *userData, unsigned int key )
@@ -107,7 +110,10 @@ static void essosKeyReleased( void *userData, unsigned int key )
     flags |= (rightShiftPressed || leftShiftPressed) ? RDKSHELL_FLAGS_SHIFT:0;
     flags |= (rightCtrlPressed || leftCtrlPressed) ? RDKSHELL_FLAGS_CONTROL:0;
     flags |= (rightAltPressed || leftAltPressed) ? RDKSHELL_FLAGS_ALT:0;
-    RdkShell::EssosInstance::instance()->onKeyRelease(keyCodeFromWayland(key),flags);
+
+    uint32_t mappedKeyCode = key, mappedFlags = 0;
+    bool ret = keyCodeFromWayland(key, flags, mappedKeyCode, mappedFlags);
+    RdkShell::EssosInstance::instance()->onKeyRelease(mappedKeyCode, mappedFlags);
 }
 
 static EssKeyListener essosKeyListener=

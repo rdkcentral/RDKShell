@@ -18,11 +18,139 @@
 **/
 
 #include "linuxkeys.h"
+#include "rdkshelljson.h"
 #include <iostream>
-uint32_t keyCodeFromWayland(uint32_t waylandKeyCode)
-{
-    int standardKeyCode = 0;
 
+#include <map>
+
+struct RdkShellKeyMap
+{
+  uint32_t code;
+  uint32_t flags;
+};
+
+static std::map<uint32_t, struct RdkShellKeyMap> sRdkShellKeyMap;
+
+uint32_t getKeyFlag(std::string modifier)
+{
+  uint32_t flag = 0;
+  if (0 == modifier.compare("ctrl"))
+  {
+    flag = RDKSHELL_FLAGS_CONTROL;
+  }
+  else if (0 == modifier.compare("shift"))
+  {
+    flag = RDKSHELL_FLAGS_SHIFT;
+  }
+  else if (0 == modifier.compare("alt"))
+  {
+    flag = RDKSHELL_FLAGS_ALT;
+  }
+  return flag;
+}
+
+void mapNativeKeyCodes()
+{
+  //populate from the key map file
+  const char* keyMapFile = getenv("RDKSHELL_KEYMAP_FILE");
+  if (keyMapFile)
+  {
+    rapidjson::Document document;
+    bool ret = RdkShell::RdkShellJson::readJsonFile(keyMapFile, document);
+    if (false == ret)
+    {
+      std::cout << "RDKShell keymap read error : [unable to open/read file (" <<  keyMapFile << ")]\n";
+      return;
+    }
+
+    if (document.HasMember("keyMappings")) {
+      const rapidjson::Value& jsonValue = document["keyMappings"];
+
+      if (jsonValue.IsArray())
+      {
+        for (rapidjson::SizeType k = 0; k < jsonValue.Size(); k++)
+        {
+          uint32_t keyCode = 0, mappedKeyCode = 0;
+          uint32_t flags = 0;
+
+          const rapidjson::Value& mapEntry = jsonValue[k];
+          if (mapEntry.IsObject() && mapEntry.HasMember("keyCode")  && mapEntry.HasMember("mapped"))
+          {
+            const rapidjson::Value& keyCodeValue = mapEntry["keyCode"];
+            if (keyCodeValue.IsUint())
+            {
+              keyCode = keyCodeValue.GetUint();
+            }
+            else
+            {
+              std::cout << "Ignoring keycode entry because of format issues of keycode\n";
+              continue;
+            }
+
+            const rapidjson::Value& mappedValue = mapEntry["mapped"];
+            if (mappedValue.IsObject() && mappedValue.HasMember("keyCode") && mappedValue.HasMember("modifiers"))
+            {
+                const rapidjson::Value& mappedKeyCodeValue = mappedValue["keyCode"];
+                if (mappedKeyCodeValue.IsUint())
+                {
+                  mappedKeyCode = mappedKeyCodeValue.GetUint();
+                }
+                else
+                {
+                  std::cout << "Ignoring keycode entry because of format issues of mapped keycode\n";
+                  continue;
+                }
+
+                const rapidjson::Value& modifiersValue = mappedValue["modifiers"];
+                if (modifiersValue.IsArray()) {
+                  for (rapidjson::SizeType i = 0; i < modifiersValue.Size(); i++)
+                  {
+                    if (modifiersValue[i].IsString()) {
+                      flags |= getKeyFlag(modifiersValue[i].GetString());
+                    }
+                  }
+                }
+
+                struct RdkShellKeyMap keyMap;
+                keyMap.code = mappedKeyCode;
+                keyMap.flags = flags;
+                sRdkShellKeyMap[keyCode] = keyMap;
+              }
+              else
+              {
+                std::cout << "Ignoring keycode entry because of format issues in mapped params\n";
+                continue;
+              }
+            }
+            else
+            {
+              std::cout << "Ignoring keycode entry because of format issues of keycode entry value\n";
+              continue;
+            }
+          }
+        }
+      }
+      else
+      {
+        std::cout << "Ignored file read due to keyMappings entry not present";
+      }
+    }
+    else
+    {
+      std::cout << "Ignored file read due to keyMap env not set\n";
+    }
+}
+
+bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t &mappedKeyCode, uint32_t &mappedFlags)
+{
+    std::map<uint32_t, struct RdkShellKeyMap>::iterator it  = sRdkShellKeyMap.find(waylandKeyCode);
+    if (it != sRdkShellKeyMap.end())
+    {
+      mappedKeyCode = it->second.code;
+      mappedFlags = it->second.flags;
+      return true;
+    }
+    int standardKeyCode = 0;
     switch (waylandKeyCode)
     {
     case WAYLAND_KEY_ENTER:
@@ -362,11 +490,13 @@ uint32_t keyCodeFromWayland(uint32_t waylandKeyCode)
     #endif /* WAYLAND_KEY_HOMEPAGE */
 
     default:
-        std::cout << "unknown key code " << waylandKeyCode;
+        std::cout << "unknown key code " << waylandKeyCode << std::endl;
         standardKeyCode = waylandKeyCode;
         break;
     }
-    return standardKeyCode;
+    mappedKeyCode = standardKeyCode;
+    mappedFlags = waylandFlags;
+    return true;
 }
 
 uint32_t keyCodeToWayland(uint32_t keyCode)

@@ -19,22 +19,32 @@
 
 #include "compositorcontroller.h"
 
-#include "rdkcompositor.h"
 #include "essosinstance.h"
 #include "animation.h"
 
-#include <memory>
 #include <iostream>
 #include <map>
-#include <algorithm>
+
+#define RDKSHELL_ANY_KEY 65536
 
 namespace RdkShell
 {
+    struct KeyListenerInfo
+    {
+        KeyListenerInfo() : keyCode(-1), flags(0), activate(false), propagate(true) {}
+        uint32_t keyCode;
+        uint32_t flags;
+        bool activate;
+        bool propagate;
+    };
+
     struct CompositorInfo
     {
-        CompositorInfo() : name(), compositor(nullptr) {}
+        CompositorInfo() : name(), compositor(nullptr), eventListeners() {}
         std::string name;
         std::shared_ptr<RdkCompositor> compositor;
+        std::map<uint32_t, std::vector<KeyListenerInfo>> keyListenerInfo;
+        std::vector<std::shared_ptr<RdkShellEventListener>> eventListeners;
     };
 
     struct KeyInterceptInfo
@@ -56,7 +66,132 @@ namespace RdkShell
         std::transform(displayName.begin(), displayName.end(), displayName.begin(), [](unsigned char c){ return std::tolower(c); });
         return displayName;
     }
+
+    void sendEvent(std::shared_ptr<RdkShellEventListener>& listener, const std::string& eventName, const std::string& client)
+    {
+         if (eventName.compare(RDKSHELL_EVENT_APPLICATION_LAUNCHED) == 0)
+         {
+                 listener->onApplicationLaunched(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_TERMINATED) == 0)
+         {
+                 listener->onApplicationTerminated(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0)
+         {
+                 listener->onApplicationConnected(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0)
+         {
+                 listener->onApplicationDisconnected(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_FIRST_FRAME) == 0)
+         {
+                 listener->onApplicationFirstFrame(client);
+         }
+    }
     
+    bool interceptKey(uint32_t keycode, uint32_t flags, bool isPressed)
+    {
+      bool ret = false;
+      if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keycode))
+      {
+        for (int i=0; i<gKeyInterceptInfoMap[keycode].size(); i++) {
+          struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
+          if (info.flags == flags)
+          {
+            if (isPressed)
+            {
+              info.compositorInfo.compositor->onKeyPress(keycode, flags);
+            }
+            else
+            {
+              info.compositorInfo.compositor->onKeyRelease(keycode, flags);
+            }
+            ret = true;
+          }
+        }
+      }
+      return ret;
+    }
+
+    void evaluateKeyListeners(struct CompositorInfo& compositor, uint32_t keycode, uint32_t flags, bool& foundlistener, bool& activate, bool& propagate)
+    {
+        std::map<uint32_t, std::vector<KeyListenerInfo>>& keyListenerInfo = compositor.keyListenerInfo;
+
+        if (keyListenerInfo.end() != keyListenerInfo.find(keycode))
+        {
+          for (size_t i=0; i<keyListenerInfo[keycode].size(); i++)
+          {
+            struct KeyListenerInfo& info = keyListenerInfo[keycode][i];
+
+            if (info.flags == flags)
+            {
+              foundlistener  = true;
+              activate = info.activate;
+              propagate = info.propagate;
+              break;
+            }
+          }
+        }
+
+        // handle wildcard if no listener found
+        if ((false == foundlistener) && (keyListenerInfo.find(RDKSHELL_ANY_KEY) != keyListenerInfo.end()))
+        {
+          struct KeyListenerInfo& info = keyListenerInfo[RDKSHELL_ANY_KEY][0];
+          foundlistener  = true;
+          activate = info.activate;
+          propagate = info.propagate;
+        }
+    }
+
+    void bubbleKey(uint32_t keycode, uint32_t flags, bool isPressed)
+    {
+        std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
+        for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
+        {
+          if (compositorIterator->name == gFocusedCompositor.name)
+          {
+            break;
+          }
+        }
+
+        bool activateCompositor = false, propagateKey = true, foundListener = false;
+        bool stopPropagation = false;
+        bool isFocusedCompositor = true;
+        while (compositorIterator != gCompositorList.end())
+        {
+          activateCompositor = false;
+          propagateKey = true;
+          foundListener = false;
+          evaluateKeyListeners(*compositorIterator, keycode, flags, foundListener, activateCompositor, propagateKey);
+
+          if ((false == isFocusedCompositor) && (true == foundListener))
+          {
+            if (isPressed)
+            {
+              compositorIterator->compositor->onKeyPress(keycode, flags);
+            }
+            else
+            {
+              compositorIterator->compositor->onKeyRelease(keycode, flags);
+            }
+          }
+          isFocusedCompositor = false;
+          if (activateCompositor)
+          {
+            gFocusedCompositor = *compositorIterator;
+          }
+
+          //propagate is false, stopping here
+          if (false == propagateKey)
+          {
+            break;
+          }
+          compositorIterator++;
+        }
+    }
+
     bool CompositorController::moveToFront(const std::string& client)
     {
         std::string clientDisplayName = standardizeName(client);
@@ -139,6 +274,43 @@ namespace RdkShell
         {
             if (it->name == clientDisplayName)
             {
+                RdkShell::Animator::instance()->stopAnimation(clientDisplayName);
+
+                // cleanup key intercepts
+		std::vector<std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator> emptyKeyCodeEntries;
+                std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator entry = gKeyInterceptInfoMap.begin();
+                while(entry != gKeyInterceptInfoMap.end())
+                {
+                    std::vector<KeyInterceptInfo>& interceptMap = entry->second;
+                    std::vector<KeyInterceptInfo>::iterator interceptMapEntry=interceptMap.begin();
+                    while (interceptMapEntry != interceptMap.end())
+                    {
+                        if ((*interceptMapEntry).compositorInfo.name == clientDisplayName)
+                        {
+                          interceptMapEntry = interceptMap.erase(interceptMapEntry);
+                        }
+                        else
+                        {
+                          interceptMapEntry++;
+                        }
+                    }
+                    if (interceptMap.size() == 0)
+                    {
+                       entry = gKeyInterceptInfoMap.erase(entry);
+                    }
+                    else
+                    {
+                      entry++;
+                    }
+                }
+
+                // cleanup key listeners
+                for (std::map<uint32_t, std::vector<KeyListenerInfo>>::iterator iter = it->keyListenerInfo.begin(); iter != it->keyListenerInfo.end(); iter++)
+                {
+                  iter->second.clear();
+                }
+                it->keyListenerInfo.clear();
+                it->eventListeners.clear();
                 gCompositorList.erase(it);
                 if (gFocusedCompositor.name == clientDisplayName)
                 {
@@ -192,6 +364,32 @@ namespace RdkShell
 
     bool CompositorController::removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        if (client == "*")
+        {
+            std::vector<std::vector<KeyInterceptInfo>::iterator> keyMapEntries;
+            std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator it = gKeyInterceptInfoMap.find(keyCode);
+            if (it != gKeyInterceptInfoMap.end())
+            {
+              std::vector<KeyInterceptInfo>::iterator entry = gKeyInterceptInfoMap[keyCode].begin();
+              while(entry != gKeyInterceptInfoMap[keyCode].end())
+              {
+                  if ((*entry).flags == flags)
+                  {
+                    entry = gKeyInterceptInfoMap[keyCode].erase(entry);
+                  }
+                  else
+                  {
+                    entry++;
+                  }
+              }
+              if ( gKeyInterceptInfoMap[keyCode].size() == 0)
+              {
+                 gKeyInterceptInfoMap.erase(keyCode);
+              }
+            }
+            return true;
+        }
+
         std::string clientDisplayName = standardizeName(client);
         for (auto compositor : gCompositorList)
         {
@@ -213,7 +411,7 @@ namespace RdkShell
                   if (true == isEntryAvailable) {
                     gKeyInterceptInfoMap[keyCode].erase(entryPos);
                     if (gKeyInterceptInfoMap[keyCode].size() == 0) {
-                      gKeyInterceptInfoMap[keyCode].clear();
+                      gKeyInterceptInfoMap.erase(keyCode);
                     }
                   }
                 }
@@ -221,6 +419,106 @@ namespace RdkShell
             }
         }
         return false;
+    }
+
+    bool CompositorController::addKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        bool activate = false, propagate = true;
+        for ( const auto &property : listenerProperties)
+        {
+          if (property.first == "activate")
+          {
+            activate = property.second.toBoolean();
+          }
+          else if (property.first == "propagate")
+          {
+            propagate = property.second.toBoolean();
+          }
+        }
+        std::cout << "key listener added client" << client.c_str() << " activate " << activate << " propagate " << propagate << std::endl;
+        std::cout << "key listener added " << keyCode << " flags " << flags << std::endl;
+
+        for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+        {
+            if (it->name == clientDisplayName)
+            {
+                struct KeyListenerInfo info;
+                info.keyCode = keyCode;
+                info.flags = flags;
+                info.activate = activate;
+                info.propagate = propagate;
+
+                if (it->keyListenerInfo.end() == it->keyListenerInfo.find(keyCode))
+                {
+                  it->keyListenerInfo[keyCode] = std::vector<KeyListenerInfo>();
+                  it->keyListenerInfo[keyCode].push_back(info);
+                }
+                else
+                {
+                  std::vector<KeyListenerInfo>& keyListenerEntry = it->keyListenerInfo[keyCode];
+                  bool isEntryAvailable = false;
+                  for (int i=0; i<keyListenerEntry.size(); i++) {
+                    struct KeyListenerInfo& listenerInfo = keyListenerEntry[i];
+                    if (listenerInfo.flags == flags)
+                    {
+                      listenerInfo.activate = activate;
+                      listenerInfo.propagate = propagate;
+                      isEntryAvailable = true;
+                      break;
+                    }
+                  }
+                  if (false == isEntryAvailable) {
+                    keyListenerEntry.push_back(info);
+                  }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::removeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
+    {
+        std::string clientDisplayName = standardizeName(client);
+
+        std::cout << "key listener removed client" << client.c_str() << " key " << keyCode << " flags " << flags << std::endl;
+
+        for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+        {
+            if (it->name == clientDisplayName)
+            {
+                if (it->keyListenerInfo.end() != it->keyListenerInfo.find(keyCode))
+                {
+                  bool isEntryAvailable = false;
+                  std::vector<KeyListenerInfo>::iterator entryPos = it->keyListenerInfo[keyCode].end();
+                  for (std::vector<KeyListenerInfo>::iterator iter = it->keyListenerInfo[keyCode].begin() ; iter != it->keyListenerInfo[keyCode].end(); ++iter)
+                  {
+                    if ((*iter).flags == flags)
+                    {
+                      entryPos = iter;
+                      isEntryAvailable = true;
+                      break;
+                    }
+                  }
+                  if (true == isEntryAvailable) {
+                    it->keyListenerInfo[keyCode].erase(entryPos);
+                    if (it->keyListenerInfo[keyCode].size() == 0) {
+                      it->keyListenerInfo.erase(keyCode);
+                    }
+                  }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::injectKey(const uint32_t& keyCode, const uint32_t& flags)
+    {
+        CompositorController::onKeyPress(keyCode, flags);
+        CompositorController::onKeyRelease(keyCode, flags);
+        return true;
     }
 
     bool CompositorController::getScreenResolution(uint32_t &width, uint32_t &height)
@@ -329,7 +627,7 @@ namespace RdkShell
             {
                 double o = 1.0;
                 compositor.compositor->opacity(o);
-                opacity *= o;
+                opacity = (unsigned int)(o * 100);
                 if (opacity > 100)
                 {
                      opacity = 100;
@@ -392,41 +690,27 @@ namespace RdkShell
     {
         //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
         bool isInterceptAvailable = false;
-        if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keycode))
-        {
-          for (int i=0; i<gKeyInterceptInfoMap[keycode].size(); i++) {
-            struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
-            if (info.flags == flags)
-            {
-              info.compositorInfo.compositor->onKeyPress(keycode, flags);
-              isInterceptAvailable = true;
-            }
-          }
-        }
 
-        if ((false == isInterceptAvailable) && gFocusedCompositor.compositor)
+        isInterceptAvailable = interceptKey(keycode, flags, true);
+
+        if (false == isInterceptAvailable && gFocusedCompositor.compositor)
         {
             gFocusedCompositor.compositor->onKeyPress(keycode, flags);
+            bubbleKey(keycode, flags, true);
         }
     }
 
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags)
     {
+        //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
         bool isInterceptAvailable = false;
-        if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keycode))
-        {
-          for (int i=0; i<gKeyInterceptInfoMap[keycode].size(); i++) {
-            struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
-            if (info.flags == flags)
-            {
-              info.compositorInfo.compositor->onKeyRelease(keycode, flags);
-              isInterceptAvailable = true;
-            }
-          }
-        }
+
+        isInterceptAvailable = interceptKey(keycode, flags, false);
+
         if ((false == isInterceptAvailable) && gFocusedCompositor.compositor)
         {
             gFocusedCompositor.compositor->onKeyRelease(keycode, flags);
+            bubbleKey(keycode, flags, false);
         }
     }
 
@@ -488,6 +772,7 @@ namespace RdkShell
                 uint32_t height = 0;
                 double scaleX = 1.0;
                 double scaleY = 1.0;
+                std::string tween = "linear";
                 if (compositor.compositor != nullptr)
                 {
                     //retrieve the initial values in case they are not specified in the property set
@@ -522,6 +807,10 @@ namespace RdkShell
                     {
                         scaleY = property.second.toDouble();
                     }
+                    else if (property.first == "tween")
+                    {
+                        tween = property.second.toString();
+                    }
                 }
 
                 animation.compositor = compositor.compositor;
@@ -533,6 +822,7 @@ namespace RdkShell
                 animation.endScaleY = scaleY;
                 animation.duration = duration;
                 animation.name = client;
+                animation.tween = tween;
                 RdkShell::Animator::instance()->addAnimation(animation);
                 ret = true;
 		break;
@@ -550,6 +840,62 @@ namespace RdkShell
     bool CompositorController::update()
     {
         RdkShell::Animator::instance()->animate();
+        return true;
+    }
+
+    bool CompositorController::addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+        {
+           if (it->name == clientDisplayName)
+           {
+              it->eventListeners.push_back(listener);
+              break;
+           }
+        }
+        return true;
+    }
+
+    bool CompositorController::removeListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+        {
+            if (it->name == clientDisplayName)
+            {
+                std::vector<std::shared_ptr<RdkShellEventListener>>::iterator entryToRemove = it->eventListeners.end();
+                for (std::vector<std::shared_ptr<RdkShellEventListener>>::iterator iter = it->eventListeners.begin() ; iter != it->eventListeners.end(); ++iter)
+                {
+                  if ((*iter) == listener)
+                  {
+                    entryToRemove = iter;
+                    break;
+                  }
+                }
+                if (entryToRemove != it->eventListeners.end())
+                {
+                  it->eventListeners.erase(entryToRemove);
+                }
+                break;
+            }
+        }
+        return true;
+    }
+
+    bool CompositorController::onEvent(RdkCompositor* eventCompositor, const std::string& eventName)
+    {
+        for (auto compositor : gCompositorList)
+         {
+            if (compositor.compositor.get() == eventCompositor)
+            {
+                for (int i=0; i<compositor.eventListeners.size(); i++)
+                {
+                    sendEvent(compositor.eventListeners[i], eventName, compositor.name);
+                }
+                break;
+            }
+        }
         return true;
     }
 }
