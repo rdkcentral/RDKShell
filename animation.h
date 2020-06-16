@@ -29,7 +29,7 @@ namespace RdkShell
     struct Animation
     {
         Animation() : name(), compositor(nullptr), startX(0), startY(0), startWidth(0), startHeight(0), startScaleX(1.0), startScaleY(1.0),
-            endX(0), endY(0), endWidth(0), endHeight(0), duration(0), startTime(0), endTime(0) {}
+            endX(0), endY(0), endWidth(0), endHeight(0), duration(0), startTime(0), endTime(0), tween("linear") {}
         void setDestinationBounds(int32_t destinationX, int32_t destinationY, 
                                     uint32_t destinationWidth, uint32_t destinationHeight) 
         {
@@ -72,6 +72,7 @@ namespace RdkShell
         double duration;
         double startTime;
         double endTime;
+        std::string tween;
     };
 
     class Animator

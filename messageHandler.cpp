@@ -25,26 +25,10 @@
 #include <vector>
 #include <string>
 
+extern uint32_t getKeyFlag(std::string modifier);
+
 namespace RdkShell
 {
-
-uint32_t getKeyFlag(std::string modifier)
-{
-  uint32_t flag = 0;
-  if (0 == modifier.compare("ctrl"))
-  {
-    flag = RDKSHELL_FLAGS_CONTROL;
-  }
-  else if (0 == modifier.compare("shift"))
-  {
-    flag = RDKSHELL_FLAGS_SHIFT;
-  }
-  else if (0 == modifier.compare("alt"))
-  {
-    flag = RDKSHELL_FLAGS_ALT;
-  }
-  return flag;
-}
 
 static std::map<std::string, void(*)(Document&, uWS::WebSocket<uWS::SERVER> *)> mHandlerMap = {};
 

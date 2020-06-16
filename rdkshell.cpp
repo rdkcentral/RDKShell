@@ -18,11 +18,13 @@
 **/
 
 #include <iostream>
+#include <GLES2/gl2.h>
 #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
 #include "messageHandler.h"
 #endif
 #include "essosinstance.h"
 #include "compositorcontroller.h"
+#include "linuxkeys.h"
 #include "animation.h"
 #include <unistd.h>
 #include <time.h>
@@ -64,6 +66,7 @@ namespace RdkShell
     {
         std::cout << "initializing rdk shell\n";
 
+        mapNativeKeyCodes();
         char const *s = getenv("RDKSHELL_FRAMERATE");
         if (s)
         {

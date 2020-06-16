@@ -21,6 +21,7 @@
 #define RDKSHELL_LINUX_KEYS_H
 
 #include <stdint.h>
+#include <string>
 
 #define WAYLAND_KEY_RESERVED            0
 #define WAYLAND_KEY_ESC                 1
@@ -282,7 +283,9 @@
 #define RDKSHELL_KEY_MENU         408
 #define RDKSHELL_KEY_HOMEPAGE     409
 
-uint32_t keyCodeFromWayland(uint32_t waylandKeyCode);
+
+bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t &mappedKeyCode, uint32_t &mappedFlags);
 uint32_t keyCodeToWayland(uint32_t keyCode);
+void mapNativeKeyCodes();
 
 #endif //RDKSHELL_LINUX_KEYS_H

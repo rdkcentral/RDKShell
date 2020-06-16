@@ -31,6 +31,7 @@ namespace RdkShell
 
     Animator::Animator()
     {
+      initializeTweens();
     }
     
     Animator::~Animator()
@@ -74,7 +75,7 @@ namespace RdkShell
                     double t1 = animationPosition/animation.duration;
                     double t2 = floor(t1);
                     t1 = t1-t2;
-                    d = interpLinear(t1);
+                    d = interpolateFunction(animation.tween)(t1);
                 }
 
                 int32_t nextX = static_cast<int32_t> (animation.startX + (animation.endX-animation.startX)*d);

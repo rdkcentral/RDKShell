@@ -22,10 +22,13 @@
 
 #include "rdkshelldata.h"
 
+#include "rdkshellevents.h"
+#include "rdkcompositor.h"
 #include <string>
 #include <vector>
 #include <map>
 #include <memory>
+#include <algorithm>
 
 namespace RdkShell
 {
@@ -39,6 +42,9 @@ namespace RdkShell
             static bool kill(const std::string& client);
             static bool addKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
             static bool removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
+            static bool addKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties);
+            static bool removeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
+            static bool injectKey(const uint32_t& keyCode, const uint32_t& flags);
             static bool getScreenResolution(uint32_t &width, uint32_t &height);
             static bool setScreenResolution(const uint32_t width, const uint32_t height);
             static bool getClients(std::vector<std::string>& clients);
@@ -56,6 +62,9 @@ namespace RdkShell
             static bool createDisplay(const std::string& client, const std::string& displayName);
             static bool addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties);
             static bool removeAnimation(const std::string& client);
+            static bool addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener);
+            static bool removeListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener);
+            static bool onEvent(RdkCompositor* eventCompositor, const std::string& eventName);
             static bool draw();
             static bool update();
     };

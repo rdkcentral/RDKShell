@@ -17,13 +17,20 @@
 * limitations under the License.
 **/
 
-#pragma once
+#ifndef RDKSHELL_UTILS_H
+#define RDKSHELL_UTILS_H
 
-#include <math.h>
+#include "rapidjson/document.h"
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/error/en.h"
 
 namespace RdkShell
 {
-  void initializeTweens();
-  typedef double (*interpolatorFunction)(double i);
-  interpolatorFunction interpolateFunction(std::string&);
+    class RdkShellJson
+    {
+      public:
+        static bool readJsonFile(const char* path, rapidjson::Document& document);
+    };
 }
+
+#endif
