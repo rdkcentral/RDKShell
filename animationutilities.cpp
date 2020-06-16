@@ -24,6 +24,7 @@
 
 namespace RdkShell
 {
+
   typedef double (*interpolatorFunction)(double i);
 
   template <typename t>
