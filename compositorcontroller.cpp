@@ -627,7 +627,7 @@ namespace RdkShell
             {
                 double o = 1.0;
                 compositor.compositor->opacity(o);
-                opacity *= o;
+                opacity = (unsigned int)(o * 100);
                 if (opacity > 100)
                 {
                      opacity = 100;
