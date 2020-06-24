@@ -21,11 +21,13 @@
 
 #include "essosinstance.h"
 #include "animation.h"
+#include "rdkshell.h"
 
 #include <iostream>
 #include <map>
 
 #define RDKSHELL_ANY_KEY 65536
+#define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
 
 namespace RdkShell
 {
@@ -60,6 +62,12 @@ namespace RdkShell
 
     static std::map<uint32_t, std::vector<KeyInterceptInfo>> gKeyInterceptInfoMap;
 
+    bool gEnableInactivityReporting = false;
+    double gInactivityIntervalInSeconds = RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS;
+    double gLastKeyEventTime = RdkShell::seconds();
+    double gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
+    std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
+
     std::string standardizeName(const std::string& clientName)
     {
         std::string displayName = clientName;
@@ -91,7 +99,7 @@ namespace RdkShell
          }
     }
     
-    bool interceptKey(uint32_t keycode, uint32_t flags, bool isPressed)
+    bool interceptKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
       bool ret = false;
       if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keycode))
@@ -102,11 +110,11 @@ namespace RdkShell
           {
             if (isPressed)
             {
-              info.compositorInfo.compositor->onKeyPress(keycode, flags);
+              info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
             }
             else
             {
-              info.compositorInfo.compositor->onKeyRelease(keycode, flags);
+              info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
             }
             ret = true;
           }
@@ -145,7 +153,7 @@ namespace RdkShell
         }
     }
 
-    void bubbleKey(uint32_t keycode, uint32_t flags, bool isPressed)
+    void bubbleKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
         std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
         for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
@@ -170,11 +178,11 @@ namespace RdkShell
           {
             if (isPressed)
             {
-              compositorIterator->compositor->onKeyPress(keycode, flags);
+              compositorIterator->compositor->onKeyPress(keycode, flags, metadata);
             }
             else
             {
-              compositorIterator->compositor->onKeyRelease(keycode, flags);
+              compositorIterator->compositor->onKeyRelease(keycode, flags, metadata);
             }
           }
           isFocusedCompositor = false;
@@ -232,23 +240,34 @@ namespace RdkShell
         std::string clientDisplayName = standardizeName(client);
         std::string targetDisplayName = standardizeName(target);
 
+        CompositorInfo compositorInfo;
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
-         {
+        {
             if (it->name == clientDisplayName)
             {
                 clientIterator = it;
-            }
-            else if (it->name == targetDisplayName)
-            {
-                targetIterator = it;
+                break;
             }
         }
-        if (clientIterator != gCompositorList.end() && targetIterator != gCompositorList.end())
+
+        if (clientIterator != gCompositorList.end())
         {
-            auto compositorInfo = *clientIterator;
+            compositorInfo = *clientIterator;
             gCompositorList.erase(clientIterator);
-            gCompositorList.insert(targetIterator+1, compositorInfo);
-            return true;
+
+            for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+            {
+                if (it->name == targetDisplayName)
+                {
+                    targetIterator = it;
+                    break;
+                }
+            }
+            if (targetIterator != gCompositorList.end())
+            {
+                gCompositorList.insert(targetIterator+1, compositorInfo);
+                return true;
+            }
         }
         return false;
     }
@@ -514,10 +533,38 @@ namespace RdkShell
         return false;
     }
 
+    bool CompositorController::addKeyMetadataListener(const std::string& client)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
+            {
+                compositor.compositor->setKeyMetadataEnabled(true);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::removeKeyMetadataListener(const std::string& client)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
+            {
+                compositor.compositor->setKeyMetadataEnabled(false);
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool CompositorController::injectKey(const uint32_t& keyCode, const uint32_t& flags)
     {
-        CompositorController::onKeyPress(keyCode, flags);
-        CompositorController::onKeyRelease(keyCode, flags);
+        CompositorController::onKeyPress(keyCode, flags, 0);
+        CompositorController::onKeyRelease(keyCode, flags, 0);
         return true;
     }
 
@@ -686,31 +733,59 @@ namespace RdkShell
         return true;
     }
 
-    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags)
+    bool CompositorController::scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
+            {
+                uint32_t currentWidth = 0;
+                uint32_t currentHeight = 0;
+                compositor.compositor->size(currentWidth, currentHeight);
+
+                double scaleX = width / currentWidth;
+                double scaleY = height / currentHeight;
+
+                compositor.compositor->setPosition(x, y);
+                compositor.compositor->setScale(scaleX, scaleY);
+                return true;
+            }
+        }
+        return true;
+    }
+
+    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
+        gLastKeyEventTime = RdkShell::seconds();
+        gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
+
         bool isInterceptAvailable = false;
 
-        isInterceptAvailable = interceptKey(keycode, flags, true);
+        isInterceptAvailable = interceptKey(keycode, flags, metadata, true);
 
         if (false == isInterceptAvailable && gFocusedCompositor.compositor)
         {
-            gFocusedCompositor.compositor->onKeyPress(keycode, flags);
-            bubbleKey(keycode, flags, true);
+            gFocusedCompositor.compositor->onKeyPress(keycode, flags, metadata);
+            bubbleKey(keycode, flags, metadata, true);
         }
     }
 
-    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags)
+    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
+        gLastKeyEventTime = RdkShell::seconds();
+        gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
+
         bool isInterceptAvailable = false;
 
-        isInterceptAvailable = interceptKey(keycode, flags, false);
+        isInterceptAvailable = interceptKey(keycode, flags, metadata, false);
 
         if ((false == isInterceptAvailable) && gFocusedCompositor.compositor)
         {
-            gFocusedCompositor.compositor->onKeyRelease(keycode, flags);
-            bubbleKey(keycode, flags, false);
+            gFocusedCompositor.compositor->onKeyRelease(keycode, flags, metadata);
+            bubbleKey(keycode, flags, metadata, false);
         }
     }
 
@@ -772,6 +847,7 @@ namespace RdkShell
                 uint32_t height = 0;
                 double scaleX = 1.0;
                 double scaleY = 1.0;
+                double opacity = 1.0;
                 std::string tween = "linear";
                 if (compositor.compositor != nullptr)
                 {
@@ -779,6 +855,7 @@ namespace RdkShell
                     compositor.compositor->position(x, y);
                     compositor.compositor->size(width, height);
                     compositor.compositor->scale(scaleX, scaleY);
+                    compositor.compositor->opacity(opacity);
                 }
 
                 for ( const auto &property : animationProperties )
@@ -807,6 +884,11 @@ namespace RdkShell
                     {
                         scaleY = property.second.toDouble();
                     }
+                    else if (property.first == "a")
+                    {
+                        double opacityPercent = property.second.toDouble();
+                        opacity = opacityPercent / 100.0;
+                    }
                     else if (property.first == "tween")
                     {
                         tween = property.second.toString();
@@ -820,6 +902,7 @@ namespace RdkShell
                 animation.endHeight = height;
                 animation.endScaleX = scaleX;
                 animation.endScaleY = scaleY;
+                animation.endOpacity = opacity;
                 animation.duration = duration;
                 animation.name = client;
                 animation.tween = tween;
@@ -840,6 +923,18 @@ namespace RdkShell
     bool CompositorController::update()
     {
         RdkShell::Animator::instance()->animate();
+        if (gEnableInactivityReporting)
+        {
+            double currentTime = RdkShell::seconds();
+            if (currentTime > gNextInactiveEventTime)
+            {
+                if (gRdkShellEventListener)
+                {
+                    gRdkShellEventListener->onUserInactive(getInactivityTimeInMinutes());
+                }
+              gNextInactiveEventTime = currentTime + gInactivityIntervalInSeconds;
+            }
+        }
         return true;
     }
 
@@ -897,5 +992,27 @@ namespace RdkShell
             }
         }
         return true;
+    }
+
+    void CompositorController::setEventListener(std::shared_ptr<RdkShellEventListener> listener)
+    {
+        gRdkShellEventListener = listener;
+    }
+
+    void CompositorController::enableInactivityReporting(bool enable)
+    {
+        gEnableInactivityReporting = enable;
+    }
+
+    void CompositorController::setInactivityInterval(double minutes)
+    {
+        gInactivityIntervalInSeconds = minutes * 60;
+        gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
+    }
+
+    double CompositorController::getInactivityTimeInMinutes()
+    {
+        double inactiveTimeInSeconds = RdkShell::seconds() - gLastKeyEventTime;
+        return (inactiveTimeInSeconds / 60.0);
     }
 }

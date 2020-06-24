@@ -33,8 +33,8 @@ namespace RdkShell
             ~RdkCompositor();
             bool createDisplay(const std::string& displayName, uint32_t width, uint32_t height);
             void draw();
-            void onKeyPress(uint32_t keycode, uint32_t flags);
-            void onKeyRelease(uint32_t keycode, uint32_t flags);
+            void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata);
+            void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata);
             void setPosition(int32_t x, int32_t y);
             void position(int32_t &x, int32_t &y);
             void setSize(uint32_t width, uint32_t height);
@@ -46,6 +46,8 @@ namespace RdkShell
             void setVisible(bool visible);
             void visible(bool &visible);
             void setAnimating(bool animating);
+            void keyMetadataEnabled(bool &enabled);
+            void setKeyMetadataEnabled(bool enable);
 
 
         private:
@@ -66,6 +68,7 @@ namespace RdkShell
             bool mAnimating;
             double mScaleX;
             double mScaleY;
+            double mEnableKeyMetadata;
     };
 }
 

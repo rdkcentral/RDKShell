@@ -28,7 +28,7 @@ namespace RdkShell
 {
     RdkCompositor::RdkCompositor() : mDisplayName(), mWstContext(NULL), 
         mWidth(1280), mHeight(720), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
-        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0)
+        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false)
     {
         float* matrixPointer = mMatrix;
         float matrix[16] = 
@@ -211,7 +211,7 @@ namespace RdkShell
             mMatrix, mOpacity, hints, &needsHolePunch, rects );
     }
 
-    void RdkCompositor::onKeyPress(uint32_t keycode, uint32_t flags)
+    void RdkCompositor::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         uint32_t modifiers = 0;
 
@@ -231,9 +231,14 @@ namespace RdkShell
         int32_t waylandKeyCode = (int32_t)keyCodeToWayland(keycode);
 
         WstCompositorKeyEvent( mWstContext, waylandKeyCode, WstKeyboard_keyState_depressed, (int32_t)modifiers );
+
+        if (mEnableKeyMetadata)
+        {
+            //todo - send key metadata
+        }
     }
 
-    void RdkCompositor::onKeyRelease(uint32_t keycode, uint32_t flags)
+    void RdkCompositor::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         uint32_t modifiers = 0;
         if ( flags & RDKSHELL_FLAGS_SHIFT )
@@ -252,6 +257,11 @@ namespace RdkShell
         int32_t waylandKeyCode = (int32_t)keyCodeToWayland(keycode);
 
         WstCompositorKeyEvent( mWstContext, waylandKeyCode, WstKeyboard_keyState_released, (int32_t)modifiers );
+
+        if (mEnableKeyMetadata)
+        {
+            //todo - send key metadata
+        }
     }
 
     void RdkCompositor::setPosition(int32_t x, int32_t y)
@@ -324,5 +334,15 @@ namespace RdkShell
     void RdkCompositor::setAnimating(bool animating)
     {
         mAnimating = animating;
+    }
+
+    void RdkCompositor::keyMetadataEnabled(bool &enabled)
+    {
+        enabled = mEnableKeyMetadata;
+    }
+
+    void RdkCompositor::setKeyMetadataEnabled(bool enable)
+    {
+        mEnableKeyMetadata = enable;
     }
 }

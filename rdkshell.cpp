@@ -134,6 +134,6 @@ namespace RdkShell
 
     void update()
     {
-        RdkShell::Animator::instance()->animate();
+        RdkShell::CompositorController::update();
     }
 }

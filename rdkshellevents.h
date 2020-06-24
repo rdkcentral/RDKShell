@@ -27,11 +27,12 @@ namespace RdkShell
     class RdkShellEventListener
     {
         public:
-          virtual void onApplicationLaunched(const std::string& client) = 0;
-          virtual void onApplicationConnected(const std::string& client) = 0;
-          virtual void onApplicationDisconnected(const std::string& client) = 0;
-          virtual void onApplicationTerminated(const std::string& client) = 0 ;
-          virtual void onApplicationFirstFrame(const std::string& client) = 0;
+          virtual void onApplicationLaunched(const std::string& client) {}
+          virtual void onApplicationConnected(const std::string& client) {}
+          virtual void onApplicationDisconnected(const std::string& client)  {}
+          virtual void onApplicationTerminated(const std::string& client) {}
+          virtual void onApplicationFirstFrame(const std::string& client) {}
+          virtual void onUserInactive(const double minutes) {}
     };
 
     const std::string RDKSHELL_EVENT_APPLICATION_LAUNCHED = "onApplicationLaunched";
@@ -39,4 +40,5 @@ namespace RdkShell
     const std::string RDKSHELL_EVENT_APPLICATION_DISCONNECTED = "onApplicationDisconnected";
     const std::string RDKSHELL_EVENT_APPLICATION_TERMINATED = "onApplicationTerminated";
     const std::string RDKSHELL_EVENT_APPLICATION_FIRST_FRAME = "onApplicationFirstFrame";
+    const std::string RDKSHELL_EVENT_USER_INACTIVE = "onUserInactive";
 }
