@@ -84,6 +84,7 @@ namespace RdkShell
                 uint32_t nextHeight = static_cast<int32_t> (animation.startHeight + ((int32_t)(animation.endHeight-animation.startHeight))*d);
                 double nextScaleX = static_cast<double> (animation.startScaleX + (animation.endScaleX-animation.startScaleX)*d);
                 double nextScaleY = static_cast<double> (animation.startScaleY + (animation.endScaleY-animation.startScaleY)*d);
+                double nextOpacity = static_cast<double> (animation.startOpacity + (animation.endOpacity-animation.startOpacity)*d);
 
                 if (nextWidth > screenWidth)
                 {
@@ -93,6 +94,14 @@ namespace RdkShell
                 {
                   nextHeight = screenHeight;
                 }
+                if (nextOpacity < 0)
+                {
+                    nextOpacity = 0;
+                }
+                else if (nextOpacity > 1.0)
+                {
+                    nextOpacity = 1.0;
+                }
 
                 //std::cout << "start x: " << animation.startX << " y: " << animation.startY << " width: " << animation.startWidth << " height: " << animation.startHeight << std::endl;
                 //std::cout << "end x: " << animation.x << " y: " << animation.y << " width: " << animation.width << " height: " << animation.height << std::endl;
@@ -101,6 +110,7 @@ namespace RdkShell
                 animation.compositor->setPosition(nextX, nextY);
                 animation.compositor->setSize(nextWidth, nextHeight);
                 animation.compositor->setScale(nextScaleX, nextScaleY);
+                animation.compositor->setOpacity(nextOpacity);
             }
         }
         for (size_t entry=0; entry<removeAnimationList.size(); entry++)
@@ -123,6 +133,7 @@ namespace RdkShell
                     currentAnimation.compositor->setPosition(currentAnimation.endX, currentAnimation.endY);
                     currentAnimation.compositor->setSize(currentAnimation.endWidth, currentAnimation.endHeight);
                     currentAnimation.compositor->setScale(currentAnimation.endScaleX, currentAnimation.endScaleY);
+                    currentAnimation.compositor->setOpacity(currentAnimation.endOpacity);
                     currentAnimation.compositor->setAnimating(false);
                 }
                 animations.erase(it);
@@ -148,6 +159,7 @@ namespace RdkShell
                     currentAnimation.compositor->setPosition(currentAnimation.endX, currentAnimation.endY);
                     currentAnimation.compositor->setSize(currentAnimation.endWidth, currentAnimation.endHeight);
                     currentAnimation.compositor->setScale(currentAnimation.endScaleX, currentAnimation.endScaleY);
+                    currentAnimation.compositor->setOpacity(currentAnimation.endOpacity);
                     currentAnimation.compositor->setAnimating(false);
                 }
                 animations.erase(it);

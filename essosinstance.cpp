@@ -78,7 +78,11 @@ static void essosKeyPressed( void *userData, unsigned int key )
 
     uint32_t mappedKeyCode = key, mappedFlags = 0;
     bool ret = keyCodeFromWayland(key, flags, mappedKeyCode, mappedFlags);
-    RdkShell::EssosInstance::instance()->onKeyPress(mappedKeyCode, mappedFlags);
+
+    // todo - read in the metadata
+    uint64_t keyMetadata = 0;
+
+    RdkShell::EssosInstance::instance()->onKeyPress(mappedKeyCode, mappedFlags, keyMetadata);
 }
 
 static void essosKeyReleased( void *userData, unsigned int key )
@@ -113,7 +117,11 @@ static void essosKeyReleased( void *userData, unsigned int key )
 
     uint32_t mappedKeyCode = key, mappedFlags = 0;
     bool ret = keyCodeFromWayland(key, flags, mappedKeyCode, mappedFlags);
-    RdkShell::EssosInstance::instance()->onKeyRelease(mappedKeyCode, mappedFlags);
+
+    // todo - read in the metadata
+    uint64_t keyMetadata = 0;
+
+    RdkShell::EssosInstance::instance()->onKeyRelease(mappedKeyCode, mappedFlags, keyMetadata);
 }
 
 static EssKeyListener essosKeyListener=
@@ -242,14 +250,14 @@ namespace RdkShell
         mKeyRepeatInterval = repeatInterval;
     }
 
-    void EssosInstance::onKeyPress(uint32_t keyCode, unsigned long flags)
+    void EssosInstance::onKeyPress(uint32_t keyCode, unsigned long flags, uint64_t metadata)
     {
-        CompositorController::onKeyPress(keyCode, flags);
+        CompositorController::onKeyPress(keyCode, flags, metadata);
     }
 
-    void EssosInstance::onKeyRelease(uint32_t keyCode, unsigned long flags)
+    void EssosInstance::onKeyRelease(uint32_t keyCode, unsigned long flags, uint64_t metadata)
     {
-        CompositorController::onKeyRelease(keyCode, flags);
+        CompositorController::onKeyRelease(keyCode, flags, metadata);
     }
 
     void EssosInstance::onDisplaySizeChanged(uint32_t width, uint32_t height)

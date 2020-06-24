@@ -33,8 +33,8 @@ namespace RdkShell
             void initialize(bool useWayland);
             void initialize(bool useWayland, uint32_t width, uint32_t height);
             void configureKeyInput(uint32_t initialDelay, uint32_t repeatInterval);
-            void onKeyPress(uint32_t keyCode, unsigned long flags);
-            void onKeyRelease(uint32_t keyCode, unsigned long flags);
+            void onKeyPress(uint32_t keyCode, unsigned long flags, uint64_t metadata);
+            void onKeyRelease(uint32_t keyCode, unsigned long flags, uint64_t metadata);
             void onDisplaySizeChanged(uint32_t width, uint32_t height);
             void update();
             void resolution(uint32_t &width, uint32_t &height);
