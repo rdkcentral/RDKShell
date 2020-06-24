@@ -744,8 +744,8 @@ namespace RdkShell
                 uint32_t currentHeight = 0;
                 compositor.compositor->size(currentWidth, currentHeight);
 
-                double scaleX = width / currentWidth;
-                double scaleY = height / currentHeight;
+                double scaleX = (double)width / (double)currentWidth;
+                double scaleY = (double)height / (double)currentHeight;
 
                 compositor.compositor->setPosition(x, y);
                 compositor.compositor->setScale(scaleX, scaleY);
