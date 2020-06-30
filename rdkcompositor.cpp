@@ -405,16 +405,18 @@ namespace RdkShell
 
     void RdkCompositor::closeApplication()
     {
-        std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
-        if (mApplicationPid > 0 && 
-            mApplicationState != RdkShell::ApplicationState::Stopped && 
-            mApplicationState != RdkShell::ApplicationState::Unknown)
         {
-            std::cout << "about to terminate process id " << mApplicationPid << std::endl;
-            kill( mApplicationPid, SIGKILL);
-            std::cout << "process with id " << mApplicationPid << " has been terminated" << std::endl;
-            mApplicationPid = 0;
-            mApplicationState = RdkShell::ApplicationState::Stopped;
+            std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+            if (mApplicationPid > 0 &&
+                mApplicationState != RdkShell::ApplicationState::Stopped &&
+                mApplicationState != RdkShell::ApplicationState::Unknown)
+            {
+                std::cout << "about to terminate process id " << mApplicationPid << std::endl;
+                kill( mApplicationPid, SIGKILL);
+                std::cout << "process with id " << mApplicationPid << " has been terminated" << std::endl;
+                mApplicationPid = 0;
+                mApplicationState = RdkShell::ApplicationState::Stopped;
+            }
         }
         if (mApplicationThreadStarted)
         {
