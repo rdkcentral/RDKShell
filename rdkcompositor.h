@@ -21,8 +21,11 @@
 #define RDKSHELL_RDK_COMPOSITOR_H
 
 #include <string>
+#include <thread>
+#include <mutex>
 
 #include "westeros-compositor.h"
+#include "application.h"
 
 namespace RdkShell
 {
@@ -48,13 +51,19 @@ namespace RdkShell
             void setAnimating(bool animating);
             void keyMetadataEnabled(bool &enabled);
             void setKeyMetadataEnabled(bool enable);
-
+            void closeApplication();
+            void launchApplication();
+            bool resumeApplication();
+            bool suspendApplication();
+            void setApplication(const std::string& application);
 
         private:
             static void invalidate(WstCompositor *context, void *userData);
             static void clientStatus(WstCompositor *context, int status, int pid, int detail, void *userData);
             void onInvalidate();
             void onClientStatus(int status, int pid, int detail);
+            void launchApplicationInBackground();
+            void shutdownApplication();
             
             std::string mDisplayName;
             WstCompositor *mWstContext;
@@ -69,6 +78,13 @@ namespace RdkShell
             double mScaleX;
             double mScaleY;
             double mEnableKeyMetadata;
+            std::string mApplicationName;
+            std::thread mApplicationThread;
+            RdkShell::ApplicationState mApplicationState;
+            int32_t mApplicationPid;
+            bool mApplicationThreadStarted;
+            bool mApplicationClosedByCompositor;
+            std::recursive_mutex mApplicationMutex;
     };
 }
 
