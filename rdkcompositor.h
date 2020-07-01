@@ -21,12 +21,15 @@
 #define RDKSHELL_RDK_COMPOSITOR_H
 
 #include <string>
+#include <thread>
+#include <mutex>
 
 #include <mutex>
 #include <functional>
 #include <unordered_map>
 #include "westeros-compositor.h"
 #include "inputevent.h"
+#include "application.h"
 
 namespace RdkShell
 {
@@ -53,11 +56,14 @@ namespace RdkShell
             void setAnimating(bool animating);
             void keyMetadataEnabled(bool &enabled);
             void setKeyMetadataEnabled(bool enable);
-
             int registerInputEventListener(std::function<void(const RdkShell::InputEvent&)> listener);
             void unregisterInputEventListener(int tag);
             void displayName(std::string& name) const;
-
+            void closeApplication();
+            void launchApplication();
+            bool resumeApplication();
+            bool suspendApplication();
+            void setApplication(const std::string& application);
 
         private:
             static void invalidate(WstCompositor *context, void *userData);
@@ -66,6 +72,8 @@ namespace RdkShell
             void onClientStatus(int status, int pid, int detail);
             void processKeyEvent(bool keyPressed, uint32_t keycode, uint32_t flags, uint64_t metadata);
             void broadcastInputEvent(const RdkShell::InputEvent &inputEvent);
+            void launchApplicationInBackground();
+            void shutdownApplication();
             
             std::string mDisplayName;
             WstCompositor *mWstContext;
@@ -80,10 +88,17 @@ namespace RdkShell
             double mScaleX;
             double mScaleY;
             bool mEnableKeyMetadata;
-
             int mInputListenerTags;
             std::mutex mInputLock;
             std::unordered_map<int, std::function<void(const RdkShell::InputEvent&)>> mInputListeners;
+            double mEnableKeyMetadata;
+            std::string mApplicationName;
+            std::thread mApplicationThread;
+            RdkShell::ApplicationState mApplicationState;
+            int32_t mApplicationPid;
+            bool mApplicationThreadStarted;
+            bool mApplicationClosedByCompositor;
+            std::recursive_mutex mApplicationMutex;
     };
 }
 

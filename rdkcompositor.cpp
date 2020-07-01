@@ -22,6 +22,8 @@
 
 #include <iostream>
 #include <string.h>
+#include <signal.h>
+#include <unistd.h>
 #include "linuxkeys.h"
 #include "rdkshell.h"
 
@@ -29,9 +31,19 @@ namespace RdkShell
 {
     #define RDKSHELL_INITIAL_INPUT_LISTENER_TAG 1001
 
+    void launchApplicationThreadCallback(RdkCompositor* compositor)
+    {
+        if (compositor != nullptr)
+        {
+            compositor->launchApplication();
+        }
+    }
+
     RdkCompositor::RdkCompositor() : mDisplayName(), mWstContext(NULL), 
         mWidth(1280), mHeight(720), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
-        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG)
+        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
+        mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
+        mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex()
     {
         float* matrixPointer = mMatrix;
         float matrix[16] = 
@@ -51,7 +63,9 @@ namespace RdkShell
         {
             WstCompositorSetInvalidateCallback(mWstContext, NULL, NULL);
             WstCompositorSetClientStatusCallback(mWstContext, NULL, NULL);
+            closeApplication();
             WstCompositorDestroy(mWstContext);
+            //shutdownApplication();
         }
         mWstContext = NULL;
 
@@ -83,11 +97,22 @@ namespace RdkShell
 
     void RdkCompositor::onClientStatus(int status, int pid, int detail)
     {
-         bool eventFound = true;
-         std::string eventName = "";
+        if (mApplicationPid < 0)
+        {
+            if ((status == WstClient_stoppedAbnormal) || (status == WstClient_stoppedNormal))
+            {
+                mApplicationPid = -1;
+            }
+            else
+            {
+                mApplicationPid = pid;
+            }
+        }
+        bool eventFound = true;
+        std::string eventName = "";
 
-         switch ( status )
-         {
+        switch ( status )
+        {
              case WstClient_started:
                  std::cout << "client started\n";
                  eventName = RDKSHELL_EVENT_APPLICATION_LAUNCHED;
@@ -116,12 +141,12 @@ namespace RdkShell
                  std::cout << "unknown client status state\n";
                  eventFound = false;
                  break;
-         }
+        }
 
-         if (eventFound)
-         {
-           CompositorController::onEvent(this, eventName);
-         }
+        if (eventFound)
+        {
+            CompositorController::onEvent(this, eventName);
+        }
     }
 
     bool RdkCompositor::createDisplay(const std::string& displayName, uint32_t width, uint32_t height)
@@ -188,6 +213,14 @@ namespace RdkShell
                 if (!error && !WstCompositorStart(mWstContext))
                 {
                     error= true;
+                }
+
+                if (!mApplicationName.empty())
+                {
+                    setenv("WAYLAND_DISPLAY", mDisplayName.c_str(), 1);
+
+                    std::cout << "RDKShell is launching " << mApplicationName << std::endl;
+                    launchApplicationInBackground();
                 }
             }
         }
@@ -351,7 +384,6 @@ namespace RdkShell
         mEnableKeyMetadata = enable;
     }
 
-
     int RdkCompositor::registerInputEventListener(std::function<void(const RdkShell::InputEvent&)> listener)
     {
         std::lock_guard<std::mutex> locker(mInputLock);
@@ -380,5 +412,90 @@ namespace RdkShell
     void RdkCompositor::displayName(std::string& name) const
     {
         name = mDisplayName;
+    }
+
+    void RdkCompositor::launchApplicationInBackground()
+    {
+        mApplicationThreadStarted = true;
+        mApplicationThread = std::thread{launchApplicationThreadCallback, this};
+    }
+
+    void RdkCompositor::launchApplication()
+    {
+        std::string applicationName;
+        {
+          std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+          mApplicationState = RdkShell::ApplicationState::Running;
+          applicationName = mApplicationName;
+        }
+        if (!WstCompositorLaunchClient(mWstContext, applicationName.c_str()))
+        {
+            std::cout << "RdkCompositor failed to launch " << applicationName << std::endl;
+            const char *detail = WstCompositorGetLastErrorDetail( mWstContext );
+            std::cout << "westeros error: " << detail << std::endl;
+        }
+        std::cout << "application close: " << applicationName << std::endl << std::flush;
+        mApplicationState = RdkShell::ApplicationState::Running;
+    }
+
+    void RdkCompositor::closeApplication()
+    {
+        {
+            std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+            if (mApplicationPid > 0 &&
+                mApplicationState != RdkShell::ApplicationState::Stopped &&
+                mApplicationState != RdkShell::ApplicationState::Unknown)
+            {
+                std::cout << "about to terminate process id " << mApplicationPid << std::endl;
+                kill( mApplicationPid, SIGKILL);
+                std::cout << "process with id " << mApplicationPid << " has been terminated" << std::endl;
+                mApplicationPid = 0;
+                mApplicationState = RdkShell::ApplicationState::Stopped;
+            }
+        }
+        if (mApplicationThreadStarted)
+        {
+            mApplicationThread.join();
+        }
+    }
+
+    bool RdkCompositor::resumeApplication()
+    {
+        std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+        if (mApplicationState == RdkShell::ApplicationState::Suspended)
+        {
+            mApplicationState = RdkShell::ApplicationState::Running;
+            return true;
+        }
+        return false;
+    }
+
+    bool RdkCompositor::suspendApplication()
+    {
+        std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+        if (mApplicationState == RdkShell::ApplicationState::Running)
+        {
+            mApplicationState = RdkShell::ApplicationState::Suspended;
+            return true;
+        }
+        return false;
+    }
+
+    void RdkCompositor::shutdownApplication()
+    {
+        std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+        if (mApplicationClosedByCompositor && (mApplicationPid > 0) && (0 == kill(mApplicationPid, 0)))
+        {
+            std::cout << "sending SIGKILL to application with pid " <<  mApplicationPid << std::endl;
+            sleep(1);
+            kill(mApplicationPid, SIGKILL);
+            mApplicationClosedByCompositor = false;
+        }
+        mApplicationPid= -1;
+    }
+
+    void RdkCompositor::setApplication(const std::string& application)
+    {
+        mApplicationName = application;
     }
 }
