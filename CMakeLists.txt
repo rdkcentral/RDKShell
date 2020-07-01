@@ -20,17 +20,29 @@ project(shell)
 set(CMAKE_CXX_STANDARD 14)
 
 option(RDKSHELL_BUILD_APP "RDKSHELL_BUILD_APP" ON)
-option(RDKSHELL_SUPPORT_WEBSOCKET_IPC "RDKSHELL_SUPPORT_WEBSOCKET_IPC" OFF)
+option(RDKSHELL_BUILD_WEBSOCKET_IPC "RDKSHELL_BUILD_WEBSOCKET_IPC" OFF)
+option(RDKSHELL_BUILD_KEY_METADATA "RDKSHELL_BUILD_KEY_METADATA" OFF)
 
-set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp linuxkeys.cpp animation.cpp animationutilities.cpp  rdkshelldata.cpp rdkshelljson.cpp)
+set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp linuxkeys.cpp animation.cpp animationutilities.cpp  rdkshelldata.cpp rdkshelljson.cpp linuxinput.cpp)
 set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor)
 
-if (RDKSHELL_SUPPORT_WEBSOCKET_IPC)
+if (RDKSHELL_BUILD_WEBSOCKET_IPC)
   set(RDKSHELL_SOURCES ${RDKSHELL_SOURCES} messageHandler.cpp)
   set(RDKSHELL_LINK_LIBRARIES ${RDKSHELL_LINK_LIBRARIES} -luWS)
   add_definitions("-DRDKSHELL_ENABLE_WEBSOCKET_IPC")
-endif (RDKSHELL_SUPPORT_WEBSOCKET_IPC)
+endif (RDKSHELL_BUILD_WEBSOCKET_IPC)
 
+if (RDKSHELL_WESTEROS_PLUGIN_FOLDER)
+    add_definitions(-DRDKSHELL_WESTEROS_PLUGIN_DIRECTORY="${RDKSHELL_WESTEROS_PLUGIN_FOLDER}")
+else()
+    add_definitions(-DRDKSHELL_WESTEROS_PLUGIN_DIRECTORY="/usr/lib/plugins/westeros/")
+endif (RDKSHELL_WESTEROS_PLUGIN_FOLDER)
+
+if (RDKSHELL_BUILD_KEY_METADATA)
+  add_definitions("-DRDKSHELL_ENABLE_KEY_METADATA")
+endif (RDKSHELL_BUILD_KEY_METADATA)
+
+add_subdirectory( extensions/RdkShellExtendedInput )
 add_library(rdkshell_shared SHARED ${RDKSHELL_SOURCES})
 set_target_properties(rdkshell_shared PROPERTIES OUTPUT_NAME rdkshell)
 target_link_libraries(rdkshell_shared ${RDKSHELL_LINK_LIBRARIES})

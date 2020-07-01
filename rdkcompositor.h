@@ -22,13 +22,18 @@
 
 #include <string>
 
+#include <mutex>
+#include <functional>
+#include <unordered_map>
 #include "westeros-compositor.h"
+#include "inputevent.h"
 
 namespace RdkShell
 {
     class RdkCompositor
     {
         public:
+
             RdkCompositor();
             ~RdkCompositor();
             bool createDisplay(const std::string& displayName, uint32_t width, uint32_t height);
@@ -49,12 +54,18 @@ namespace RdkShell
             void keyMetadataEnabled(bool &enabled);
             void setKeyMetadataEnabled(bool enable);
 
+            int registerInputEventListener(std::function<void(const RdkShell::InputEvent&)> listener);
+            void unregisterInputEventListener(int tag);
+            void displayName(std::string& name) const;
+
 
         private:
             static void invalidate(WstCompositor *context, void *userData);
             static void clientStatus(WstCompositor *context, int status, int pid, int detail, void *userData);
             void onInvalidate();
             void onClientStatus(int status, int pid, int detail);
+            void processKeyEvent(bool keyPressed, uint32_t keycode, uint32_t flags, uint64_t metadata);
+            void broadcastInputEvent(const RdkShell::InputEvent &inputEvent);
             
             std::string mDisplayName;
             WstCompositor *mWstContext;
@@ -68,7 +79,11 @@ namespace RdkShell
             bool mAnimating;
             double mScaleX;
             double mScaleY;
-            double mEnableKeyMetadata;
+            bool mEnableKeyMetadata;
+
+            int mInputListenerTags;
+            std::mutex mInputLock;
+            std::unordered_map<int, std::function<void(const RdkShell::InputEvent&)>> mInputListeners;
     };
 }
 

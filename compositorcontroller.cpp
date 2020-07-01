@@ -200,6 +200,24 @@ namespace RdkShell
         }
     }
 
+    std::shared_ptr<RdkCompositor> CompositorController::getCompositor(const std::string& displayName)
+    {
+        auto it = std::find_if(std::begin(gCompositorList), std::end(gCompositorList),
+                [displayName](CompositorInfo& info)
+                    {
+                        std::string compositorDisplayName;
+                        info.compositor->displayName(compositorDisplayName);
+                        return compositorDisplayName == displayName; 
+                    });
+
+        if (it == std::end(gCompositorList))
+        {
+            return nullptr;
+        }
+
+        return it->compositor;
+    }
+
     bool CompositorController::moveToFront(const std::string& client)
     {
         std::string clientDisplayName = standardizeName(client);

@@ -23,12 +23,15 @@
 #include <iostream>
 #include <string.h>
 #include "linuxkeys.h"
+#include "rdkshell.h"
 
 namespace RdkShell
 {
+    #define RDKSHELL_INITIAL_INPUT_LISTENER_TAG 1001
+
     RdkCompositor::RdkCompositor() : mDisplayName(), mWstContext(NULL), 
         mWidth(1280), mHeight(720), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
-        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false)
+        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG)
     {
         float* matrixPointer = mMatrix;
         float matrix[16] = 
@@ -51,6 +54,8 @@ namespace RdkShell
             WstCompositorDestroy(mWstContext);
         }
         mWstContext = NULL;
+
+        mInputListeners.clear();
     }
 
     void RdkCompositor::invalidate(WstCompositor */*context*/, void *userData)
@@ -132,6 +137,19 @@ namespace RdkShell
 
         if (mWstContext)
         {
+            const char* enableRdkShellExtendedInput = getenv("RDKSHELL_EXTENDED_INPUT_ENABLED");
+
+            if (enableRdkShellExtendedInput)
+            {
+                std::string extensionInputPath = std::string(RDKSHELL_WESTEROS_PLUGIN_DIRECTORY) + "libwesteros_plugin_rdkshell_extended_input.so";
+                std::cout << "attempting to load extension: " << extensionInputPath << std::endl << std::flush;
+                if (!WstCompositorAddModule(mWstContext, extensionInputPath.c_str()))
+                {
+                    std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_extended_input.so'" << std::endl;
+                    error = true;
+                }
+            }
+
             if (!WstCompositorSetIsEmbedded(mWstContext, true))
             {
                 error = true;
@@ -211,7 +229,7 @@ namespace RdkShell
             mMatrix, mOpacity, hints, &needsHolePunch, rects );
     }
 
-    void RdkCompositor::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    void RdkCompositor::processKeyEvent(bool keyPressed, uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         uint32_t modifiers = 0;
 
@@ -230,38 +248,25 @@ namespace RdkShell
 
         int32_t waylandKeyCode = (int32_t)keyCodeToWayland(keycode);
 
-        WstCompositorKeyEvent( mWstContext, waylandKeyCode, WstKeyboard_keyState_depressed, (int32_t)modifiers );
-
+        WstCompositorKeyEvent( mWstContext, waylandKeyCode, keyPressed ? WstKeyboard_keyState_depressed : WstKeyboard_keyState_released, (int32_t)modifiers );
         if (mEnableKeyMetadata)
         {
-            //todo - send key metadata
+            RdkShell::InputEvent inputEvent(metadata, RdkShell::milliseconds(), RdkShell::InputEvent::KeyEvent);
+            inputEvent.details.key.code = keycode;
+            inputEvent.details.key.state = keyPressed ? RdkShell::InputEvent::Details::Key::Pressed : RdkShell::InputEvent::Details::Key::Released;
+            broadcastInputEvent(inputEvent);
         }
+    }
+
+
+    void RdkCompositor::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    {
+        processKeyEvent(true, keycode, flags, metadata);
     }
 
     void RdkCompositor::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
-        uint32_t modifiers = 0;
-        if ( flags & RDKSHELL_FLAGS_SHIFT )
-        {
-            modifiers |= WstKeyboard_shift;
-        }
-        if ( flags & RDKSHELL_FLAGS_CONTROL )
-        {
-            modifiers |= WstKeyboard_ctrl;
-        }
-        if ( flags & RDKSHELL_FLAGS_ALT )
-        {
-            modifiers |= WstKeyboard_alt;
-        }
-
-        int32_t waylandKeyCode = (int32_t)keyCodeToWayland(keycode);
-
-        WstCompositorKeyEvent( mWstContext, waylandKeyCode, WstKeyboard_keyState_released, (int32_t)modifiers );
-
-        if (mEnableKeyMetadata)
-        {
-            //todo - send key metadata
-        }
+        processKeyEvent(true, keycode, flags, metadata);
     }
 
     void RdkCompositor::setPosition(int32_t x, int32_t y)
@@ -344,5 +349,36 @@ namespace RdkShell
     void RdkCompositor::setKeyMetadataEnabled(bool enable)
     {
         mEnableKeyMetadata = enable;
+    }
+
+
+    int RdkCompositor::registerInputEventListener(std::function<void(const RdkShell::InputEvent&)> listener)
+    {
+        std::lock_guard<std::mutex> locker(mInputLock);
+        const int tag = mInputListenerTags++;
+        mInputListeners.emplace(tag, std::move(listener));
+        return tag;
+    }
+
+    void RdkCompositor::unregisterInputEventListener(int tag)
+    {
+        std::lock_guard<std::mutex> locker(mInputLock);
+        mInputListeners.erase(tag);
+    }
+
+    void RdkCompositor::broadcastInputEvent(const RdkShell::InputEvent &inputEvent)
+    {
+        std::cout << "sending input metadata for device: " << inputEvent.deviceId << std::endl;
+        std::lock_guard<std::mutex> locker(mInputLock);
+        for (const auto &listener : mInputListeners)
+        {
+            if (listener.second)
+                listener.second(inputEvent);
+        }
+    }
+
+    void RdkCompositor::displayName(std::string& name) const
+    {
+        name = mDisplayName;
     }
 }
