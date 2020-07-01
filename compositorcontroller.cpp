@@ -22,6 +22,7 @@
 #include "essosinstance.h"
 #include "animation.h"
 #include "rdkshell.h"
+#include "application.h"
 
 #include <iostream>
 #include <map>
@@ -42,11 +43,12 @@ namespace RdkShell
 
     struct CompositorInfo
     {
-        CompositorInfo() : name(), compositor(nullptr), eventListeners() {}
+        CompositorInfo() : name(), compositor(nullptr), eventListeners(), mimeType() {}
         std::string name;
         std::shared_ptr<RdkCompositor> compositor;
         std::map<uint32_t, std::vector<KeyListenerInfo>> keyListenerInfo;
         std::vector<std::shared_ptr<RdkShellEventListener>> eventListeners;
+        std::string mimeType;
     };
 
     struct KeyInterceptInfo
@@ -1014,5 +1016,143 @@ namespace RdkShell
     {
         double inactiveTimeInSeconds = RdkShell::seconds() - gLastKeyEventTime;
         return (inactiveTimeInSeconds / 60.0);
+    }
+
+    bool CompositorController::launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType)
+    {
+        if (mimeType == RDKSHELL_APPLICATION_MIME_TYPE_NATIVE)
+        {
+            std::string clientDisplayName = standardizeName(client);
+            for (auto compositor : gCompositorList)
+            {
+                if (compositor.name == clientDisplayName)
+                {
+                    std::cout << "application with name " << client << " is already launched\n";
+                    return false;
+                }
+            }
+            CompositorInfo compositorInfo;
+            compositorInfo.name = clientDisplayName;
+            compositorInfo.compositor = std::make_shared<RdkCompositor>();
+            compositorInfo.mimeType = RDKSHELL_APPLICATION_MIME_TYPE_NATIVE;
+            uint32_t width = 0;
+            uint32_t height = 0;
+            RdkShell::EssosInstance::instance()->resolution(width, height);
+            compositorInfo.compositor->setApplication(uri);
+            bool ret = compositorInfo.compositor->createDisplay("", width, height);
+            if (ret)
+            {
+                if (gCompositorList.empty())
+                {
+                    gFocusedCompositor = compositorInfo;
+                }
+                gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+            }
+            return true;
+        }
+        else
+        {
+            std::cout << "unable to launch application.  mime type " << mimeType << " is not supported\n";
+        }
+
+        return false;
+    }
+
+    bool CompositorController::suspendApplication(const std::string& client)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                if (compositor.compositor != nullptr)
+                {
+                    bool result = compositor.compositor->suspendApplication();
+                    if (result)
+                    {
+                        std::cout << client << " has been suspended\n";
+                        compositor.compositor->setVisible(false);
+                    }
+                    return result;
+                }
+                std::cout << "display with name " << client << " did not have a valid compositor\n";
+                return false;
+            }
+        }
+        std::cout << "display with name " << client << " was not found\n";
+        return false;
+    }
+
+    bool CompositorController::resumeApplication(const std::string& client)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                if (compositor.compositor != nullptr)
+                {
+                    bool result = compositor.compositor->resumeApplication();
+                    if (result)
+                    {
+                        std::cout << client << " has been resumed \n";
+                        compositor.compositor->setVisible(true);
+                    }
+                }
+                std::cout << "display with name " << client << " did not have a valid compositor\n";
+                return false;
+            }
+        }
+        std::cout << "display with name " << client << " was not found\n";
+        return false;
+    }
+
+    bool CompositorController::closeApplication(const std::string& client)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                if (compositor.compositor != nullptr)
+                {
+                    compositor.compositor->closeApplication();
+                    return true;
+                }
+                std::cout << "display with name " << client << " did not have a valid compositor\n";
+                return false;
+            }
+        }
+        std::cout << "display with name " << client << " was not found\n";
+        return false;
+    }
+
+    bool CompositorController::getMimeType(const std::string& client, std::string& mimeType)
+    {
+        mimeType = "";
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                mimeType = compositor.mimeType;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::setMimeType(const std::string& client, const std::string& mimeType)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.mimeType = mimeType;
+                return true;
+            }
+        }
+        return false;
     }
 }

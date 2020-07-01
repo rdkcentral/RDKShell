@@ -72,6 +72,12 @@ namespace RdkShell
             static void setInactivityInterval(const double minutes);
             static double getInactivityTimeInMinutes();
             static void setEventListener(std::shared_ptr<RdkShellEventListener> listener);
+            static bool launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType);
+            static bool suspendApplication(const std::string& client);
+            static bool resumeApplication(const std::string& client);
+            static bool closeApplication(const std::string& client);
+            static bool getMimeType(const std::string& client, std::string& mimeType);
+            static bool setMimeType(const std::string& client, const std::string& mimeType);
             static bool draw();
             static bool update();
     };
