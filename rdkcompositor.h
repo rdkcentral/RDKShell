@@ -91,7 +91,6 @@ namespace RdkShell
             int mInputListenerTags;
             std::mutex mInputLock;
             std::unordered_map<int, std::function<void(const RdkShell::InputEvent&)>> mInputListeners;
-            double mEnableKeyMetadata;
             std::string mApplicationName;
             std::thread mApplicationThread;
             RdkShell::ApplicationState mApplicationState;
