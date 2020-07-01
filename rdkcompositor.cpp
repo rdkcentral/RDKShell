@@ -465,6 +465,7 @@ namespace RdkShell
         if (mApplicationState == RdkShell::ApplicationState::Suspended)
         {
             mApplicationState = RdkShell::ApplicationState::Running;
+            CompositorController::onEvent(this, RDKSHELL_EVENT_APPLICATION_RESUMED);
             return true;
         }
         return false;
@@ -476,6 +477,7 @@ namespace RdkShell
         if (mApplicationState == RdkShell::ApplicationState::Running)
         {
             mApplicationState = RdkShell::ApplicationState::Suspended;
+            CompositorController::onEvent(this, RDKSHELL_EVENT_APPLICATION_SUSPENDED);
             return true;
         }
         return false;

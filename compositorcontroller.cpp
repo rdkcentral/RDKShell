@@ -99,6 +99,14 @@ namespace RdkShell
          {
                  listener->onApplicationFirstFrame(client);
          }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_SUSPENDED) == 0)
+         {
+                 listener->onApplicationSuspended(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_RESUMED) == 0)
+         {
+                 listener->onApplicationResumed(client);
+         }
     }
     
     bool interceptKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)

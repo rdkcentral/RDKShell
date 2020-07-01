@@ -32,6 +32,8 @@ namespace RdkShell
           virtual void onApplicationDisconnected(const std::string& client)  {}
           virtual void onApplicationTerminated(const std::string& client) {}
           virtual void onApplicationFirstFrame(const std::string& client) {}
+          virtual void onApplicationSuspended(const std::string& client) {}
+          virtual void onApplicationResumed(const std::string& client) {}
           virtual void onUserInactive(const double minutes) {}
     };
 
@@ -40,5 +42,7 @@ namespace RdkShell
     const std::string RDKSHELL_EVENT_APPLICATION_DISCONNECTED = "onApplicationDisconnected";
     const std::string RDKSHELL_EVENT_APPLICATION_TERMINATED = "onApplicationTerminated";
     const std::string RDKSHELL_EVENT_APPLICATION_FIRST_FRAME = "onApplicationFirstFrame";
+    const std::string RDKSHELL_EVENT_APPLICATION_SUSPENDED = "onApplicationSuspended";
+    const std::string RDKSHELL_EVENT_APPLICATION_RESUMED = "onApplicationResumed";
     const std::string RDKSHELL_EVENT_USER_INACTIVE = "onUserInactive";
 }
