@@ -40,7 +40,6 @@ namespace RdkShell
             void resolution(uint32_t &width, uint32_t &height);
             void setResolution(uint32_t width, uint32_t height);
 
-
         private:
             EssosInstance();
             static EssosInstance* mInstance;

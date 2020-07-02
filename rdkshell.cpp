@@ -25,6 +25,7 @@
 #include "essosinstance.h"
 #include "compositorcontroller.h"
 #include "linuxkeys.h"
+#include "linuxinput.h"
 #include "animation.h"
 #include <unistd.h>
 #include <time.h>
@@ -67,6 +68,7 @@ namespace RdkShell
         std::cout << "initializing rdk shell\n";
 
         mapNativeKeyCodes();
+        readInputDevicesConfiguration();
         char const *s = getenv("RDKSHELL_FRAMERATE");
         if (s)
         {

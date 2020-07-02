@@ -18,12 +18,16 @@
 **/
 
 #include "essosinstance.h"
-
 #include "linuxkeys.h"
 #include "compositorcontroller.h"
+#include "linuxinput.h"
+#include "inputdevicetypes.h"
 
 #include <iostream>
 
+#ifdef RDKSHELL_ENABLE_KEY_METADATA
+EssInputDeviceMetadata gInputDeviceMetadata = {};
+#endif //RDKSHELL_ENABLE_KEY_METADATA
 
 namespace RdkShell
 {
@@ -46,7 +50,58 @@ static bool leftAltPressed = false;
 static bool rightCtrlPressed = false;
 static bool leftCtrlPressed = false;
 
-static void essosKeyPressed( void *userData, unsigned int key )
+static uint8_t modeSettingForDev(RdkShell::DeviceType devType, uint8_t mode)
+{
+    switch (devType)
+    {
+        case RdkShell::DeviceType::GenericLinuxInputDev:
+            // doesn't have trackpad or slider
+            return (RdkShell::TrackPadDisabled | RdkShell::SliderDisabled);
+
+        case RdkShell::DeviceType::Generic_IR:
+            // IR device so obviously doesn't have slider or trackpad
+            return (RdkShell::TrackPadDisabled | RdkShell::SliderDisabled);
+        
+        case RdkShell::DeviceType::VNC_Client:
+        case RdkShell::DeviceType::FrontPanel:
+            return 0xff;
+    }
+
+    return mode;
+}
+
+
+#ifdef RDKSHELL_ENABLE_KEY_METADATA
+static uint32_t processInputMetadata(EssInputDeviceMetadata* metadata)
+{
+    // determine the type of the device
+    RdkShell::DeviceType devType = RdkShell::DeviceType::GenericLinuxInputDev;
+    uint8_t type = 0xfe;
+    uint8_t devMode = 0;
+    switch (metadata->id.vendor)
+    {
+        default:
+        {
+           RdkShell::inputDeviceTypeAndMode(metadata->id.vendor, metadata->id.product, type, devMode);
+           devType = static_cast<RdkShell::DeviceType>(type);
+        }
+    }
+
+    uint16_t deviceId = minor(metadata->deviceNumber);
+
+    // todo - add support for IR and additional modes
+    devMode = modeSettingForDev(devType, devMode);
+
+    // set the initial device info
+    uint32_t deviceInfo = static_cast<uint32_t>(devType) << 24 |
+                          static_cast<uint32_t>(devMode) << 16 |
+                          static_cast<uint32_t>(deviceId);
+
+    return deviceInfo;
+}
+#endif //RDKSHELL_ENABLE_KEY_METADATA
+
+static void processKeyEvent(bool pressEvent, unsigned int key, void *metadata)
 {
     switch( key )
     {
@@ -76,52 +131,55 @@ static void essosKeyPressed( void *userData, unsigned int key )
     flags |= (rightCtrlPressed || leftCtrlPressed) ? RDKSHELL_FLAGS_CONTROL:0;
     flags |= (rightAltPressed || leftAltPressed) ? RDKSHELL_FLAGS_ALT:0;
 
+    uint32_t deviceInfo = 0;
+
+    if (metadata != nullptr)
+    {
+#ifdef RDKSHELL_ENABLE_KEY_METADATA
+        EssInputDeviceMetadata *essosMetadata = (EssInputDeviceMetadata*)(metadata);
+        deviceInfo = processInputMetadata(essosMetadata);
+#endif //RDKSHELL_ENABLE_KEY_METADATA
+    }
+
     uint32_t mappedKeyCode = key, mappedFlags = 0;
     bool ret = keyCodeFromWayland(key, flags, mappedKeyCode, mappedFlags);
 
-    // todo - read in the metadata
-    uint64_t keyMetadata = 0;
+    if (pressEvent)
+    {
+        RdkShell::EssosInstance::instance()->onKeyPress(mappedKeyCode, mappedFlags, deviceInfo);
+    }
+    else
+    {
+        RdkShell::EssosInstance::instance()->onKeyRelease(mappedKeyCode, mappedFlags, deviceInfo);
+    }
+}
 
-    RdkShell::EssosInstance::instance()->onKeyPress(mappedKeyCode, mappedFlags, keyMetadata);
+#ifdef RDKSHELL_ENABLE_KEY_METADATA
+static void essosKeyAndMetadataPressed( void *userData, unsigned int key, EssInputDeviceMetadata *metadata )
+{
+    processKeyEvent(true, key, metadata);
+}
+
+static void essosKeyAndMetadataReleased( void *userData, unsigned int key, EssInputDeviceMetadata *metadata )
+{
+    processKeyEvent(false, key, metadata);
+}
+
+static EssKeyAndMetadataListener essosKeyAndMetadataListener=
+{
+    essosKeyAndMetadataPressed,
+    essosKeyAndMetadataReleased
+};
+#endif //RDKSHELL_ENABLE_KEY_METADATA
+
+static void essosKeyPressed( void *userData, unsigned int key )
+{
+    processKeyEvent(true, key, nullptr);
 }
 
 static void essosKeyReleased( void *userData, unsigned int key )
 {
-    switch( key )
-    {
-        case WAYLAND_KEY_RIGHTSHIFT:
-            rightShiftPressed = false;
-        break;
-        case WAYLAND_KEY_LEFTSHIFT:
-            leftShiftPressed = false;
-        break;
-        case WAYLAND_KEY_RIGHTCTRL:
-            rightCtrlPressed = false;
-        break;
-        case WAYLAND_KEY_LEFTCTRL:
-            leftCtrlPressed = false;
-        break;
-        case WAYLAND_KEY_RIGHTALT:
-            rightAltPressed = false;
-        break;
-        case WAYLAND_KEY_LEFTALT:
-            leftAltPressed = false;
-        break;
-        default:
-            break;
-    }
-    unsigned long flags = 0;
-    flags |= (rightShiftPressed || leftShiftPressed) ? RDKSHELL_FLAGS_SHIFT:0;
-    flags |= (rightCtrlPressed || leftCtrlPressed) ? RDKSHELL_FLAGS_CONTROL:0;
-    flags |= (rightAltPressed || leftAltPressed) ? RDKSHELL_FLAGS_ALT:0;
-
-    uint32_t mappedKeyCode = key, mappedFlags = 0;
-    bool ret = keyCodeFromWayland(key, flags, mappedKeyCode, mappedFlags);
-
-    // todo - read in the metadata
-    uint64_t keyMetadata = 0;
-
-    RdkShell::EssosInstance::instance()->onKeyRelease(mappedKeyCode, mappedFlags, keyMetadata);
+    processKeyEvent(false, key, nullptr);
 }
 
 static EssKeyListener essosKeyListener=
@@ -154,6 +212,14 @@ namespace RdkShell
             EssContextDestroy(mEssosContext);
         }
         mEssosContext = NULL;
+
+#ifdef RDKSHELL_ENABLE_KEY_METADATA
+        if (gInputDeviceMetadata.devicePhysicalAddress != 0)
+        {
+            free((char*)gInputDeviceMetadata.devicePhysicalAddress);
+            gInputDeviceMetadata.devicePhysicalAddress = 0;
+        }
+#endif //RDKSHELL_ENABLE_KEY_METADATA
     }
 
     EssosInstance* EssosInstance::instance()
@@ -183,11 +249,17 @@ namespace RdkShell
             {
                 essosError = true;
             }
-
+#ifdef RDKSHELL_ENABLE_KEY_METADATA
+            if ( !EssContextSetKeyAndMetadataListener( mEssosContext, 0, &essosKeyAndMetadataListener, &gInputDeviceMetadata ) )
+            {
+                essosError = true;
+            }
+#else
             if ( !EssContextSetKeyListener( mEssosContext, 0, &essosKeyListener ) )
             {
                 essosError = true;
             }
+#endif //RDKSHELL_ENABLE_KEY_METADATA
             if ( !EssContextSetKeyRepeatInitialDelay(mEssosContext, (int)mKeyInitialDelay))
             {
                 essosError = true;
