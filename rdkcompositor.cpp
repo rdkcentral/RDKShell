@@ -299,7 +299,7 @@ namespace RdkShell
 
     void RdkCompositor::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
-        processKeyEvent(true, keycode, flags, metadata);
+        processKeyEvent(false, keycode, flags, metadata);
     }
 
     void RdkCompositor::setPosition(int32_t x, int32_t y)
