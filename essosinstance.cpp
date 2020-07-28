@@ -320,6 +320,7 @@ namespace RdkShell
     {
         mKeyInitialDelay = initialDelay;
         mKeyRepeatInterval = repeatInterval;
+        std::cout << "key initial delay: " << mKeyInitialDelay << " repeat interval: " << mKeyRepeatInterval << std::endl;
     }
 
     void EssosInstance::onKeyPress(uint32_t keyCode, unsigned long flags, uint64_t metadata)

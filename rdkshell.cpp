@@ -31,7 +31,7 @@
 #include <time.h>
 #include <GLES2/gl2.h>
 
-#define RDKSHELL_FPS 30
+#define RDKSHELL_FPS 40
 int gCurrentFramerate = RDKSHELL_FPS;
 bool gRdkShellIsRunning = false;
 #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
@@ -78,6 +78,30 @@ namespace RdkShell
                 gCurrentFramerate = fps;
             }
         }
+
+        uint32_t initialKeyDelay = 500;
+        char const *keyDelay = getenv("RDKSHELL_KEY_INITIAL_DELAY");
+        if (keyDelay)
+        {
+            int value = atoi(keyDelay);
+            if (value > 0)
+            {
+                initialKeyDelay = value;
+            }
+        }
+
+        uint32_t repeatKeyInterval = 100;
+        char const *repeatInterval = getenv("RDKSHELL_KEY_REPEAT_INTERVAL");
+        if (repeatInterval)
+        {
+            int value = atoi(repeatInterval);
+            if (value > 0)
+            {
+                repeatKeyInterval = value;
+            }
+        }
+
+        RdkShell::EssosInstance::instance()->configureKeyInput(initialKeyDelay, repeatKeyInterval);
 
         #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
         char const* websocketIpcSetting = getenv("RDKSHELL_ENABLE_WS_IPC");
