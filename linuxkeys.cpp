@@ -440,6 +440,15 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
     case WAYLAND_KEY_INSERT:
         standardKeyCode = RDKSHELL_KEY_INSERT;
         break;
+    case WAYLAND_KEY_MUTE:
+        standardKeyCode = RDKSHELL_KEY_MUTE;
+        break;
+    case WAYLAND_KEY_VOLUME_DOWN:
+        standardKeyCode = RDKSHELL_KEY_VOLUME_DOWN;
+        break;
+    case WAYLAND_KEY_VOLUME_UP:
+        standardKeyCode = RDKSHELL_KEY_VOLUME_UP;
+        break;
     
     #ifdef WAYLAND_KEY_PLAYPAUSE
     case WAYLAND_KEY_PLAYPAUSE:
@@ -828,6 +837,15 @@ uint32_t keyCodeToWayland(uint32_t keyCode)
          break;
       case RDKSHELL_KEY_HOMEPAGE:
          waylandKeyCode = WAYLAND_KEY_HOMEPAGE;
+         break;
+      case RDKSHELL_KEY_MUTE:
+         waylandKeyCode = WAYLAND_KEY_MUTE;
+         break;
+      case RDKSHELL_KEY_VOLUME_DOWN:
+         waylandKeyCode = WAYLAND_KEY_VOLUME_DOWN;
+         break;
+      case RDKSHELL_KEY_VOLUME_UP:
+         waylandKeyCode = WAYLAND_KEY_VOLUME_UP;
          break;
       default:
          std::cout << "common key code not found " << keyCode << std::endl;

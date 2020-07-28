@@ -124,6 +124,9 @@
 #define WAYLAND_KEY_PAGEDOWN            109
 #define WAYLAND_KEY_INSERT              110
 #define WAYLAND_KEY_DELETE              111
+#define WAYLAND_KEY_MUTE                113
+#define WAYLAND_KEY_VOLUME_DOWN         114
+#define WAYLAND_KEY_VOLUME_UP           115
 #define WAYLAND_KEY_KPEQUAL             117
 #define WAYLAND_KEY_KPPLUSMINUS         118
 #define WAYLAND_KEY_PAUSE               119
@@ -282,6 +285,10 @@
 #define RDKSHELL_KEY_BACK         407
 #define RDKSHELL_KEY_MENU         408
 #define RDKSHELL_KEY_HOMEPAGE     409
+
+#define RDKSHELL_KEY_MUTE         173
+#define RDKSHELL_KEY_VOLUME_DOWN  174
+#define RDKSHELL_KEY_VOLUME_UP    175
 
 
 bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t &mappedKeyCode, uint32_t &mappedFlags);
