@@ -27,6 +27,7 @@
 #include "linuxkeys.h"
 #include "linuxinput.h"
 #include "animation.h"
+#include "logger.h"
 #include <unistd.h>
 #include <time.h>
 #include <GLES2/gl2.h>
@@ -69,6 +70,13 @@ namespace RdkShell
 
         mapNativeKeyCodes();
         readInputDevicesConfiguration();
+
+        char const *loglevel = getenv("RDKSHELL_LOG_LEVEL");
+        if (loglevel)
+        {
+            Logger::setLogLevel(loglevel);
+        }
+
         char const *s = getenv("RDKSHELL_FRAMERATE");
         if (s)
         {

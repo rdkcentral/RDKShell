@@ -23,6 +23,7 @@
 #include "animation.h"
 #include "rdkshell.h"
 #include "application.h"
+#include "logger.h"
 
 #include <iostream>
 #include <map>
@@ -1180,5 +1181,17 @@ namespace RdkShell
             }
         }
         return false;
+    }
+
+    bool CompositorController::setLogLevel(const std::string level)
+    {
+        Logger::setLogLevel(level.c_str());
+        return true;
+    }
+
+    bool CompositorController::getLogLevel(std::string& level)
+    {
+        Logger::logLevel(level);
+        return true;
     }
 }

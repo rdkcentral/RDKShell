@@ -23,7 +23,7 @@ option(RDKSHELL_BUILD_APP "RDKSHELL_BUILD_APP" ON)
 option(RDKSHELL_BUILD_WEBSOCKET_IPC "RDKSHELL_BUILD_WEBSOCKET_IPC" OFF)
 option(RDKSHELL_BUILD_KEY_METADATA "RDKSHELL_BUILD_KEY_METADATA" OFF)
 
-set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp linuxkeys.cpp animation.cpp animationutilities.cpp  rdkshelldata.cpp rdkshelljson.cpp linuxinput.cpp)
+set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp linuxkeys.cpp animation.cpp animationutilities.cpp  rdkshelldata.cpp rdkshelljson.cpp linuxinput.cpp logger.cpp)
 set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor -lpthread)
 
 if (RDKSHELL_BUILD_WEBSOCKET_IPC)
