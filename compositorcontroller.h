@@ -79,6 +79,8 @@ namespace RdkShell
             static bool closeApplication(const std::string& client);
             static bool getMimeType(const std::string& client, std::string& mimeType);
             static bool setMimeType(const std::string& client, const std::string& mimeType);
+            static bool setLogLevel(const std::string level);
+            static bool getLogLevel(std::string& level);
             static bool draw();
             static bool update();
     };
