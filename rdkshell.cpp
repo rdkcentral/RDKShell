@@ -281,13 +281,14 @@ namespace RdkShell
 
     void update()
     {
-        if (gEnableRamMonitor) {
-          double currentTime = RdkShell::seconds();
-          if (currentTime > gNextRamMonitorTime)
-          {
-            checkSystemMemory();
-            gNextRamMonitorTime = currentTime + gRamMonitorIntervalInSeconds;
-          }
+        if (gEnableRamMonitor)
+        {
+            double currentTime = RdkShell::seconds();
+            if (currentTime > gNextRamMonitorTime)
+            {
+                checkSystemMemory();
+                gNextRamMonitorTime = currentTime + gRamMonitorIntervalInSeconds;
+            }
         }
         RdkShell::CompositorController::update();
     }
