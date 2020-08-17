@@ -78,7 +78,7 @@ namespace RdkShell
         return displayName;
     }
 
-    void sendEvent(std::shared_ptr<RdkShellEventListener>& listener, const std::string& eventName, const std::string& client)
+    void sendApplicationEvent(std::shared_ptr<RdkShellEventListener>& listener, const std::string& eventName, const std::string& client)
     {
          if (eventName.compare(RDKSHELL_EVENT_APPLICATION_LAUNCHED) == 0)
          {
@@ -1015,7 +1015,7 @@ namespace RdkShell
             {
                 for (int i=0; i<compositor.eventListeners.size(); i++)
                 {
-                    sendEvent(compositor.eventListeners[i], eventName, compositor.name);
+                    sendApplicationEvent(compositor.eventListeners[i], eventName, compositor.name);
                 }
                 break;
             }
@@ -1192,6 +1192,47 @@ namespace RdkShell
     bool CompositorController::getLogLevel(std::string& level)
     {
         Logger::logLevel(level);
+        return true;
+    }
+
+    bool CompositorController::sendEvent(const std::string & eventName, std::vector<RdkShellData>& data)
+    {
+        if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
+        {
+            int32_t freeKb = -1;
+            if (!data.empty())
+            {
+                freeKb = data[0].toInteger32();
+            }
+            gRdkShellEventListener->onDeviceLowRamWarning(freeKb);
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING) == 0)
+        {
+            int32_t freeKb = -1;
+            if (!data.empty())
+            {
+                freeKb = data[0].toInteger32();
+            }
+            gRdkShellEventListener->onDeviceCriticallyLowRamWarning(freeKb);
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING_CLEARED) == 0)
+        {
+            int32_t freeKb = -1;
+            if (!data.empty())
+            {
+                freeKb = data[0].toInteger32();
+            }
+            gRdkShellEventListener->onDeviceLowRamWarningCleared(freeKb);
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING_CLEARED) == 0)
+        {
+            int32_t freeKb = -1;
+            if (!data.empty())
+            {
+                freeKb = data[0].toInteger32();
+            }
+            gRdkShellEventListener->onDeviceCriticallyLowRamWarningCleared(freeKb);
+        }
         return true;
     }
 }

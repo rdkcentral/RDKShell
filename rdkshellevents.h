@@ -35,6 +35,10 @@ namespace RdkShell
           virtual void onApplicationSuspended(const std::string& client) {}
           virtual void onApplicationResumed(const std::string& client) {}
           virtual void onUserInactive(const double minutes) {}
+          virtual void onDeviceLowRamWarning(const int32_t freeKb) {}
+          virtual void onDeviceCriticallyLowRamWarning(const int32_t freeKb) {}
+          virtual void onDeviceLowRamWarningCleared(const int32_t freeKb) {}
+          virtual void onDeviceCriticallyLowRamWarningCleared(const int32_t freeKb) {}
     };
 
     const std::string RDKSHELL_EVENT_APPLICATION_LAUNCHED = "onApplicationLaunched";
@@ -45,4 +49,8 @@ namespace RdkShell
     const std::string RDKSHELL_EVENT_APPLICATION_SUSPENDED = "onApplicationSuspended";
     const std::string RDKSHELL_EVENT_APPLICATION_RESUMED = "onApplicationResumed";
     const std::string RDKSHELL_EVENT_USER_INACTIVE = "onUserInactive";
+    const std::string RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING = "onDeviceLowRamWarning";
+    const std::string RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING = "onDeviceCriticallyLowRamWarning";
+    const std::string RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING_CLEARED = "onDeviceLowRamWarningCleared";
+    const std::string RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING_CLEARED = "onDeviceCriticallyLowRamWarningCleared";
 }

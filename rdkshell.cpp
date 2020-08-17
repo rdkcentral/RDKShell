@@ -31,10 +31,26 @@
 #include <unistd.h>
 #include <time.h>
 #include <GLES2/gl2.h>
+#include <sys/sysinfo.h>
 
 #define RDKSHELL_FPS 40
+
+#define RDKSHELL_RAM_MONITOR_INTERVAL_SECONDS 5
+#define RDKSHELL_DEFAULT_LOW_MEMORY_THRESHOLD_MB 100
+#define RDKSHELL_DEFAULT_CRITICALLY_LOW_MEMORY_THRESHOLD_MB 20
+
 int gCurrentFramerate = RDKSHELL_FPS;
 bool gRdkShellIsRunning = false;
+
+bool gEnableRamMonitor = true;
+double gRamMonitorIntervalInSeconds = RDKSHELL_RAM_MONITOR_INTERVAL_SECONDS;
+int gLowRamMemoryThresholdInMb =  RDKSHELL_DEFAULT_LOW_MEMORY_THRESHOLD_MB;
+int gCriticallyLowRamMemoryThresholdInMb = RDKSHELL_DEFAULT_CRITICALLY_LOW_MEMORY_THRESHOLD_MB;
+
+bool gLowRamMemoryNotificationSent = false;
+bool gCriticallyLowRamMemoryNotificationSent = false;
+double gNextRamMonitorTime = 0.0;
+
 #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
 std::shared_ptr<RdkShell::MessageHandler> gMessageHandler;
 bool gWebsocketIpcEnabled = false;
@@ -64,6 +80,74 @@ namespace RdkShell
         return ((double)(ts.tv_sec * 1000000) + ((double)ts.tv_nsec/1000));
     }
 
+    bool systemRam(uint32_t &freeKb, uint32_t & totalKb,  uint32_t& usedSwapKb)
+    {
+        struct sysinfo systemInformation;
+        int ret = sysinfo(&systemInformation);
+
+        if (0 != ret)
+        {
+          Logger::log(Debug, "failed to get memory details");
+          return false;
+        }
+        totalKb = systemInformation.totalram/(1024);
+        freeKb = systemInformation.freeram/(1024);
+        usedSwapKb = (systemInformation.totalswap - systemInformation.freeswap)/1024;
+        return true;
+    }
+
+    void setMemoryMonitor(const bool enable, const double interval)
+    {
+        gEnableRamMonitor = enable;
+        gRamMonitorIntervalInSeconds = interval;
+    }
+
+    void checkSystemMemory()
+    {
+        uint32_t freeKb=0, usedKb=0, totalKb=0;
+        bool ret = systemRam(freeKb, usedKb, totalKb);
+
+        if (false == ret)
+        {
+            return;
+        }
+
+        float freeMb = freeKb/1024;
+        std::vector<RdkShellData> eventData(1);
+        eventData[0] = freeKb;
+        if (freeMb < gLowRamMemoryThresholdInMb)
+        {
+            if (!gLowRamMemoryNotificationSent)
+            {
+                CompositorController::sendEvent(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING, eventData);
+                gLowRamMemoryNotificationSent = true;
+            }
+            if ((!gCriticallyLowRamMemoryNotificationSent) && (freeMb < gCriticallyLowRamMemoryThresholdInMb))
+            {
+                  CompositorController::sendEvent(RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING, eventData);
+                  gCriticallyLowRamMemoryNotificationSent = true;
+            }
+            else if ((gCriticallyLowRamMemoryNotificationSent) && (freeMb >= gCriticallyLowRamMemoryThresholdInMb))
+            {
+                CompositorController::sendEvent(RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING_CLEARED, eventData);
+                gCriticallyLowRamMemoryNotificationSent = false;
+            }
+        }
+        else
+        {
+            if (gCriticallyLowRamMemoryNotificationSent)
+            {
+                CompositorController::sendEvent(RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING_CLEARED, eventData);
+                gCriticallyLowRamMemoryNotificationSent = false;
+            }
+            if (gLowRamMemoryNotificationSent)
+            {
+                CompositorController::sendEvent(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING_CLEARED, eventData);
+                gLowRamMemoryNotificationSent = false;
+            }
+        }
+    }
+
     void initialize()
     {
         std::cout << "initializing rdk shell\n";
@@ -84,6 +168,34 @@ namespace RdkShell
             if (fps > 0)
             {
                 gCurrentFramerate = fps;
+            }
+        }
+
+        char const *lowRamMemoryThresholdInMb = getenv("RDKSHELL_LOW_MEMORY_THRESHOLD");
+        if (lowRamMemoryThresholdInMb)
+        {
+            int lowRamMemoryThresholdInMbValue = atoi(lowRamMemoryThresholdInMb);
+            if (lowRamMemoryThresholdInMbValue > 0)
+            {
+                gLowRamMemoryThresholdInMb = lowRamMemoryThresholdInMbValue;
+            }
+        }
+
+        char const *criticalLowRamMemoryThresholdInMb = getenv("RDKSHELL_CRITICALLY_LOW_MEMORY_THRESHOLD");
+        if (criticalLowRamMemoryThresholdInMb)
+        {
+            int criticalLowRamMemoryThresholdInMbValue = atoi(criticalLowRamMemoryThresholdInMb);
+            if (criticalLowRamMemoryThresholdInMbValue > 0)
+            {
+                if (criticalLowRamMemoryThresholdInMbValue  <= gLowRamMemoryThresholdInMb)
+                {
+                    gCriticallyLowRamMemoryThresholdInMb = criticalLowRamMemoryThresholdInMbValue;
+                }
+                else
+                {
+                    Logger::log(Warn, "criticial low ram threshold is lower than low ram threshold");
+                    gCriticallyLowRamMemoryThresholdInMb = gLowRamMemoryThresholdInMb;
+                }
             }
         }
 
@@ -126,6 +238,7 @@ namespace RdkShell
         RdkShell::EssosInstance::instance()->initialize(false);
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        gNextRamMonitorTime = seconds() + gRamMonitorIntervalInSeconds;
     }
 
     void run()
@@ -168,6 +281,15 @@ namespace RdkShell
 
     void update()
     {
+        if (gEnableRamMonitor)
+        {
+            double currentTime = RdkShell::seconds();
+            if (currentTime > gNextRamMonitorTime)
+            {
+                checkSystemMemory();
+                gNextRamMonitorTime = currentTime + gRamMonitorIntervalInSeconds;
+            }
+        }
         RdkShell::CompositorController::update();
     }
 }

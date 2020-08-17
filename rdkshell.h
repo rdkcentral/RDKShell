@@ -29,6 +29,8 @@ namespace RdkShell
     double seconds();
     double milliseconds();
     double microseconds();
+    bool systemRam(uint32_t &freeKb, uint32_t & totalKb, uint32_t& usedSwapKb);
+    void setMemoryMonitor(const bool enable, const double interval);
 }
 
 #endif //RDKSHELL_H
