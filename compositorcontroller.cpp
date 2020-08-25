@@ -199,7 +199,11 @@ namespace RdkShell
           isFocusedCompositor = false;
           if (activateCompositor)
           {
-            gFocusedCompositor = *compositorIterator;
+              gFocusedCompositor = *compositorIterator;
+              if (gRdkShellEventListener)
+              {
+                  gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+              }
           }
 
           //propagate is false, stopping here
