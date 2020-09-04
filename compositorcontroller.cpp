@@ -818,7 +818,7 @@ namespace RdkShell
         }
     }
 
-    bool CompositorController::createDisplay(const std::string& client, const std::string& displayName)
+    bool CompositorController::createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth, uint32_t displayHeight)
     {
         std::string clientDisplayName = standardizeName(client);
         std::string compositorDisplayName = displayName;
@@ -840,6 +840,14 @@ namespace RdkShell
         uint32_t width = 0;
         uint32_t height = 0;
         RdkShell::EssosInstance::instance()->resolution(width, height);
+        if (displayWidth > 0)
+        {
+            width = displayWidth;
+        }
+        if (displayHeight > 0)
+        {
+            height = displayHeight;
+        }
         bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, width, height);
         if (ret)
         {
