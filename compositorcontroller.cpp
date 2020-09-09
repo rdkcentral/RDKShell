@@ -597,6 +597,32 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
+    {
+        bool ret = false;
+        if (client.empty())
+        {
+            CompositorController::onKeyPress(keyCode, flags, 0);
+            CompositorController::onKeyRelease(keyCode, flags, 0);
+            ret = true;
+        }
+        else
+        {
+            std::string clientDisplayName = standardizeName(client);
+            for (auto compositor : gCompositorList)
+            {
+                if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
+                {
+                    compositor.compositor->onKeyPress(keyCode, flags, 0);
+                    compositor.compositor->onKeyRelease(keyCode, flags, 0);
+                    ret = true;
+                    break;
+                }
+            }
+        }
+        return ret;
+    }
+
     bool CompositorController::getScreenResolution(uint32_t &width, uint32_t &height)
     {
         RdkShell::EssosInstance::instance()->resolution(width, height);

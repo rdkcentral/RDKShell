@@ -47,6 +47,7 @@ namespace RdkShell
             static bool addKeyMetadataListener(const std::string& client);
             static bool removeKeyMetadataListener(const std::string& client);
             static bool injectKey(const uint32_t& keyCode, const uint32_t& flags);
+            static bool generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
             static bool getScreenResolution(uint32_t &width, uint32_t &height);
             static bool setScreenResolution(const uint32_t width, const uint32_t height);
             static bool getClients(std::vector<std::string>& clients);
