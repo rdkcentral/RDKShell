@@ -199,7 +199,9 @@ namespace RdkShell
           isFocusedCompositor = false;
           if (activateCompositor)
           {
-            gFocusedCompositor = *compositorIterator;
+              std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
+              std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
+              gFocusedCompositor = *compositorIterator;
           }
 
           //propagate is false, stopping here
@@ -308,6 +310,8 @@ namespace RdkShell
         {
             if (compositor.name == clientDisplayName)
             {
+                std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
+                std::cout << "rdkshell_focus setFocus: the focused client is now " << compositor.name << ".  previous: " << previousFocusedClient << std::endl;
                 gFocusedCompositor = compositor;
                 return true;
             }
@@ -363,8 +367,9 @@ namespace RdkShell
                 if (gFocusedCompositor.name == clientDisplayName)
                 {
                   // this may be changed to next available compositor
-                  gFocusedCompositor.name = ""; 
-                  gFocusedCompositor.compositor = nullptr; 
+                  gFocusedCompositor.name = "";
+                  gFocusedCompositor.compositor = nullptr;
+                  std::cout << "rdkshell_focus kill: the focused client has been killed: " << clientDisplayName  << ".  there is no focused client.\n";
                 }
                 return true;
             }
@@ -825,6 +830,12 @@ namespace RdkShell
             gFocusedCompositor.compositor->onKeyPress(keycode, flags, metadata);
             bubbleKey(keycode, flags, metadata, true);
         }
+        else
+        {
+            std::string focusedClientName = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name : "none";
+            std::cout << "rdkshell_focus key intercepted: " << isInterceptAvailable << " focused client:" << focusedClientName << std::endl;
+        }
+
     }
 
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
@@ -880,6 +891,7 @@ namespace RdkShell
           if (gCompositorList.empty())
           {
               gFocusedCompositor = compositorInfo;
+              std::cout << "rdkshell_focus create: setting focus of first application created " << gFocusedCompositor.name << std::endl;
           }
           //std::cout << "display created with name: " << client << std::endl;
           gCompositorList.insert(gCompositorList.begin(), compositorInfo);
@@ -1106,6 +1118,7 @@ namespace RdkShell
                 if (gCompositorList.empty())
                 {
                     gFocusedCompositor = compositorInfo;
+                    std::cout << "rdkshell_focus launch: setting focus of first application created " << gFocusedCompositor.name << std::endl;
                 }
                 gCompositorList.insert(gCompositorList.begin(), compositorInfo);
             }
