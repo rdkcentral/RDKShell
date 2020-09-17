@@ -1166,7 +1166,7 @@ namespace RdkShell
     {
         mimeType = "";
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (const auto& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
@@ -1180,7 +1180,7 @@ namespace RdkShell
     bool CompositorController::setMimeType(const std::string& client, const std::string& mimeType)
     {
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (auto&& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
