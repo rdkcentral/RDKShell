@@ -106,22 +106,22 @@ static void processKeyEvent(bool pressEvent, unsigned int key, void *metadata)
     switch( key )
     {
         case WAYLAND_KEY_RIGHTSHIFT:
-            rightShiftPressed = true;
+            rightShiftPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_LEFTSHIFT:
-            leftShiftPressed = true;
+            leftShiftPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_RIGHTCTRL:
-            rightCtrlPressed = true;
+            rightCtrlPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_LEFTCTRL:
-            leftCtrlPressed = true;
+            leftCtrlPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_RIGHTALT:
-            rightAltPressed = true;
+            rightAltPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_LEFTALT:
-            leftAltPressed = true;
+            leftAltPressed = pressEvent ? true : false;
         break;
         default:
             break;
