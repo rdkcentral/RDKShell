@@ -1242,14 +1242,14 @@ namespace RdkShell
         return true;
     }
 
-    bool CompositorController::sendEvent(const std::string & eventName, std::vector<RdkShellData>& data)
+    bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
     {
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
         {
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceLowRamWarning(freeKb);
         }
@@ -1258,7 +1258,7 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceCriticallyLowRamWarning(freeKb);
         }
@@ -1267,7 +1267,7 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceLowRamWarningCleared(freeKb);
         }
@@ -1276,9 +1276,16 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceCriticallyLowRamWarningCleared(freeKb);
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_ANIMATION) == 0)
+        {
+            if (!data.empty())
+            {
+              gRdkShellEventListener->onAnimation(data);
+            }
         }
         return true;
     }

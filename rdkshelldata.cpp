@@ -18,6 +18,7 @@
 **/
 
 #include "rdkshelldata.h"
+#include <iostream>
 
 
 namespace RdkShell
@@ -25,6 +26,7 @@ namespace RdkShell
     RdkShellData::RdkShellData() : mDataTypeIndex(typeid(void*))
     {
         mData.pointerData = nullptr;
+        mData.stringData = nullptr;
     }
 
     RdkShellData::RdkShellData(bool data) : mDataTypeIndex(typeid(void*))
@@ -82,6 +84,18 @@ namespace RdkShell
         setData(typeid(void*), &data);
     }
     
+    RdkShellData::~RdkShellData()
+    {
+        if (mDataTypeIndex == typeid(std::string))
+        {
+            if (nullptr != mData.stringData)
+            {
+              delete mData.stringData;
+              mData.stringData = nullptr;
+            }
+        }
+    }
+
     bool RdkShellData::toBoolean() const
     {
         if (mDataTypeIndex == typeid(bool))
@@ -388,9 +402,9 @@ namespace RdkShell
     }
     std::string RdkShellData::toString() const
     {
-        if (mDataTypeIndex == typeid(std::string))
+        if (mDataTypeIndex == typeid(std::string) && (nullptr != mData.stringData))
         {
-            return mData.stringData;
+            return *(mData.stringData);
         }
         return "";
     }
@@ -529,7 +543,11 @@ namespace RdkShell
         }
         else if (typeIndex == typeid(std::string))
         {
-            mData.stringData = value.mData.stringData;
+            if (nullptr == mData.stringData)
+            {
+              mData.stringData = new std::string("");
+            }
+            *(mData.stringData) = (nullptr != value.mData.stringData)?(*(value.mData.stringData)):"";
             mDataTypeIndex = typeIndex;
         }
         else if (typeIndex == typeid(void*))
@@ -595,7 +613,11 @@ namespace RdkShell
         }
         else if (typeIndex == typeid(std::string))
         {
-            mData.stringData = *((std::string*)data);
+            if (nullptr == mData.stringData)
+            {
+              mData.stringData = new std::string("");
+            }
+            *(mData.stringData) = *(std::string*)data;
             mDataTypeIndex = typeIndex;
         }
         else if (typeIndex == typeid(void*))
