@@ -18,6 +18,7 @@
 **/
 
 #include "rdkshelldata.h"
+#include <iostream>
 
 namespace RdkShell
 {
