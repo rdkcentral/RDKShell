@@ -19,6 +19,7 @@
 
 #include "rdkshelldata.h"
 
+
 namespace RdkShell
 {
     RdkShellData::RdkShellData() : mDataTypeIndex(typeid(void*))
