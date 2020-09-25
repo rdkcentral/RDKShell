@@ -84,7 +84,7 @@ namespace RdkShell
             static bool update();
             static bool setLogLevel(const std::string level);
             static bool getLogLevel(std::string& level);
-            static bool sendEvent(const std::string& eventName, std::vector<RdkShellData>& data);
+            static bool sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data);
     };
 }
 

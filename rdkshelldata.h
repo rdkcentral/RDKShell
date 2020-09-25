@@ -35,7 +35,7 @@ namespace RdkShell
         uint64_t    unsignedInteger64Data;
         float       floatData;
         double      doubleData;
-        std::string stringData;
+        std::string* stringData;
         void*       pointerData;
         RdkShellDataInfo() {}
         ~RdkShellDataInfo() {}
@@ -45,6 +45,7 @@ namespace RdkShell
     {
         public:
             RdkShellData();
+            ~RdkShellData();
             RdkShellData(bool data);
             RdkShellData(int8_t data);
             RdkShellData(int32_t data);
