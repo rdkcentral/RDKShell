@@ -24,8 +24,8 @@ option(RDKSHELLCLIENT_BUILD_TEST_APP "RDKSHELLCLIENT_BUILD_TEST_APP" ON)
 set(RDKSHELLDIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(COMMUNICATIONDIR ${CMAKE_CURRENT_SOURCE_DIR}/../communication)
 
-set(RDKSHELLCLIENT_SOURCES rdkshellchannel.cpp clientmessagehandler.cpp ${COMMUNICATIONDIR}/socket/sockethandler.cpp ${COMMUNICATIONDIR}/communicationfactory.cpp ${COMMUNICATIONDIR}/communicationutils.cpp)
-set(RDKSHELLCLIENT_ADDITIONAL_SOURCES ${RDKSHELLDIR}/rdkshelldata.cpp)
+set(RDKSHELLCLIENT_SOURCES rdkshellclient.cpp clientmessagehandler.cpp ${COMMUNICATIONDIR}/socket/sockethandler.cpp ${COMMUNICATIONDIR}/communicationfactory.cpp ${COMMUNICATIONDIR}/communicationutils.cpp)
+set(RDKSHELLCLIENT_ADDITIONAL_SOURCES ${RDKSHELLDIR}/rdkshelldata.cpp ${RDKSHELLDIR}/logger.cpp)
 set(RDKSHELLCLIENT_SOURCES ${RDKSHELLCLIENT_SOURCES} ${RDKSHELLCLIENT_ADDITIONAL_SOURCES})
 
 set(RDKSHELLCLIENT_LINK_LIBRARIES -lz)
@@ -37,7 +37,7 @@ include_directories(AFTER ${CMAKE_CURRENT_SOURCE_DIR} ${COMMUNICATIONDIR} ${COMM
 
 if (RDKSHELLCLIENT_BUILD_TEST_APP)
     message("Building rdkshell test client")
-    add_executable(rdkshell_test test/rdkshellclient.cpp)
+    add_executable(rdkshell_test test/test_rdkshellclient.cpp)
     add_dependencies(rdkshell_test rdkshellclient_shared)
     target_link_libraries(rdkshell_test ${RDKSHELLCLIENT_LINK_LIBRARIES} rdkshellclient_shared)
 endif (RDKSHELLCLIENT_BUILD_TEST_APP)

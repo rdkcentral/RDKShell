@@ -34,26 +34,25 @@ using namespace rapidjson;
 
 namespace RdkShell
 {
-  class ServerMessageHandler: public RdkShellClientListener, public RdkShellEventListener, public std::enable_shared_from_this<ServerMessageHandler>
-  {
-    public:
-      ServerMessageHandler();
-      void start();
-      void poll();
-      void stop();
-      /* RdkShellClientListener methods */
-      virtual void messageReceived(int id, std::string& message);
-
-      /* RdkShellEventListener methods */
-      virtual void onAnimation(std::vector<std::map<std::string, RdkShellData>>& animationData);
-      CommunicationHandler* getCommunicationHandler();
-
-    private:
-      void initMsgHandlers();
-      void sendErrorResponse(int id, std::string& method);
-      std::shared_ptr<ServerMessageHandler> getptr();
-      std::map<std::string, bool(*)(int, const rapidjson::Value&, void*)> mHandlerMap;
-      CommunicationHandler* mCommunicationHandler;
-  };
+    class ServerMessageHandler: public RdkShellClientListener, public RdkShellEventListener, public std::enable_shared_from_this<ServerMessageHandler>
+    {
+        public:
+            ServerMessageHandler();
+            void start();
+            void process();
+            void stop();
+            /* RdkShellClientListener methods */
+            virtual void onMessageReceived(int id, std::string& message);
+  
+            /* RdkShellEventListener methods */
+            virtual void onAnimation(std::vector<std::map<std::string, RdkShellData>>& animationData);
+            CommunicationHandler* communicationHandler();
+  
+        private:
+            void initializeMessageHandlers();
+            void sendErrorResponse(int id, std::string& method);
+            std::map<std::string, bool(*)(int, const rapidjson::Value&, void*)> mHandlerMap;
+            CommunicationHandler* mCommunicationHandler;
+    };
 }
 #endif  //RDKSHELL_SERVER_MESSAGE_HANDLER_H

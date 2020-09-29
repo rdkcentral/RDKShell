@@ -5,7 +5,7 @@
 
 namespace RdkShell
 {
-  void prepareHeader(int id, std::string& message, std::string& header);
+    void prepareHeader(int id, std::string& message, std::string& header);
 }
 
 #endif //RDKSHELL_COMMUNICATION_UTILS_H

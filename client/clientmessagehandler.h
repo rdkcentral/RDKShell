@@ -31,26 +31,27 @@ using namespace rapidjson;
 
 namespace RdkShell
 {
-  enum MessageType
-  {
-    NONE,
-    RESPONSE,
-    EVENT,
-    APIERROR
-  };
-
-  class MessageHandler {
-    public:
-      static void initialize();
-      static bool prepareRequestParameters(std::string& method, std::map<std::string, RdkShellData>& params, std::string& paramstring);
-      static bool prepareRequest(std::string& name, std::map<std::string, RdkShellData>& params, std::stringstream& output);
-      static MessageType handleMessage(std::string& response, std::string& name, std::map<std::string, RdkShellData>& responseData, std::vector<std::map<std::string, RdkShellData>>& eventData);
+    enum MessageType
+    {
+        NONE,
+        RESPONSE,
+        EVENT,
+        API_ERROR
+    };
   
-    private:
-      static void handleResponse(Document& d, std::string& name, bool& isApiError, std::map<std::string, RdkShellData>& responseData);
-      static void handleEvent(Document &d, std::string& name, std::vector<std::map<std::string, RdkShellData>>& eventData);
-      static std::map<std::string, void(*)(const rapidjson::Value& , std::map<std::string, RdkShellData>&)> mResponseHandler;
-      static std::map<std::string, void(*)(const rapidjson::Value&, std::vector<std::map<std::string, RdkShellData>>&)> mEventHandler;
-  };
+    class ClientMessageHandler
+    {
+        public:
+            static void initialize();
+            static bool prepareRequestParameters(std::string& method, std::map<std::string, RdkShellData>& params, std::string& parameterString);
+            static bool prepareRequest(std::string& name, std::map<std::string, RdkShellData>& params, std::stringstream& output);
+            static MessageType handleMessage(std::string& response, std::string& name, std::map<std::string, RdkShellData>& responseData, std::vector<std::map<std::string, RdkShellData>>& eventData);
+      
+        private:
+            static void handleResponse(Document& d, std::string& name, bool& isApiError, std::map<std::string, RdkShellData>& responseData);
+            static void handleEvent(Document &d, std::string& name, std::vector<std::map<std::string, RdkShellData>>& eventData);
+            static std::map<std::string, void(*)(const rapidjson::Value& , std::map<std::string, RdkShellData>&)> mResponseHandler;
+            static std::map<std::string, void(*)(const rapidjson::Value&, std::vector<std::map<std::string, RdkShellData>>&)> mEventHandler;
+    };
 }
 #endif  //RDKSHELL_CLIENT_MESSAGE_HANDLER_H

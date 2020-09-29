@@ -32,6 +32,7 @@
 #include "linuxinput.h"
 #include "animation.h"
 #include "logger.h"
+#include "rdkshell.h"
 #include <unistd.h>
 #include <time.h>
 #include <GLES2/gl2.h>
@@ -269,7 +270,7 @@ namespace RdkShell
         gRdkShellIsRunning = true;
         while( gRdkShellIsRunning )
         {
-            RdkShell::CompositorController::update();
+            update();
             uint32_t width = 0;
             uint32_t height = 0;
             RdkShell::EssosInstance::instance()->resolution(width, height);
@@ -281,12 +282,6 @@ namespace RdkShell
             double startFrameTime = microseconds();
             RdkShell::CompositorController::draw();
             RdkShell::EssosInstance::instance()->update();
-            #ifdef RDKSHELL_ENABLE_IPC
-            if (gIpcEnabled)
-            {
-                gServerMessageHandler->poll();
-            }
-            #endif
 
             #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
             if (gWebsocketIpcEnabled)
@@ -328,6 +323,12 @@ namespace RdkShell
                 gNextRamMonitorTime = currentTime + gRamMonitorIntervalInSeconds;
             }
         }
+        #ifdef RDKSHELL_ENABLE_IPC
+        if (gIpcEnabled)
+        {
+            gServerMessageHandler->process();
+        }
+        #endif
         RdkShell::CompositorController::update();
     }
 }

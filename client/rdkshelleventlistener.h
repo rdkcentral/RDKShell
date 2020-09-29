@@ -28,12 +28,12 @@
 
 namespace RdkShell
 {
-  class RdkShellEventListener
-  {
-    public:
-      virtual void onEvent(std::string name, std::vector<std::map<std::string, RdkShellData>>& eventData) = 0;
-      virtual void onApiError(std::string name) = 0;
-  };
+    class RdkShellEventListener
+    {
+        public:
+            virtual void onEvent(std::string name, std::vector<std::map<std::string, RdkShellData>>& eventData) = 0;
+            virtual void onApiError(std::string name) = 0;
+    };
 }
 
 #endif //RDKSHELL_RDKSHELL_EVENTS_H

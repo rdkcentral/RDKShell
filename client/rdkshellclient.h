@@ -28,11 +28,11 @@
 
 namespace RdkShell
 {
-    class RdkShellChannel
+    class RdkShellClient
     {
         public:
-            ~RdkShellChannel();
-            static RdkShellChannel* instance();
+            ~RdkShellClient();
+            static RdkShellClient* instance();
             void initialize();
             bool callMethod(std::string& name, std::map<std::string, RdkShellData>& params);
             bool callMethodWithResult(std::string& name, std::map<std::string, RdkShellData>& params, std::map<std::string, RdkShellData>& result);
@@ -41,9 +41,9 @@ namespace RdkShell
             void unregisterEvent(std::string& name, RdkShellEventListener* listener);
 
         private:
-            RdkShellChannel();
+            RdkShellClient();
             void processMessages(int wait, std::map<std::string, RdkShellData>& responseData);
-            static RdkShellChannel* mInstance;
+            static RdkShellClient* mInstance;
             CommunicationHandler* mCommunicationHandler;
             bool mIsConnectedToServer;
             int mResponseTimeout;
