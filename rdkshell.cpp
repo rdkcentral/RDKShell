@@ -19,6 +19,10 @@
 
 #include <iostream>
 #include <GLES2/gl2.h>
+#ifdef RDKSHELL_ENABLE_IPC
+#include "servermessagehandler.h"
+#endif
+
 #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
 #include "messageHandler.h"
 #endif
@@ -28,6 +32,7 @@
 #include "linuxinput.h"
 #include "animation.h"
 #include "logger.h"
+#include "rdkshell.h"
 #include <unistd.h>
 #include <time.h>
 #include <GLES2/gl2.h>
@@ -50,6 +55,11 @@ int gCriticallyLowRamMemoryThresholdInMb = RDKSHELL_DEFAULT_CRITICALLY_LOW_MEMOR
 bool gLowRamMemoryNotificationSent = false;
 bool gCriticallyLowRamMemoryNotificationSent = false;
 double gNextRamMonitorTime = 0.0;
+
+#ifdef RDKSHELL_ENABLE_IPC
+std::shared_ptr<RdkShell::ServerMessageHandler> gServerMessageHandler;
+bool gIpcEnabled = false;
+#endif
 
 #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
 std::shared_ptr<RdkShell::MessageHandler> gMessageHandler;
@@ -113,8 +123,9 @@ namespace RdkShell
         }
 
         float freeMb = freeKb/1024;
-        std::vector<RdkShellData> eventData(1);
-        eventData[0] = freeKb;
+        std::vector<std::map<std::string, RdkShellData>> eventData(1);
+        eventData[0] = std::map<std::string, RdkShellData>();
+        eventData[0]["freeKb"] = freeKb;
         if (freeMb < gLowRamMemoryThresholdInMb)
         {
             if (!gLowRamMemoryNotificationSent)
@@ -223,6 +234,19 @@ namespace RdkShell
 
         RdkShell::EssosInstance::instance()->configureKeyInput(initialKeyDelay, repeatKeyInterval);
 
+        #ifdef RDKSHELL_ENABLE_IPC
+        char const* ipcSetting = getenv("RDKSHELL_ENABLE_IPC");
+        if (ipcSetting && (strcmp(ipcSetting,"1") == 0))
+        {
+            gIpcEnabled = true;
+        }
+        if (gIpcEnabled)
+        {
+            gServerMessageHandler = std::make_shared<RdkShell::ServerMessageHandler>();
+            gServerMessageHandler->start();
+        }
+        #endif
+
         #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
         char const* websocketIpcSetting = getenv("RDKSHELL_ENABLE_WS_IPC");
         if (websocketIpcSetting && (strcmp(websocketIpcSetting,"1") == 0))
@@ -246,10 +270,19 @@ namespace RdkShell
         gRdkShellIsRunning = true;
         while( gRdkShellIsRunning )
         {
+            update();
+            uint32_t width = 0;
+            uint32_t height = 0;
+            RdkShell::EssosInstance::instance()->resolution(width, height);
+            glViewport( 0, 0, width, height );
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
             const double maxSleepTime = (1000 / gCurrentFramerate) * 1000;
             double startFrameTime = microseconds();
             RdkShell::CompositorController::draw();
             RdkShell::EssosInstance::instance()->update();
+
             #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
             if (gWebsocketIpcEnabled)
             {
@@ -290,6 +323,12 @@ namespace RdkShell
                 gNextRamMonitorTime = currentTime + gRamMonitorIntervalInSeconds;
             }
         }
+        #ifdef RDKSHELL_ENABLE_IPC
+        if (gIpcEnabled)
+        {
+            gServerMessageHandler->process();
+        }
+        #endif
         RdkShell::CompositorController::update();
     }
 }
