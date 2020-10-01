@@ -253,6 +253,9 @@ namespace RdkShell
         {
             hints |= WstHints_animating;
         }
+        #ifdef RDKSHELL_ENABLE_FORCE_ANIMATE
+        hints |= WstHints_animating;
+        #endif //RDKSHELL_ENABLE_FORCE_ANIMATE
         #ifdef RDKSHELL_ENABLE_HIDDEN_SUPPORT
         if (!mVisible)
         {
