@@ -41,7 +41,7 @@ namespace RdkShell
 
     RdkCompositor::RdkCompositor() : mDisplayName(), mWstContext(NULL), 
         mWidth(1280), mHeight(720), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
-        mVisible(true), mAnimating(false), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
+        mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex()
     {
@@ -236,18 +236,29 @@ namespace RdkShell
 
     void RdkCompositor::draw()
     {
+        #ifndef RDKSHELL_ENABLE_HIDDEN_SUPPORT
         if (!mVisible)
         {
             return;
         }
+        #endif //!RDKSHELL_ENABLE_HIDDEN_SUPPORT
         int hints = WstHints_none;
         hints |= WstHints_applyTransform;
-        hints |= WstHints_holePunch;
+        if (mHolePunch)
+        {
+            hints |= WstHints_holePunch;
+        }
         hints |= WstHints_noRotation;
         if (mAnimating)
         {
             hints |= WstHints_animating;
         }
+        #ifdef RDKSHELL_ENABLE_HIDDEN_SUPPORT
+        if (!mVisible)
+        {
+            hints |= WstHints_hidden;
+        }
+        #endif //RDKSHELL_ENABLE_HIDDEN_SUPPORT
         bool needsHolePunch = false;
         std::vector<WstRect> rects;
 
@@ -372,6 +383,16 @@ namespace RdkShell
     void RdkCompositor::setAnimating(bool animating)
     {
         mAnimating = animating;
+    }
+
+    void RdkCompositor::setHolePunch(bool holePunchEnabled)
+    {
+        mHolePunch = holePunchEnabled;
+    }
+
+    void RdkCompositor::holePunch(bool &holePunchEnabled)
+    {
+        holePunchEnabled = mHolePunch;
     }
 
     void RdkCompositor::keyMetadataEnabled(bool &enabled)

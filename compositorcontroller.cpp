@@ -793,6 +793,35 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::getHolePunch(const std::string& client, bool& holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->holePunch(holePunch);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::setHolePunch(const std::string& client, const bool holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setHolePunch(holePunch);
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName, holePunch ? "true" : "false");
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool CompositorController::scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height)
     {
         std::string clientDisplayName = standardizeName(client);
