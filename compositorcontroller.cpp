@@ -793,6 +793,35 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::getHolePunch(const std::string& client, bool& holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->holePunch(holePunch);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::setHolePunch(const std::string& client, const bool holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setHolePunch(holePunch);
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName, holePunch ? "true" : "false");
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool CompositorController::scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height)
     {
         std::string clientDisplayName = standardizeName(client);
@@ -1242,14 +1271,14 @@ namespace RdkShell
         return true;
     }
 
-    bool CompositorController::sendEvent(const std::string & eventName, std::vector<RdkShellData>& data)
+    bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
     {
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
         {
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceLowRamWarning(freeKb);
         }
@@ -1258,7 +1287,7 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceCriticallyLowRamWarning(freeKb);
         }
@@ -1267,7 +1296,7 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceLowRamWarningCleared(freeKb);
         }
@@ -1276,9 +1305,16 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceCriticallyLowRamWarningCleared(freeKb);
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_ANIMATION) == 0)
+        {
+            if (!data.empty())
+            {
+              gRdkShellEventListener->onAnimation(data);
+            }
         }
         return true;
     }
