@@ -259,7 +259,13 @@ namespace RdkShell
             gMessageHandler->start();
         }
         #endif
+
+        #ifdef RDKSHELL_ENABLE_FORCE_1080
+        std::cout << "!!!!! forcing 1080 start!\n";
+        RdkShell::EssosInstance::instance()->initialize(false, 1920, 1080);
+        #else
         RdkShell::EssosInstance::instance()->initialize(false);
+        #endif //RDKSHELL_ENABLE_FORCE_1080
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         gNextRamMonitorTime = seconds() + gRamMonitorIntervalInSeconds;
