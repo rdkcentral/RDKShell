@@ -22,6 +22,7 @@
 
 #include "rdkshell.h"
 #include "essosinstance.h"
+#include "compositorcontroller.h"
 
 #include <iostream>
 
@@ -53,6 +54,7 @@ namespace RdkShell
         uint32_t screenHeight = 0;
         RdkShell::EssosInstance::instance()->resolution(screenWidth, screenHeight);
         std::vector<std::vector<Animation>::iterator> removeAnimationList;
+        std::vector<std::map<std::string, RdkShellData>> animationList;
         for (auto it = animations.begin(); it != animations.end(); ++it)
         {
             Animation& animation = (*it);
@@ -111,8 +113,48 @@ namespace RdkShell
                 animation.compositor->setSize(nextWidth, nextHeight);
                 animation.compositor->setScale(nextScaleX, nextScaleY);
                 animation.compositor->setOpacity(nextOpacity);
+
+                animationList.push_back(std::map<std::string, RdkShellData>());
+                std::map<std::string, RdkShellData>& animationData = animationList.back();
+                if (animation.startX != animation.endX)
+                {
+                  animationData["x"] = nextX;
+                }
+                if (animation.startY != animation.endY)
+                {
+                  animationData["y"] = nextY;
+                }
+                if (animation.startWidth != animation.endWidth)
+                {
+                  animationData["w"] = nextWidth;
+                }
+                if (animation.startHeight != animation.endHeight)
+                {
+                  animationData["h"] = nextHeight;
+                }
+                if (animation.startScaleX != animation.endScaleX)
+                {
+                  animationData["sx"] = nextScaleX;
+                }
+                if (animation.startScaleY != animation.endScaleY)
+                {
+                  animationData["sy"] = nextScaleY;
+                }
+                if (animationData.size() > 0)
+                {
+                  animationData["client"] = animation.name;
+                }
+                else
+                {
+                  animationList.pop_back();
+                }
             }
         }
+        if (animationList.size() > 0)
+        {
+          CompositorController::sendEvent("onAnimation", animationList);
+        }
+        animationList.clear();
         for (size_t entry=0; entry<removeAnimationList.size(); entry++)
         {
           animations.erase(removeAnimationList[entry]);

@@ -20,6 +20,7 @@
 #include "linuxkeys.h"
 #include "rdkshelljson.h"
 #include <iostream>
+#include "logger.h"
 
 #include <map>
 
@@ -143,11 +144,13 @@ void mapNativeKeyCodes()
 
 bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t &mappedKeyCode, uint32_t &mappedFlags)
 {
+    RdkShell::Logger::log(RdkShell::LogLevel::Debug, "key event - keyCode: %u flags: %u", waylandKeyCode, waylandFlags);
     std::map<uint32_t, struct RdkShellKeyMap>::iterator it  = sRdkShellKeyMap.find(waylandKeyCode);
     if (it != sRdkShellKeyMap.end())
     {
       mappedKeyCode = it->second.code;
       mappedFlags = it->second.flags;
+      RdkShell::Logger::log(RdkShell::LogLevel::Debug, "key mapped from config - mappedKeyCode: %u mappedFlags: %u", mappedKeyCode, mappedFlags);
       return true;
     }
     int standardKeyCode = 0;
@@ -505,6 +508,7 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
     }
     mappedKeyCode = standardKeyCode;
     mappedFlags = waylandFlags;
+    RdkShell::Logger::log(RdkShell::LogLevel::Debug, "key mapped - mappedKeyCode: %u mappedFlags: %u", mappedKeyCode, mappedFlags);
     return true;
 }
 
