@@ -54,6 +54,8 @@ namespace RdkShell
             void setVisible(bool visible);
             void visible(bool &visible);
             void setAnimating(bool animating);
+            void setHolePunch(bool holePunchEnabled);
+            void holePunch(bool &holePunchEnabled);
             void keyMetadataEnabled(bool &enabled);
             void setKeyMetadataEnabled(bool enable);
             int registerInputEventListener(std::function<void(const RdkShell::InputEvent&)> listener);
@@ -85,6 +87,7 @@ namespace RdkShell
             double mOpacity;
             bool mVisible;
             bool mAnimating;
+            bool mHolePunch;
             double mScaleX;
             double mScaleY;
             bool mEnableKeyMetadata;
