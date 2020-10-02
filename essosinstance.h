@@ -22,7 +22,6 @@
 
 #include <essos.h>
 
-
 namespace RdkShell
 {
     class EssosInstance
