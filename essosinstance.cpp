@@ -50,7 +50,7 @@ static bool leftAltPressed = false;
 static bool rightCtrlPressed = false;
 static bool leftCtrlPressed = false;
 
-static uint8_t modeSettingForDev(RdkShell::DeviceType devType, uint8_t mode)
+static uint8_t modeSettingForDev(uint8_t devType, uint8_t mode)
 {
     switch (devType)
     {
@@ -70,33 +70,28 @@ static uint8_t modeSettingForDev(RdkShell::DeviceType devType, uint8_t mode)
     return mode;
 }
 
-
 #ifdef RDKSHELL_ENABLE_KEY_METADATA
 static uint32_t processInputMetadata(EssInputDeviceMetadata* metadata)
 {
-    // determine the type of the device
-    RdkShell::DeviceType devType = RdkShell::DeviceType::GenericLinuxInputDev;
-    uint8_t type = 0xfe;
-    uint8_t devMode = 0;
-    switch (metadata->id.vendor)
-    {
-        default:
-        {
-           RdkShell::inputDeviceTypeAndMode(metadata->id.vendor, metadata->id.product, type, devMode);
-           devType = static_cast<RdkShell::DeviceType>(type);
-        }
-    }
-
+    uint8_t deviceType = static_cast<uint8_t>(RdkShell::DeviceType::GenericLinuxInputDev);
+    uint8_t deviceMode = 0x0;
     uint16_t deviceId = minor(metadata->deviceNumber);
 
-    // todo - add support for IR and additional modes
-    devMode = modeSettingForDev(devType, devMode);
+    RdkShell::inputDeviceTypeAndMode(metadata->id.vendor, metadata->id.product, metadata->devicePhysicalAddress, deviceType, deviceMode);
+    deviceMode = modeSettingForDev(deviceType, deviceMode);
+
+#ifdef RDKSHELL_ENABLE_KEY_METADATA_EXTENDED_SUPPORT_FOR_IR
+    if (deviceType == static_cast<uint8_t>(RdkShell::DeviceType::Generic_IR))
+    {
+        // additional processing for IR
+        RdkShell::irDeviceType(metadata->filterCode, deviceType);
+    }
+#endif
 
     // set the initial device info
-    uint32_t deviceInfo = static_cast<uint32_t>(devType) << 24 |
-                          static_cast<uint32_t>(devMode) << 16 |
+    uint32_t deviceInfo = static_cast<uint32_t>(deviceType) << 24 |
+                          static_cast<uint32_t>(deviceMode) << 16 |
                           static_cast<uint32_t>(deviceId);
-
     return deviceInfo;
 }
 #endif //RDKSHELL_ENABLE_KEY_METADATA
