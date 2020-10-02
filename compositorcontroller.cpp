@@ -202,6 +202,10 @@ namespace RdkShell
               std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
               std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
               gFocusedCompositor = *compositorIterator;
+              if (gRdkShellEventListener)
+              {
+                  gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+              }
           }
 
           //propagate is false, stopping here
