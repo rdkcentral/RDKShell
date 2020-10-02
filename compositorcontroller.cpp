@@ -199,6 +199,8 @@ namespace RdkShell
           isFocusedCompositor = false;
           if (activateCompositor)
           {
+              std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
+              std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
               gFocusedCompositor = *compositorIterator;
               if (gRdkShellEventListener)
               {
@@ -312,6 +314,8 @@ namespace RdkShell
         {
             if (compositor.name == clientDisplayName)
             {
+                std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
+                std::cout << "rdkshell_focus setFocus: the focused client is now " << compositor.name << ".  previous: " << previousFocusedClient << std::endl;
                 gFocusedCompositor = compositor;
                 return true;
             }
@@ -367,8 +371,9 @@ namespace RdkShell
                 if (gFocusedCompositor.name == clientDisplayName)
                 {
                   // this may be changed to next available compositor
-                  gFocusedCompositor.name = ""; 
-                  gFocusedCompositor.compositor = nullptr; 
+                  gFocusedCompositor.name = "";
+                  gFocusedCompositor.compositor = nullptr;
+                  std::cout << "rdkshell_focus kill: the focused client has been killed: " << clientDisplayName  << ".  there is no focused client.\n";
                 }
                 return true;
             }
@@ -601,6 +606,32 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
+    {
+        bool ret = false;
+        if (client.empty())
+        {
+            CompositorController::onKeyPress(keyCode, flags, 0);
+            CompositorController::onKeyRelease(keyCode, flags, 0);
+            ret = true;
+        }
+        else
+        {
+            std::string clientDisplayName = standardizeName(client);
+            for (auto compositor : gCompositorList)
+            {
+                if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
+                {
+                    compositor.compositor->onKeyPress(keyCode, flags, 0);
+                    compositor.compositor->onKeyRelease(keyCode, flags, 0);
+                    ret = true;
+                    break;
+                }
+            }
+        }
+        return ret;
+    }
+
     bool CompositorController::getScreenResolution(uint32_t &width, uint32_t &height)
     {
         RdkShell::EssosInstance::instance()->resolution(width, height);
@@ -766,6 +797,35 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::getHolePunch(const std::string& client, bool& holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->holePunch(holePunch);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::setHolePunch(const std::string& client, const bool holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setHolePunch(holePunch);
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName, holePunch ? "true" : "false");
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool CompositorController::scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height)
     {
         std::string clientDisplayName = standardizeName(client);
@@ -803,6 +863,12 @@ namespace RdkShell
             gFocusedCompositor.compositor->onKeyPress(keycode, flags, metadata);
             bubbleKey(keycode, flags, metadata, true);
         }
+        else
+        {
+            std::string focusedClientName = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name : "none";
+            std::cout << "rdkshell_focus key intercepted: " << isInterceptAvailable << " focused client:" << focusedClientName << std::endl;
+        }
+
     }
 
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
@@ -822,7 +888,7 @@ namespace RdkShell
         }
     }
 
-    bool CompositorController::createDisplay(const std::string& client, const std::string& displayName)
+    bool CompositorController::createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth, uint32_t displayHeight)
     {
         std::string clientDisplayName = standardizeName(client);
         std::string compositorDisplayName = displayName;
@@ -844,12 +910,21 @@ namespace RdkShell
         uint32_t width = 0;
         uint32_t height = 0;
         RdkShell::EssosInstance::instance()->resolution(width, height);
+        if (displayWidth > 0)
+        {
+            width = displayWidth;
+        }
+        if (displayHeight > 0)
+        {
+            height = displayHeight;
+        }
         bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, width, height);
         if (ret)
         {
           if (gCompositorList.empty())
           {
               gFocusedCompositor = compositorInfo;
+              std::cout << "rdkshell_focus create: setting focus of first application created " << gFocusedCompositor.name << std::endl;
           }
           //std::cout << "display created with name: " << client << std::endl;
           gCompositorList.insert(gCompositorList.begin(), compositorInfo);
@@ -1076,6 +1151,7 @@ namespace RdkShell
                 if (gCompositorList.empty())
                 {
                     gFocusedCompositor = compositorInfo;
+                    std::cout << "rdkshell_focus launch: setting focus of first application created " << gFocusedCompositor.name << std::endl;
                 }
                 gCompositorList.insert(gCompositorList.begin(), compositorInfo);
             }
@@ -1162,7 +1238,7 @@ namespace RdkShell
     {
         mimeType = "";
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (const auto& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
@@ -1176,7 +1252,7 @@ namespace RdkShell
     bool CompositorController::setMimeType(const std::string& client, const std::string& mimeType)
     {
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (auto&& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
@@ -1199,14 +1275,14 @@ namespace RdkShell
         return true;
     }
 
-    bool CompositorController::sendEvent(const std::string & eventName, std::vector<RdkShellData>& data)
+    bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
     {
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
         {
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceLowRamWarning(freeKb);
         }
@@ -1215,7 +1291,7 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceCriticallyLowRamWarning(freeKb);
         }
@@ -1224,7 +1300,7 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceLowRamWarningCleared(freeKb);
         }
@@ -1233,9 +1309,16 @@ namespace RdkShell
             int32_t freeKb = -1;
             if (!data.empty())
             {
-                freeKb = data[0].toInteger32();
+                freeKb = data[0]["freeKb"].toInteger32();
             }
             gRdkShellEventListener->onDeviceCriticallyLowRamWarningCleared(freeKb);
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_ANIMATION) == 0)
+        {
+            if (!data.empty())
+            {
+              gRdkShellEventListener->onAnimation(data);
+            }
         }
         return true;
     }

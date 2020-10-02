@@ -106,22 +106,22 @@ static void processKeyEvent(bool pressEvent, unsigned int key, void *metadata)
     switch( key )
     {
         case WAYLAND_KEY_RIGHTSHIFT:
-            rightShiftPressed = true;
+            rightShiftPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_LEFTSHIFT:
-            leftShiftPressed = true;
+            leftShiftPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_RIGHTCTRL:
-            rightCtrlPressed = true;
+            rightCtrlPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_LEFTCTRL:
-            leftCtrlPressed = true;
+            leftCtrlPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_RIGHTALT:
-            rightAltPressed = true;
+            rightAltPressed = pressEvent ? true : false;
         break;
         case WAYLAND_KEY_LEFTALT:
-            leftAltPressed = true;
+            leftAltPressed = pressEvent ? true : false;
         break;
         default:
             break;
@@ -335,6 +335,10 @@ namespace RdkShell
 
     void EssosInstance::onDisplaySizeChanged(uint32_t width, uint32_t height)
     {
+#ifdef RDKSHELL_ENABLE_FORCE_1080
+        width = 1920;
+        height = 1080;
+#endif //RDKSHELL_ENABLE_FORCE_1080
         if (mInstance)
         {
             EssContextResizeWindow( mEssosContext, (int)width, (int)height );

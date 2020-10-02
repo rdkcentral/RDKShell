@@ -47,6 +47,7 @@ namespace RdkShell
             static bool addKeyMetadataListener(const std::string& client);
             static bool removeKeyMetadataListener(const std::string& client);
             static bool injectKey(const uint32_t& keyCode, const uint32_t& flags);
+            static bool generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
             static bool getScreenResolution(uint32_t &width, uint32_t &height);
             static bool setScreenResolution(const uint32_t width, const uint32_t height);
             static bool getClients(std::vector<std::string>& clients);
@@ -59,10 +60,12 @@ namespace RdkShell
             static bool setOpacity(const std::string& client, const unsigned int opacity);
             static bool getScale(const std::string& client, double &scaleX, double &scaleY);
             static bool setScale(const std::string& client, double scaleX, double scaleY);
+            static bool getHolePunch(const std::string& client, bool& holePunch);
+            static bool setHolePunch(const std::string& client, const bool holePunch);
             static bool scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height);
             static void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata);
             static void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata);
-            static bool createDisplay(const std::string& client, const std::string& displayName);
+            static bool createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth=0, uint32_t displayHeight=0);
             static bool addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties);
             static bool removeAnimation(const std::string& client);
             static bool addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener);
@@ -83,7 +86,7 @@ namespace RdkShell
             static bool update();
             static bool setLogLevel(const std::string level);
             static bool getLogLevel(std::string& level);
-            static bool sendEvent(const std::string& eventName, std::vector<RdkShellData>& data);
+            static bool sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data);
     };
 }
 

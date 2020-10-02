@@ -21,6 +21,9 @@
 
 #include <typeindex>
 #include <string>
+#include <map>
+#include <vector>
+#include "rdkshelldata.h"
 
 namespace RdkShell
 {
@@ -40,6 +43,7 @@ namespace RdkShell
           virtual void onDeviceCriticallyLowRamWarning(const int32_t freeKb) {}
           virtual void onDeviceLowRamWarningCleared(const int32_t freeKb) {}
           virtual void onDeviceCriticallyLowRamWarningCleared(const int32_t freeKb) {}
+          virtual void onAnimation(std::vector<std::map<std::string, RdkShellData>>& animationData) {}
     };
 
     const std::string RDKSHELL_EVENT_APPLICATION_LAUNCHED = "onApplicationLaunched";
@@ -55,4 +59,5 @@ namespace RdkShell
     const std::string RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING = "onDeviceCriticallyLowRamWarning";
     const std::string RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING_CLEARED = "onDeviceLowRamWarningCleared";
     const std::string RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING_CLEARED = "onDeviceCriticallyLowRamWarningCleared";
+    const std::string RDKSHELL_EVENT_ANIMATION = "onAnimation";
 }
