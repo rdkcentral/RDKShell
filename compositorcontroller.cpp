@@ -956,6 +956,7 @@ namespace RdkShell
                 double scaleX = 1.0;
                 double scaleY = 1.0;
                 double opacity = 1.0;
+                double delay = 0.0;
                 std::string tween = "linear";
                 if (compositor.compositor != nullptr)
                 {
@@ -1001,6 +1002,10 @@ namespace RdkShell
                     {
                         tween = property.second.toString();
                     }
+                    else if (property.first == "delay")
+                    {
+                        delay = property.second.toDouble();
+                    }
                 }
 
                 animation.compositor = compositor.compositor;
@@ -1014,6 +1019,7 @@ namespace RdkShell
                 animation.duration = duration;
                 animation.name = client;
                 animation.tween = tween;
+                animation.delay = delay;
                 RdkShell::Animator::instance()->addAnimation(animation);
                 ret = true;
 		break;
