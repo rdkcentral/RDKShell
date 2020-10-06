@@ -106,6 +106,12 @@ namespace RdkShell
         return true;
     }
 
+    void setMemoryMonitor(const bool enable, const double interval)
+    {
+        gEnableRamMonitor = enable;
+        gRamMonitorIntervalInSeconds = interval;
+    }
+
     void setMemoryMonitor(std::map<std::string, RdkShellData> &configuration)
     {
         for ( const auto &monitorConfiguration : configuration )
