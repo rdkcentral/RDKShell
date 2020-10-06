@@ -335,6 +335,10 @@ namespace RdkShell
 
     void EssosInstance::onDisplaySizeChanged(uint32_t width, uint32_t height)
     {
+#ifdef RDKSHELL_ENABLE_FORCE_1080
+        width = 1920;
+        height = 1080;
+#endif //RDKSHELL_ENABLE_FORCE_1080
         if (mInstance)
         {
             EssContextResizeWindow( mEssosContext, (int)width, (int)height );

@@ -214,6 +214,10 @@ namespace RdkShell
               std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
               std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
               gFocusedCompositor = *compositorIterator;
+              if (gRdkShellEventListener)
+              {
+                  gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+              }
           }
 
           //propagate is false, stopping here
@@ -805,6 +809,35 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::getHolePunch(const std::string& client, bool& holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->holePunch(holePunch);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::setHolePunch(const std::string& client, const bool holePunch)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setHolePunch(holePunch);
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName, holePunch ? "true" : "false");
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool CompositorController::scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height)
     {
         std::string clientDisplayName = standardizeName(client);
@@ -935,6 +968,7 @@ namespace RdkShell
                 double scaleX = 1.0;
                 double scaleY = 1.0;
                 double opacity = 1.0;
+                double delay = 0.0;
                 std::string tween = "linear";
                 if (compositor.compositor != nullptr)
                 {
@@ -980,6 +1014,10 @@ namespace RdkShell
                     {
                         tween = property.second.toString();
                     }
+                    else if (property.first == "delay")
+                    {
+                        delay = property.second.toDouble();
+                    }
                 }
 
                 animation.compositor = compositor.compositor;
@@ -993,6 +1031,7 @@ namespace RdkShell
                 animation.duration = duration;
                 animation.name = client;
                 animation.tween = tween;
+                animation.delay = delay;
                 RdkShell::Animator::instance()->addAnimation(animation);
                 ret = true;
 		break;
@@ -1217,7 +1256,7 @@ namespace RdkShell
     {
         mimeType = "";
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (const auto& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
@@ -1231,7 +1270,7 @@ namespace RdkShell
     bool CompositorController::setMimeType(const std::string& client, const std::string& mimeType)
     {
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (auto&& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
