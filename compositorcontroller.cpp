@@ -202,6 +202,10 @@ namespace RdkShell
               std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
               std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
               gFocusedCompositor = *compositorIterator;
+              if (gRdkShellEventListener)
+              {
+                  gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+              }
           }
 
           //propagate is false, stopping here
@@ -952,6 +956,7 @@ namespace RdkShell
                 double scaleX = 1.0;
                 double scaleY = 1.0;
                 double opacity = 1.0;
+                double delay = 0.0;
                 std::string tween = "linear";
                 if (compositor.compositor != nullptr)
                 {
@@ -997,6 +1002,10 @@ namespace RdkShell
                     {
                         tween = property.second.toString();
                     }
+                    else if (property.first == "delay")
+                    {
+                        delay = property.second.toDouble();
+                    }
                 }
 
                 animation.compositor = compositor.compositor;
@@ -1010,6 +1019,7 @@ namespace RdkShell
                 animation.duration = duration;
                 animation.name = client;
                 animation.tween = tween;
+                animation.delay = delay;
                 RdkShell::Animator::instance()->addAnimation(animation);
                 ret = true;
 		break;
@@ -1234,7 +1244,7 @@ namespace RdkShell
     {
         mimeType = "";
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (const auto& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
@@ -1248,7 +1258,7 @@ namespace RdkShell
     bool CompositorController::setMimeType(const std::string& client, const std::string& mimeType)
     {
         std::string clientDisplayName = standardizeName(client);
-        for (auto compositor : gCompositorList)
+        for (auto&& compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
             {
