@@ -21,7 +21,7 @@
 
 namespace RdkShell
 {
-    enum class DeviceType
+    enum DeviceType
     {
        GenericLinuxInputDev = 0xfe, // Generic HID device (only used for testing)
        VNC_Client = 0xe0, // All input received from VNC server
