@@ -61,6 +61,8 @@ namespace RdkShell
             if (animation.compositor != nullptr)
             {
                 double currentTime = RdkShell::seconds();
+                if (animation.startTime > currentTime)
+                  continue;
                 double animationPosition = currentTime - animation.startTime;
                 double d = 1.0;
                 if (animation.endTime < currentTime)
@@ -182,8 +184,8 @@ namespace RdkShell
                 break;
             }
         }
-        animation.startTime = RdkShell::seconds();
-        animation.endTime = RdkShell::seconds() + animation.duration;
+        animation.startTime = RdkShell::seconds() + animation.delay;
+        animation.endTime = RdkShell::seconds() + animation.delay + animation.duration;
         animation.prepare();
         animations.push_back(animation);
     }

@@ -62,6 +62,8 @@ namespace RdkShell
             static bool setOpacity(const std::string& client, const unsigned int opacity);
             static bool getScale(const std::string& client, double &scaleX, double &scaleY);
             static bool setScale(const std::string& client, double scaleX, double scaleY);
+            static bool getHolePunch(const std::string& client, bool& holePunch);
+            static bool setHolePunch(const std::string& client, const bool holePunch);
             static bool scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height);
             static void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata);
             static void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata);
