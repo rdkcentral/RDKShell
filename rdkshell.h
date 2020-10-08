@@ -20,6 +20,10 @@
 #ifndef RDKSHELL_H
 #define RDKSHELL_H
 
+#include "rdkshelldata.h"
+#include <map>
+#include <string>
+
 namespace RdkShell
 {
     void initialize();
@@ -31,6 +35,7 @@ namespace RdkShell
     double microseconds();
     bool systemRam(uint32_t &freeKb, uint32_t & totalKb, uint32_t& usedSwapKb);
     void setMemoryMonitor(const bool enable, const double interval);
+    void setMemoryMonitor(std::map<std::string, RdkShellData> &configuration);
 }
 
 #endif //RDKSHELL_H
