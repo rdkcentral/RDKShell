@@ -179,6 +179,7 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
         break;
     case WAYLAND_KEY_RIGHTALT:
         standardKeyCode = RDKSHELL_KEY_ALT;
+        break;
     case WAYLAND_KEY_LEFTALT:
         standardKeyCode = RDKSHELL_KEY_ALT;
         break;
@@ -383,10 +384,10 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
     case WAYLAND_KEY_KPASTERISK:
         standardKeyCode = RDKSHELL_KEY_MULTIPLY;
         break;
-    case WAYLAND_KEY_KPEQUAL:
+    case WAYLAND_KEY_KPPLUS:
         standardKeyCode = RDKSHELL_KEY_ADD;
         break;
-    case WAYLAND_KEY_MINUS:
+    case WAYLAND_KEY_KPMINUS:
         standardKeyCode = RDKSHELL_KEY_SUBTRACT;
         break;
     case WAYLAND_KEY_KPDOT:
@@ -720,7 +721,7 @@ uint32_t keyCodeToWayland(uint32_t keyCode)
          waylandKeyCode = WAYLAND_KEY_KPPLUS;
          break;
       case RDKSHELL_KEY_SUBTRACT:
-         waylandKeyCode = WAYLAND_KEY_MINUS;
+         waylandKeyCode = WAYLAND_KEY_KPMINUS;
          break;
       case RDKSHELL_KEY_DECIMAL:
          waylandKeyCode = WAYLAND_KEY_KPDOT;
