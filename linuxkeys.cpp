@@ -850,7 +850,7 @@ uint32_t keyCodeToWayland(uint32_t keyCode)
          break;
       default:
          std::cout << "common key code not found " << keyCode << std::endl;
-         waylandKeyCode= keyCode;
+         waylandKeyCode= -1;
          break;
    }
 
