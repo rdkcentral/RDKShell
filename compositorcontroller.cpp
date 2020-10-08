@@ -24,6 +24,7 @@
 #include "rdkshell.h"
 #include "application.h"
 #include "logger.h"
+#include "linuxkeys.h"
 
 #include <iostream>
 #include <map>
@@ -199,12 +200,16 @@ namespace RdkShell
           isFocusedCompositor = false;
           if (activateCompositor)
           {
-              std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-              std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
-              gFocusedCompositor = *compositorIterator;
-              if (gRdkShellEventListener)
+              if (gFocusedCompositor.name != compositorIterator->name)
               {
-                  gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+                  std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
+                  std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
+                  gFocusedCompositor = *compositorIterator;
+
+                  if (gRdkShellEventListener)
+                  {
+                      gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+                  }
               }
           }
 
@@ -493,8 +498,8 @@ namespace RdkShell
             propagate = property.second.toBoolean();
           }
         }
-        std::cout << "key listener added client" << client.c_str() << " activate " << activate << " propagate " << propagate << std::endl;
-        std::cout << "key listener added " << keyCode << " flags " << flags << std::endl;
+        std::cout << "key listener added client: " << client.c_str() << " activate: " << activate << " propagate: " << propagate
+                  << " RDKShell keyCode: " << keyCode << " flags: " << flags << std::endl;
 
         for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
@@ -535,11 +540,22 @@ namespace RdkShell
         return false;
     }
 
+    bool CompositorController::addNativeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties)
+    {
+        uint32_t mappedKeyCode = 0, mappedFlags = 0;
+        keyCodeFromWayland(keyCode, flags, mappedKeyCode, mappedFlags);
+
+        std::cout << "Native keyCode: " << keyCode << " flags: " << flags
+                  << " converted to RDKShell keyCode: " << mappedKeyCode << " flags: " << mappedFlags << std::endl;
+
+        return CompositorController::addKeyListener(client, mappedKeyCode, mappedFlags, listenerProperties);
+    }
+
     bool CompositorController::removeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
         std::string clientDisplayName = standardizeName(client);
 
-        std::cout << "key listener removed client" << client.c_str() << " key " << keyCode << " flags " << flags << std::endl;
+        std::cout << "key listener removed client: " << client.c_str() << " RDKShell keyCode " << keyCode << " flags " << flags << std::endl;
 
         for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
@@ -569,6 +585,17 @@ namespace RdkShell
             }
         }
         return false;
+    }
+
+    bool CompositorController::removeNativeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
+    {
+        uint32_t mappedKeyCode = 0, mappedFlags = 0;
+        keyCodeFromWayland(keyCode, flags, mappedKeyCode, mappedFlags);
+
+        std::cout << "Native keyCode: " << keyCode << " flags: " << flags
+                  << " converted to RDKShell keyCode: " << mappedKeyCode << " flags: " << mappedFlags << std::endl;
+
+        return CompositorController::removeKeyListener(client, mappedKeyCode, mappedFlags);
     }
 
     bool CompositorController::addKeyMetadataListener(const std::string& client)

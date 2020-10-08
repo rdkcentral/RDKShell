@@ -49,8 +49,8 @@ bool gRdkShellIsRunning = false;
 
 bool gEnableRamMonitor = true;
 double gRamMonitorIntervalInSeconds = RDKSHELL_RAM_MONITOR_INTERVAL_SECONDS;
-int gLowRamMemoryThresholdInMb =  RDKSHELL_DEFAULT_LOW_MEMORY_THRESHOLD_MB;
-int gCriticallyLowRamMemoryThresholdInMb = RDKSHELL_DEFAULT_CRITICALLY_LOW_MEMORY_THRESHOLD_MB;
+double gLowRamMemoryThresholdInMb =  RDKSHELL_DEFAULT_LOW_MEMORY_THRESHOLD_MB;
+double gCriticallyLowRamMemoryThresholdInMb = RDKSHELL_DEFAULT_CRITICALLY_LOW_MEMORY_THRESHOLD_MB;
 
 bool gLowRamMemoryNotificationSent = false;
 bool gCriticallyLowRamMemoryNotificationSent = false;
@@ -110,6 +110,34 @@ namespace RdkShell
     {
         gEnableRamMonitor = enable;
         gRamMonitorIntervalInSeconds = interval;
+    }
+
+    void setMemoryMonitor(std::map<std::string, RdkShellData> &configuration)
+    {
+        for ( const auto &monitorConfiguration : configuration )
+        {
+            if (monitorConfiguration.first == "enable")
+            {
+                gEnableRamMonitor = monitorConfiguration.second.toBoolean();
+            }
+            else if (monitorConfiguration.first == "interval")
+            {
+                gRamMonitorIntervalInSeconds = monitorConfiguration.second.toDouble();
+            }
+            else if (monitorConfiguration.first == "lowRam")
+            {
+                gLowRamMemoryThresholdInMb = monitorConfiguration.second.toDouble();
+            }
+            else if (monitorConfiguration.first == "criticallyLowRam")
+            {
+                gCriticallyLowRamMemoryThresholdInMb = monitorConfiguration.second.toDouble();
+            }
+        }
+        if (gCriticallyLowRamMemoryThresholdInMb  > gLowRamMemoryThresholdInMb)
+        {
+            Logger::log(Warn, "criticial low ram threshold configuration is lower than low ram threshold");
+            gCriticallyLowRamMemoryThresholdInMb = gLowRamMemoryThresholdInMb;
+        }
     }
 
     void checkSystemMemory()
@@ -185,7 +213,7 @@ namespace RdkShell
         char const *lowRamMemoryThresholdInMb = getenv("RDKSHELL_LOW_MEMORY_THRESHOLD");
         if (lowRamMemoryThresholdInMb)
         {
-            int lowRamMemoryThresholdInMbValue = atoi(lowRamMemoryThresholdInMb);
+            double lowRamMemoryThresholdInMbValue = std::stod(lowRamMemoryThresholdInMb);
             if (lowRamMemoryThresholdInMbValue > 0)
             {
                 gLowRamMemoryThresholdInMb = lowRamMemoryThresholdInMbValue;
@@ -195,7 +223,7 @@ namespace RdkShell
         char const *criticalLowRamMemoryThresholdInMb = getenv("RDKSHELL_CRITICALLY_LOW_MEMORY_THRESHOLD");
         if (criticalLowRamMemoryThresholdInMb)
         {
-            int criticalLowRamMemoryThresholdInMbValue = atoi(criticalLowRamMemoryThresholdInMb);
+            double criticalLowRamMemoryThresholdInMbValue = std::stod(criticalLowRamMemoryThresholdInMb);
             if (criticalLowRamMemoryThresholdInMbValue > 0)
             {
                 if (criticalLowRamMemoryThresholdInMbValue  <= gLowRamMemoryThresholdInMb)
