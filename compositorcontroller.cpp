@@ -199,12 +199,16 @@ namespace RdkShell
           isFocusedCompositor = false;
           if (activateCompositor)
           {
-              std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-              std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
-              gFocusedCompositor = *compositorIterator;
-              if (gRdkShellEventListener)
+              if (gFocusedCompositor.name != compositorIterator->name)
               {
-                  gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+                  std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
+                  std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
+                  gFocusedCompositor = *compositorIterator;
+
+                  if (gRdkShellEventListener)
+                  {
+                      gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+                  }
               }
           }
 

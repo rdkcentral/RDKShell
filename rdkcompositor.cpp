@@ -299,7 +299,7 @@ namespace RdkShell
         if (mEnableKeyMetadata)
         {
             RdkShell::InputEvent inputEvent(metadata, RdkShell::milliseconds(), RdkShell::InputEvent::KeyEvent);
-            inputEvent.details.key.code = keycode;
+            inputEvent.details.key.code = waylandKeyCode;
             inputEvent.details.key.state = keyPressed ? RdkShell::InputEvent::Details::Key::Pressed : RdkShell::InputEvent::Details::Key::Released;
             broadcastInputEvent(inputEvent);
         }
