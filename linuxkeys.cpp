@@ -34,20 +34,6 @@ struct RdkShellKeyMap
   uint32_t flags;
 };
 
-struct RdkShellEasterEggKeyDetails
-{
-    uint32_t keyCode;
-    uint32_t keyHoldTime; 
-};
-
-struct RdkShellEasterEggDetails
-{
-    std::vector<RdkShellEasterEggKeyDetails> keyDetails;
-    std::string name;
-    uint32_t timeout; 
-    std::string actionJson;
-};
-
 static std::map<uint32_t, struct RdkShellKeyMap> sRdkShellKeyMap;
 
 uint32_t getKeyFlag(std::string modifier)
