@@ -71,6 +71,7 @@ namespace RdkShell
     double gLastKeyEventTime = RdkShell::seconds();
     double gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
+    int gLastKeyCode = -1;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -881,6 +882,21 @@ namespace RdkShell
         gLastKeyEventTime = RdkShell::seconds();
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
+        if ((gLastKeyCode == -1) || (gLastKeyCode == keycode))
+        {
+            bool handled = processEasterEgg(keycode, true);
+            //repeat key presses
+            if (handled || gLastKeyCode == keycode)
+            {
+                if (handled)
+                {
+                    std::cout << "handled easter egg" << std::endl;
+                }
+                return;            
+            }
+        }
+        gLastKeyCode = keycode;
+
         bool isInterceptAvailable = false;
 
         isInterceptAvailable = interceptKey(keycode, flags, metadata, true);
@@ -903,6 +919,14 @@ namespace RdkShell
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
         gLastKeyEventTime = RdkShell::seconds();
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
+        gLastKeyCode = -1;
+
+        bool handled = processEasterEgg(keycode, false);
+        if (handled)
+        {
+            std::cout << "handled easter egg" << std::endl;
+            return;
+        }
 
         bool isInterceptAvailable = false;
 
@@ -1352,6 +1376,16 @@ namespace RdkShell
             {
               gRdkShellEventListener->onAnimation(data);
             }
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_EASTER_EGG) == 0)
+        {
+            std::string name(""), actionJson("");
+            if (!data.empty())
+            {
+                name = data[0]["name"].toString();
+                actionJson = data[0]["action"].toString();
+            }
+            gRdkShellEventListener->onEasterEgg(name, actionJson);
         }
         return true;
     }

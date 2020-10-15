@@ -192,6 +192,7 @@ namespace RdkShell
         std::cout << "initializing rdk shell\n";
 
         mapNativeKeyCodes();
+        populateEasterEggDetails();
         readInputDevicesConfiguration();
 
         char const *loglevel = getenv("RDKSHELL_LOG_LEVEL");
