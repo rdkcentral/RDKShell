@@ -29,7 +29,7 @@
 #include "essosinstance.h"
 #include "compositorcontroller.h"
 #include "linuxkeys.h"
-#include "easteregg.h"
+#include "eastereggs.h"
 #include "linuxinput.h"
 #include "animation.h"
 #include "logger.h"

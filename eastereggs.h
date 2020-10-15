@@ -42,6 +42,7 @@ namespace RdkShell
             uint32_t mTimeout; 
             std::string mActionJson;
             uint32_t mCurrentKeyIndex;
+            double mTotalUsedTime;
     };
 
     void populateEasterEggDetails();

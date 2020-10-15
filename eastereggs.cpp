@@ -31,38 +31,33 @@
 namespace RdkShell
 {
     static std::vector<EasterEgg> sEasterEggs;
-    static RdkShellEventListener* EasterEgg::mEventListener = NULL;
 
-    EasterEgg::EasterEgg (std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson, RdkShellEventListener* eventListener):mName(name), mTimeout(timeout), mActionJson(actionJson), mCurrentKeyIndex(0)
+    EasterEgg::EasterEgg (std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson):mKeyDetails(details), mName(name), mTimeout(timeout), mActionJson(actionJson), mCurrentKeyIndex(0), mTotalUsedTime(0.0)
     {
-        mKeyDetails = std::vector<RdkShellEasterEggKeyDetails>();
-    }
-
-    void EasterEgg::setEventListener(RdkShellEventListener* eventListener)
-    {
-        mEventListener = eventListener;
     }
 
     void EasterEgg::checkKey(uint32_t keyCode, uint32_t flags, double time)
     {
-        struct RdkShellEasterEggKeyDetails& keyToCheck = mKeyDetails[mCurrentIndex];
-        if (keyToCheck.keyCode == keyCode && keyToCheck.keyHoldTime <= time)
+        mTotalUsedTime += time;
+        struct RdkShellEasterEggKeyDetails& keyToCheck = mKeyDetails[mCurrentKeyIndex];
+        if ((keyToCheck.keyCode == keyCode) && (keyToCheck.keyHoldTime <= time) && (mTotalUsedTime <= mTimeout))
         {
             size_t numberOfKeys = mKeyDetails.size();
-            if (mCurrentIndex == (numberOfKeys - 1))
+            if (mCurrentKeyIndex == (numberOfKeys - 1))
             {
-                mCurrentIndex = 0;
                 std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
                 eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
                 eventData[0]["name"] = mName;
                 eventData[0]["action"] = mActionJson;
                 RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+                mTotalUsedTime = 0.0;
             }
-            mCurrentIndex = (mCurrentIndex+1)%numberOfKeys;
+            mCurrentKeyIndex = (mCurrentKeyIndex+1)%numberOfKeys;
         }
         else
         {
-            mCurrentIndex = 0;
+            mCurrentKeyIndex = 0;
+            mTotalUsedTime = 0.0;
         }
     }
 
@@ -178,15 +173,6 @@ namespace RdkShell
                             actionJson =  actionBuffer.GetString();
                         }
       
-                        uint32_t easterEggKeyLength = easterEggDetail.keyDetails.size();
-                        if ((minimumEasterEggKeyLength == 0) || (easterEggKeyLength < minimumEasterEggKeyLength))
-                        {
-                            minimumEasterEggKeyLength = easterEggKeyLength;
-                        }
-                        if ((maximumEasterEggKeyLength == 0) || (easterEggKeyLength > maximumEasterEggKeyLength))
-                        {
-                            maximumEasterEggKeyLength = easterEggKeyLength;
-                        }
                         EasterEgg easterEggObject(keyDetailsList, name, timeout, actionJson);
                         sEasterEggs.push_back(easterEggObject);
                     }
@@ -205,9 +191,9 @@ namespace RdkShell
     
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double keyPressTime)
     {
-        for (int i=0; i < sEasterEggVector.size(); i++)
+        for (int i=0; i < sEasterEggs.size(); i++)
         {
-           EasterEgg& easterEgg = sEasterEggVector[i];
+           EasterEgg& easterEgg = sEasterEggs[i];
            easterEgg.checkKey(keyCode, flags, keyPressTime);
         }
     }

@@ -25,7 +25,7 @@
 #include "application.h"
 #include "logger.h"
 #include "linuxkeys.h"
-#include "easteregg.h"
+#include "eastereggs.h"
 
 #include <iostream>
 #include <map>
@@ -909,7 +909,7 @@ namespace RdkShell
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
         double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
-        checkEasterEggs(keyCode, flags, keyPressTime);
+        checkEasterEggs(keycode, flags, keyPressTime);
         gLastKeyEventTime = RdkShell::seconds();
         gLastKeyPressStartTime = 0.0;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
