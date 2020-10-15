@@ -72,7 +72,6 @@ namespace RdkShell
     double gLastKeyEventTime = RdkShell::seconds();
     double gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
-    int gLastKeyCode = -1;
     double gLastKeyPressStartTime = 0.0;
 
     std::string standardizeName(const std::string& clientName)
@@ -889,21 +888,6 @@ namespace RdkShell
         gLastKeyEventTime = currentTime;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
-        if ((gLastKeyCode == -1) || (gLastKeyCode == keycode))
-        {
-            bool handled = processEasterEgg(keycode, true);
-            //repeat key presses
-            if (handled || gLastKeyCode == keycode)
-            {
-                if (handled)
-                {
-                    std::cout << "handled easter egg" << std::endl;
-                }
-                return;            
-            }
-        }
-        gLastKeyCode = keycode;
-
         bool isInterceptAvailable = false;
 
         isInterceptAvailable = interceptKey(keycode, flags, metadata, true);
@@ -929,14 +913,6 @@ namespace RdkShell
         gLastKeyEventTime = RdkShell::seconds();
         gLastKeyPressStartTime = 0.0;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
-        gLastKeyCode = -1;
-
-        bool handled = processEasterEgg(keycode, false);
-        if (handled)
-        {
-            std::cout << "handled easter egg" << std::endl;
-            return;
-        }
 
         bool isInterceptAvailable = false;
 

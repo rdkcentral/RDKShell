@@ -21,12 +21,8 @@
 #include "rdkshelljson.h"
 #include <iostream>
 #include "logger.h"
-#include "compositorcontroller.h"
-#include "rdkshell.h"
-#include "rdkshelldata.h"
 
 #include <map>
-#include <vector>
 
 struct RdkShellKeyMap
 {
