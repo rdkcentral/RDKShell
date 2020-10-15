@@ -25,6 +25,7 @@
 #include "application.h"
 #include "logger.h"
 #include "linuxkeys.h"
+#include "easteregg.h"
 
 #include <iostream>
 #include <map>
@@ -71,6 +72,8 @@ namespace RdkShell
     double gLastKeyEventTime = RdkShell::seconds();
     double gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
+    int gLastKeyCode = -1;
+    double gLastKeyPressStartTime = 0.0;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -878,8 +881,28 @@ namespace RdkShell
     void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
-        gLastKeyEventTime = RdkShell::seconds();
+        double currentTime = RdkShell::seconds();
+        if (0.0 == gLastKeyPressStartTime)
+        {
+            gLastKeyPressStartTime = currentTime;
+        }
+        gLastKeyEventTime = currentTime;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
+
+        if ((gLastKeyCode == -1) || (gLastKeyCode == keycode))
+        {
+            bool handled = processEasterEgg(keycode, true);
+            //repeat key presses
+            if (handled || gLastKeyCode == keycode)
+            {
+                if (handled)
+                {
+                    std::cout << "handled easter egg" << std::endl;
+                }
+                return;            
+            }
+        }
+        gLastKeyCode = keycode;
 
         bool isInterceptAvailable = false;
 
@@ -901,7 +924,10 @@ namespace RdkShell
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
+        double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
+        checkEasterEggs(keyCode, flags, keyPressTime);
         gLastKeyEventTime = RdkShell::seconds();
+        gLastKeyPressStartTime = 0.0;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
         bool isInterceptAvailable = false;
@@ -1352,6 +1378,16 @@ namespace RdkShell
             {
               gRdkShellEventListener->onAnimation(data);
             }
+        }
+        else if (eventName.compare(RDKSHELL_EVENT_EASTER_EGG) == 0)
+        {
+            std::string name(""), actionJson("");
+            if (!data.empty())
+            {
+                name = data[0]["name"].toString();
+                actionJson = data[0]["action"].toString();
+            }
+            gRdkShellEventListener->onEasterEgg(name, actionJson);
         }
         return true;
     }
