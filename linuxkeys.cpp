@@ -49,6 +49,13 @@ struct RdkShellEasterEggDetails
 };
 
 static std::map<uint32_t, struct RdkShellKeyMap> sRdkShellKeyMap;
+static std::vector<RdkShellEasterEggDetails> sRdkShellEasterEggDetails;
+static uint32_t minimumEasterEggKeyLength = 0;
+static uint32_t maximumEasterEggKeyLength = 0;
+static std::vector<RdkShellEasterEggKeyDetails> sCurrentKeyDetails;
+double sCurrentKeyHoldTime = 0.0;
+double sLastKeyPressTime = 0.0;
+uint32_t sLastKeyCode = 0;
 
 uint32_t getKeyFlag(std::string modifier)
 {
@@ -157,6 +164,145 @@ void mapNativeKeyCodes()
     else
     {
       std::cout << "Ignored file read due to keyMap env not set\n";
+    }
+}
+
+void populateEasterEggDetails()
+{
+    //populate from the easter egg configuration file
+    const char* easterEggFile = getenv("RDKSHELL_EASTER_EGG_FILE");
+    if (easterEggFile)
+    {
+        rapidjson::Document document;
+        bool ret = RdkShell::RdkShellJson::readJsonFile(easterEggFile, document);
+        if (false == ret)
+        {
+            std::cout << "RDKShell easter egg file read error : [unable to open/read file (" <<  easterEggFile << ")]\n";
+            return;
+        }
+  
+        if (document.HasMember("easterEggs"))
+        {
+            const rapidjson::Value& jsonValue = document["easterEggs"];
+  
+            if (jsonValue.IsArray())
+            {
+                for (rapidjson::SizeType k = 0; k < jsonValue.Size(); k++)
+                {
+                    std::string name("");
+                    uint32_t timeout = 0;
+                    std::string action("");
+  
+                    const rapidjson::Value& easterEggEntry = jsonValue[k];
+  
+                    //check for entry validity
+                    if (!(easterEggEntry.IsObject() && easterEggEntry.HasMember("sequence") && easterEggEntry.HasMember("timeout") && easterEggEntry.HasMember("name")))
+                    {
+                        std::cout << "one of easter egg entry is of wrong format or not having sequence/timeout/name parameter" << std::endl;
+                        continue;
+                    }
+  
+                    //populate easter egg sequence
+                    const rapidjson::Value& easterEggSequence = easterEggEntry["sequence"];
+                    if (!easterEggSequence.IsArray())
+                    {
+                        std::cout << "one of easter egg entry has non-array type sequence" << std::endl;
+                        continue;
+                    }
+  
+                    RdkShellEasterEggDetails easterEggDetail;
+                    easterEggDetail.actionJson = "";
+                    easterEggDetail.name = "";
+                    easterEggDetail.timeout = 0;
+  
+                    for (rapidjson::SizeType j = 0; j < easterEggSequence.Size(); j++)
+                    {
+                        uint32_t keyCode = 0;
+                        uint32_t keyHoldTime = 0;
+  
+                        const rapidjson::Value& easterEggKeyDetail = easterEggSequence[j];
+                        if (!(easterEggKeyDetail.IsObject() && easterEggKeyDetail.HasMember("keyCode")))
+                        {
+                            std::cout << "Ignoring easter egg entry because of format issues of sequence parameter\n";
+                            continue;
+                        }
+  
+                        const rapidjson::Value& keyCodeValue = easterEggKeyDetail["keyCode"];
+                        if (keyCodeValue.IsUint())
+                        {
+                            keyCode = keyCodeValue.GetUint();
+                        }
+                        else
+                        {
+                            std::cout << "Ignoring easter egg entry because of wrong type of keycode\n";
+                            continue;
+                        }
+  
+                        if (easterEggKeyDetail.HasMember("hold"))
+                        {
+                            keyHoldTime = easterEggKeyDetail["hold"].GetUint();
+                        }
+                        
+                        RdkShellEasterEggKeyDetails keyDetail;
+                        keyDetail.keyCode = keyCode;
+                        keyDetail.keyHoldTime = keyHoldTime;
+                        easterEggDetail.keyDetails.push_back(keyDetail);
+                    }
+  
+                    //populate easter egg name
+                    const rapidjson::Value& easterEggNameValue = easterEggEntry["name"];
+                    if (!easterEggNameValue.IsString())
+                    {
+                        std::cout << "one of easter egg entry has non-string type name" << std::endl;
+                        continue;
+                    }
+                    easterEggDetail.name = easterEggNameValue.GetString();
+  
+                    //populate easter egg timeout
+                    const rapidjson::Value& easterEggTimeoutValue = easterEggEntry["timeout"];
+                    if (!easterEggTimeoutValue.IsUint())
+                    {
+                        std::cout << "one of easter egg entry has non-integer type timeout" << std::endl;
+                        continue;
+                    }
+                    easterEggDetail.timeout = easterEggTimeoutValue.GetUint();
+  
+                    //populate easter egg action
+                    if (easterEggEntry.HasMember("action"))
+                    {
+                        const rapidjson::Value& easterEggActionValue = easterEggEntry["action"];
+                        if (!easterEggActionValue.IsObject())
+                        {
+                            std::cout << "one of easter egg entry has non-object type action" << std::endl;
+                            continue;
+                        }
+                        rapidjson::StringBuffer actionBuffer ;
+                        rapidjson::Writer<rapidjson::StringBuffer> writer(actionBuffer) ;
+                        easterEggActionValue.Accept (writer) ;
+                        easterEggDetail.actionJson =  actionBuffer.GetString();
+                    }
+  
+                    uint32_t easterEggKeyLength = easterEggDetail.keyDetails.size();
+                    if ((minimumEasterEggKeyLength == 0) || (easterEggKeyLength < minimumEasterEggKeyLength))
+                    {
+                        minimumEasterEggKeyLength = easterEggKeyLength;
+                    }
+                    if ((maximumEasterEggKeyLength == 0) || (easterEggKeyLength > maximumEasterEggKeyLength))
+                    {
+                        maximumEasterEggKeyLength = easterEggKeyLength;
+                    }
+                    sRdkShellEasterEggDetails.push_back(easterEggDetail);
+                }
+            }
+            else
+            {
+              std::cout << "Ignored file read due to easterEggs entry not present";
+            }
+        }
+    }
+    else
+    {
+      std::cout << "Ignored file read due to easter egg environment variable not set\n";
     }
 }
 
@@ -877,4 +1023,83 @@ uint32_t keyCodeToWayland(uint32_t keyCode)
    }
 
    return  waylandKeyCode;
+}
+
+static bool checkAndProcessEasterEggMatch()
+{
+    uint32_t matchedEasterEggIndex = -1;
+    for (int index=0; index<sRdkShellEasterEggDetails.size(); index++)
+    {
+        RdkShellEasterEggDetails& easterEggDetail = sRdkShellEasterEggDetails[index];
+        if ((easterEggDetail.keyDetails.size() > 0) && (easterEggDetail.keyDetails.size() == sCurrentKeyDetails.size()))
+        {
+            uint32_t matchedCount = 0;
+            for (int i=0; i<easterEggDetail.keyDetails.size(); i++)
+            {
+                if ((easterEggDetail.keyDetails[i].keyCode == sCurrentKeyDetails[i].keyCode) && (sCurrentKeyDetails[i].keyHoldTime >= easterEggDetail.keyDetails[i].keyHoldTime))
+                {
+                    matchedCount++;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            if (matchedCount == easterEggDetail.keyDetails.size())
+            {
+                matchedEasterEggIndex = index;
+                // match only one easter egg
+                break;
+            }
+        }
+    }
+    if (-1 != matchedEasterEggIndex)
+    {
+        std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
+        eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
+        eventData[0]["name"] = sRdkShellEasterEggDetails[matchedEasterEggIndex].name;
+        eventData[0]["action"] = sRdkShellEasterEggDetails[matchedEasterEggIndex].actionJson;
+        RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+        return true;
+    }
+    return false;
+}
+
+bool processEasterEgg(int keyCode, bool isKeyPressed)
+{
+    bool processedEasterEgg = false;
+    if (isKeyPressed)
+    {
+        if ((sLastKeyCode == keyCode) && (sLastKeyPressTime > 0.0))
+        {
+            double currentTime = RdkShell::seconds();
+            sCurrentKeyHoldTime += (currentTime - sLastKeyPressTime);
+            sLastKeyPressTime = currentTime;
+        }
+        sLastKeyCode = keyCode;
+        sLastKeyPressTime = RdkShell::seconds();
+    }
+    else
+    {
+        if (sLastKeyCode == keyCode)
+        {
+            RdkShellEasterEggKeyDetails keyDetail;
+            keyDetail.keyCode = keyCode;
+            keyDetail.keyHoldTime = sCurrentKeyHoldTime;
+            sCurrentKeyDetails.push_back(keyDetail);
+            sCurrentKeyHoldTime = 0.0;
+            sLastKeyPressTime = 0.0;
+        }
+    }
+    if ((sCurrentKeyDetails.size() >= minimumEasterEggKeyLength) && (sCurrentKeyDetails.size() <= maximumEasterEggKeyLength))
+    {
+        processedEasterEgg = checkAndProcessEasterEggMatch();
+    }
+    if ((true == processedEasterEgg) || (sCurrentKeyDetails.size() >= maximumEasterEggKeyLength))
+    {
+        sCurrentKeyDetails.clear();
+        sCurrentKeyHoldTime = 0.0;
+        sLastKeyPressTime = 0.0;
+    }
+    return processedEasterEgg;
 }

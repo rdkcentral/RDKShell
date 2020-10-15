@@ -929,6 +929,14 @@ namespace RdkShell
         gLastKeyEventTime = RdkShell::seconds();
         gLastKeyPressStartTime = 0.0;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
+        gLastKeyCode = -1;
+
+        bool handled = processEasterEgg(keycode, false);
+        if (handled)
+        {
+            std::cout << "handled easter egg" << std::endl;
+            return;
+        }
 
         bool isInterceptAvailable = false;
 
