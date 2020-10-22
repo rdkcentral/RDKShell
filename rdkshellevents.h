@@ -44,6 +44,7 @@ namespace RdkShell
           virtual void onDeviceLowRamWarningCleared(const int32_t freeKb) {}
           virtual void onDeviceCriticallyLowRamWarningCleared(const int32_t freeKb) {}
           virtual void onAnimation(std::vector<std::map<std::string, RdkShellData>>& animationData) {}
+          virtual void onEasterEgg(const std::string& name, const std::string& actionJson) {}
     };
 
     const std::string RDKSHELL_EVENT_APPLICATION_LAUNCHED = "onApplicationLaunched";
@@ -60,4 +61,5 @@ namespace RdkShell
     const std::string RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING_CLEARED = "onDeviceLowRamWarningCleared";
     const std::string RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING_CLEARED = "onDeviceCriticallyLowRamWarningCleared";
     const std::string RDKSHELL_EVENT_ANIMATION = "onAnimation";
+    const std::string RDKSHELL_EVENT_EASTER_EGG = "onEasterEgg";
 }
