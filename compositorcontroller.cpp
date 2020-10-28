@@ -26,7 +26,9 @@
 #include "logger.h"
 #include "linuxkeys.h"
 #include "eastereggs.h"
-
+#include "rdkcompositor_nested.h"
+#include "rdkcompositor_surface.h"
+#include "string.h"
 #include <iostream>
 #include <map>
 
@@ -62,6 +64,12 @@ namespace RdkShell
         struct CompositorInfo compositorInfo;
     };
 
+    enum RdkShellCompositorType
+    {
+        NESTED,
+        SURFACE
+    };
+
     std::vector<CompositorInfo> gCompositorList;
     CompositorInfo gFocusedCompositor;
 
@@ -73,6 +81,7 @@ namespace RdkShell
     double gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
     double gLastKeyPressStartTime = 0.0;
+    RdkShellCompositorType gRdkShellCompositorType = NESTED;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -240,6 +249,36 @@ namespace RdkShell
         }
 
         return it->compositor;
+    }
+
+    void CompositorController::initialize()
+    {
+        static bool sCompositorInitialized = false;
+        if (sCompositorInitialized)
+            return;
+ 
+        char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
+
+        if (NULL == rdkshellCompositorType)
+        {
+            std::cout << "compositor type is empty, setting to nested by default " << std::endl;
+            return;
+        }
+         
+        if (strcmp(rdkshellCompositorType, "surface") == 0)
+        {
+            gRdkShellCompositorType = SURFACE;
+            uint32_t width = 0;
+            uint32_t height = 0;
+            RdkShell::EssosInstance::instance()->resolution(width, height);
+            RdkCompositorSurface::createMainCompositor("rdkshell_display", width, height);
+        }
+        else if (strcmp(rdkshellCompositorType, "nested") != 0)
+        {
+            std::cout << "invalid compositor type, setting to nested by default " << std::endl;
+        }
+
+        sCompositorInitialized = true;
     }
 
     bool CompositorController::moveToFront(const std::string& client)
@@ -943,7 +982,14 @@ namespace RdkShell
         }
         CompositorInfo compositorInfo;
         compositorInfo.name = clientDisplayName;
-        compositorInfo.compositor = std::make_shared<RdkCompositor>();
+        if (gRdkShellCompositorType == SURFACE)
+        {
+            compositorInfo.compositor = std::make_shared<RdkCompositorSurface>();
+        }
+        else
+        {
+            compositorInfo.compositor = std::make_shared<RdkCompositorNested>();
+        }
         uint32_t width = 0;
         uint32_t height = 0;
         RdkShell::EssosInstance::instance()->resolution(width, height);
@@ -1182,7 +1228,14 @@ namespace RdkShell
             }
             CompositorInfo compositorInfo;
             compositorInfo.name = clientDisplayName;
-            compositorInfo.compositor = std::make_shared<RdkCompositor>();
+            if (gRdkShellCompositorType == SURFACE)
+            {
+                compositorInfo.compositor = std::make_shared<RdkCompositorSurface>();
+            }
+            else
+            {
+                compositorInfo.compositor = std::make_shared<RdkCompositorNested>();
+            }
             compositorInfo.mimeType = RDKSHELL_APPLICATION_MIME_TYPE_NATIVE;
             uint32_t width = 0;
             uint32_t height = 0;
