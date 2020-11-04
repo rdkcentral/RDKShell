@@ -131,6 +131,7 @@ namespace RdkShell
           struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
           if (info.flags == flags)
           {
+            Logger::log(Debug, "Key %d intercepted by client %s", keycode, info.compositorInfo.name.c_str());
             if (isPressed)
             {
               info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
@@ -199,6 +200,7 @@ namespace RdkShell
 
           if ((false == isFocusedCompositor) && (true == foundListener))
           {
+            Logger::log(Debug, "Key %d sent to listener %s", keycode, compositorIterator->name.c_str());
             if (isPressed)
             {
               compositorIterator->compositor->onKeyPress(keycode, flags, metadata);
