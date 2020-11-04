@@ -26,8 +26,8 @@
 #include "logger.h"
 #include "linuxkeys.h"
 #include "eastereggs.h"
-#include "rdkcompositor_nested.h"
-#include "rdkcompositor_surface.h"
+#include "rdkcompositornested.h"
+#include "rdkcompositorsurface.h"
 #include "string.h"
 #include <iostream>
 #include <map>
