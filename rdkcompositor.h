@@ -101,6 +101,7 @@ namespace RdkShell
             bool mApplicationThreadStarted;
             bool mApplicationClosedByCompositor;
             std::recursive_mutex mApplicationMutex;
+            bool mReceivedKeyPress;
     };
 }
 

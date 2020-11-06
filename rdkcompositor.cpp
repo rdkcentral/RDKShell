@@ -43,7 +43,7 @@ namespace RdkShell
         mWidth(1920), mHeight(1080), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
         mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
-        mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex()
+        mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false)
     {
         float* matrixPointer = mMatrix;
         float matrix[16] = 
@@ -70,6 +70,7 @@ namespace RdkShell
         mWstContext = NULL;
 
         mInputListeners.clear();
+        mReceivedKeyPress = false;
     }
 
     void RdkCompositor::invalidate(WstCompositor */*context*/, void *userData)
@@ -309,11 +310,16 @@ namespace RdkShell
     void RdkCompositor::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
         processKeyEvent(true, keycode, flags, metadata);
+        mReceivedKeyPress = true;
     }
 
     void RdkCompositor::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
-        processKeyEvent(false, keycode, flags, metadata);
+        if (mReceivedKeyPress)
+        {
+            processKeyEvent(false, keycode, flags, metadata);
+        }
+        mReceivedKeyPress = false;
     }
 
     void RdkCompositor::setPosition(int32_t x, int32_t y)

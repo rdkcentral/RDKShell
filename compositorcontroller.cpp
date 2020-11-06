@@ -920,10 +920,31 @@ namespace RdkShell
 
         isInterceptAvailable = interceptKey(keycode, flags, metadata, false);
 
-        if ((false == isInterceptAvailable) && gFocusedCompositor.compositor)
+        if (false == isInterceptAvailable)
         {
-            gFocusedCompositor.compositor->onKeyRelease(keycode, flags, metadata);
-            bubbleKey(keycode, flags, metadata, false);
+            std::vector<CompositorInfo>::iterator focusedCompositorNextIterator = gCompositorList.end();
+            std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
+            for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
+            {
+                if (compositorIterator->name == gFocusedCompositor.name)
+                {
+                  compositorIterator++;
+                  focusedCompositorNextIterator = compositorIterator;
+                  break;
+                }
+                compositorIterator->compositor->onKeyRelease(keycode, flags, metadata);
+            }
+
+            if (gFocusedCompositor.compositor)
+            {
+                gFocusedCompositor.compositor->onKeyRelease(keycode, flags, metadata);
+                bubbleKey(keycode, flags, metadata, false);
+            }
+
+            for (compositorIterator = focusedCompositorNextIterator;  compositorIterator != gCompositorList.end(); compositorIterator++)
+            {
+                compositorIterator->compositor->onKeyRelease(keycode, flags, metadata);
+            }
         }
     }
 
