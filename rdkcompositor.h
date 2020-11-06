@@ -66,6 +66,7 @@ namespace RdkShell
             bool resumeApplication();
             bool suspendApplication();
             void setApplication(const std::string& application);
+            bool isKeyPressed();
 
         private:
             static void invalidate(WstCompositor *context, void *userData);

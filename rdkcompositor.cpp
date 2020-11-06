@@ -530,4 +530,9 @@ namespace RdkShell
     {
         mApplicationName = application;
     }
+
+    bool RdkCompositor::isKeyPressed()
+    {
+        return mReceivedKeyPress;
+    }
 }
