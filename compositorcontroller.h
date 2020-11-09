@@ -35,6 +35,7 @@ namespace RdkShell
     class CompositorController
     {
         public:
+            static void initialize();
             static bool moveToFront(const std::string& client);
             static bool moveToBack(const std::string& client);
             static bool moveBehind(const std::string& client, const std::string& target);

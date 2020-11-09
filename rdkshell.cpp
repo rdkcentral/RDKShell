@@ -299,6 +299,7 @@ namespace RdkShell
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         gNextRamMonitorTime = seconds() + gRamMonitorIntervalInSeconds;
+        CompositorController::initialize();
     }
 
     void run()
