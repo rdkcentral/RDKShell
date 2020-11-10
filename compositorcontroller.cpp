@@ -29,6 +29,7 @@
 #include "rdkcompositornested.h"
 #include "rdkcompositorsurface.h"
 #include "string.h"
+#include "rdkshellimage.h"
 #include <iostream>
 #include <map>
 
@@ -83,6 +84,10 @@ namespace RdkShell
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
     double gLastKeyPressStartTime = 0.0;
     RdkShellCompositorType gRdkShellCompositorType = NESTED;
+    std::shared_ptr<RdkShell::Image> gSplashImage = nullptr;
+    bool gShowSplashImage = false;
+    uint32_t gSplashDisplayTimeInSeconds = 0;
+    double gSplashStartTime = 0;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -1052,6 +1057,27 @@ namespace RdkShell
         {
             reverseIterator->compositor->draw();
         }
+
+        if (gShowSplashImage && gSplashImage != nullptr)
+        {
+            if (gSplashDisplayTimeInSeconds > 0)
+            {
+                uint32_t splashShownTime = (uint32_t)(RdkShell::seconds() - gSplashStartTime);
+                if (splashShownTime > gSplashDisplayTimeInSeconds)
+                {
+                    RdkShell::Logger::log(RdkShell::LogLevel::Information, "hiding the splash screen after a timeout: %u", gSplashDisplayTimeInSeconds );
+                    hideSplashScreen();
+                }
+                else
+                {
+                    gSplashImage->draw();
+                }
+            }
+            else
+            {
+                gSplashImage->draw();
+            }
+        }
     }
 
     bool CompositorController::addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties)
@@ -1388,6 +1414,41 @@ namespace RdkShell
             }
         }
         return false;
+    }
+
+    bool CompositorController::hideSplashScreen()
+    {
+        gShowSplashImage = false;
+        gSplashImage = nullptr;
+        return true;
+    }
+
+    bool CompositorController::showSplashScreen(uint32_t displayTimeInSeconds)
+    {
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "attempting to display splash image with time: %u", displayTimeInSeconds);
+        if (!gShowSplashImage)
+        {
+            const char* splashFile = getenv("RDKSHELL_SPLASH_IMAGE_JPEG");
+            if (splashFile)
+            {
+                gSplashImage = std::make_shared<RdkShell::Image>();
+                gShowSplashImage = gSplashImage->loadLocalFile(splashFile);
+                if (!gShowSplashImage)
+                {
+                    RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading splash image: %s", splashFile);
+                    gSplashImage = nullptr;
+                    return false;
+                }
+            }
+            else
+            {
+                RdkShell::Logger::log(RdkShell::LogLevel::Warn, "no splash image specified");
+                return false;
+            }
+            gSplashDisplayTimeInSeconds = displayTimeInSeconds;
+            gSplashStartTime = RdkShell::seconds();
+        }
+        return true;
     }
 
     bool CompositorController::setLogLevel(const std::string level)
