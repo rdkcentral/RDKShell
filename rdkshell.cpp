@@ -34,16 +34,19 @@
 #include "animation.h"
 #include "logger.h"
 #include "rdkshell.h"
+#include "rdkshellimage.h"
 #include <unistd.h>
 #include <time.h>
 #include <GLES2/gl2.h>
 #include <sys/sysinfo.h>
+#include <fstream>
 
 #define RDKSHELL_FPS 40
 
 #define RDKSHELL_RAM_MONITOR_INTERVAL_SECONDS 5
 #define RDKSHELL_DEFAULT_LOW_MEMORY_THRESHOLD_MB 100
 #define RDKSHELL_DEFAULT_CRITICALLY_LOW_MEMORY_THRESHOLD_MB 20
+#define RDKSHELL_SPLASH_SCREEN_FILE_CHECK "/tmp/.rdkshellsplash"
 
 int gCurrentFramerate = RDKSHELL_FPS;
 bool gRdkShellIsRunning = false;
@@ -298,6 +301,33 @@ namespace RdkShell
         #endif //RDKSHELL_ENABLE_FORCE_1080
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+        char const *splashScreen = getenv("RDKSHELL_SHOW_SPLASH_SCREEN");
+        if (splashScreen)
+        {
+            std::ifstream splashScreenFile(RDKSHELL_SPLASH_SCREEN_FILE_CHECK);
+            bool showSplashScreen =  !splashScreenFile.good();
+            if (showSplashScreen)
+            {
+                uint32_t splashTime = 0;
+                char const *splashTimeValue = getenv("RDKSHELL_SHOW_SPLASH_TIME_IN_SECONDS");
+                if (splashTimeValue)
+                {
+                    int value = atoi(splashTimeValue);
+                    if (value > 0)
+                    {
+                        splashTime = (uint32_t)(value);
+                    }
+                }
+                CompositorController::showSplashScreen(splashTime);
+                std::ofstream output(RDKSHELL_SPLASH_SCREEN_FILE_CHECK);
+            }
+            else
+            {
+                Logger::log(Warn, "splash screen will not be displayed since this is not first run since boot");
+            }
+        }
+
         gNextRamMonitorTime = seconds() + gRamMonitorIntervalInSeconds;
         CompositorController::initialize();
     }
