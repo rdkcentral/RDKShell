@@ -72,6 +72,7 @@ namespace RdkShell
 
     std::vector<CompositorInfo> gCompositorList;
     CompositorInfo gFocusedCompositor;
+    std::vector<std::shared_ptr<RdkCompositor>> gPendingKeyUpListeners;
 
     static std::map<uint32_t, std::vector<KeyInterceptInfo>> gKeyInterceptInfoMap;
 
@@ -204,6 +205,7 @@ namespace RdkShell
             if (isPressed)
             {
               compositorIterator->compositor->onKeyPress(keycode, flags, metadata);
+              gPendingKeyUpListeners.push_back(compositorIterator->compositor);
             }
             else
             {
@@ -217,6 +219,10 @@ namespace RdkShell
               {
                   std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
                   std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
+                  if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
+                  {
+                      gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
+                  }
                   gFocusedCompositor = *compositorIterator;
 
                   if (gRdkShellEventListener)
@@ -364,6 +370,10 @@ namespace RdkShell
             {
                 std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
                 std::cout << "rdkshell_focus setFocus: the focused client is now " << compositor.name << ".  previous: " << previousFocusedClient << std::endl;
+                if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
+                {
+                    gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
+                }
                 gFocusedCompositor = compositor;
                 return true;
             }
@@ -480,6 +490,10 @@ namespace RdkShell
               {
                   if ((*entry).flags == flags)
                   {
+                    if (((*entry).compositorInfo.compositor) && ((*entry).compositorInfo.compositor->isKeyPressed()))
+                    {
+                        gPendingKeyUpListeners.push_back((*entry).compositorInfo.compositor);
+                    }
                     entry = gKeyInterceptInfoMap[keyCode].erase(entry);
                   }
                   else
@@ -514,6 +528,10 @@ namespace RdkShell
                     }
                   }
                   if (true == isEntryAvailable) {
+                    if (((*entryPos).compositorInfo.compositor) && ((*entryPos).compositorInfo.compositor->isKeyPressed()))
+                    {
+                        gPendingKeyUpListeners.push_back((*entryPos).compositorInfo.compositor);
+                    }
                     gKeyInterceptInfoMap[keyCode].erase(entryPos);
                     if (gKeyInterceptInfoMap[keyCode].size() == 0) {
                       gKeyInterceptInfoMap.erase(keyCode);
@@ -618,6 +636,10 @@ namespace RdkShell
                     }
                   }
                   if (true == isEntryAvailable) {
+                    if ((it->compositor) && (it->compositor->isKeyPressed()))
+                    {
+                        gPendingKeyUpListeners.push_back(it->compositor);
+                    }
                     it->keyListenerInfo[keyCode].erase(entryPos);
                     if (it->keyListenerInfo[keyCode].size() == 0) {
                       it->keyListenerInfo.erase(keyCode);
@@ -956,14 +978,21 @@ namespace RdkShell
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
         bool isInterceptAvailable = false;
-
         isInterceptAvailable = interceptKey(keycode, flags, metadata, false);
 
-        if ((false == isInterceptAvailable) && gFocusedCompositor.compositor)
+        if (false == isInterceptAvailable)
         {
-            gFocusedCompositor.compositor->onKeyRelease(keycode, flags, metadata);
-            bubbleKey(keycode, flags, metadata, false);
+            if (gFocusedCompositor.compositor)
+            {
+                gFocusedCompositor.compositor->onKeyRelease(keycode, flags, metadata);
+                bubbleKey(keycode, flags, metadata, false);
+            }
         }
+        for ( const auto &compositor : gPendingKeyUpListeners )
+        {
+            compositor->onKeyRelease(keycode, flags, metadata);
+        }
+        gPendingKeyUpListeners.clear();
     }
 
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth, uint32_t displayHeight)

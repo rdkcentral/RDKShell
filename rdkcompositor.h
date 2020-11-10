@@ -66,6 +66,7 @@ namespace RdkShell
             bool resumeApplication();
             bool suspendApplication();
             void setApplication(const std::string& application);
+            bool isKeyPressed();
 
         protected:
             static void invalidate(WstCompositor *context, void *userData);
@@ -101,6 +102,7 @@ namespace RdkShell
             bool mApplicationThreadStarted;
             bool mApplicationClosedByCompositor;
             std::recursive_mutex mApplicationMutex;
+            bool mReceivedKeyPress;
     };
 }
 
