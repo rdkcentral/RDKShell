@@ -364,6 +364,10 @@ namespace RdkShell
 
     void RdkCompositor::setSize(uint32_t width, uint32_t height)
     {
+        if ( (mWidth != width) || (mHeight != height) )
+        {
+            WstCompositorSetOutputSize(mWstContext, width, height);
+        }
         mWidth = width;
         mHeight = height;
     }
