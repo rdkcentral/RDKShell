@@ -97,8 +97,6 @@ namespace RdkShell
 
                 if (!mApplicationName.empty())
                 {
-                    setenv("WAYLAND_DISPLAY", mDisplayName.c_str(), 1);
-
                     std::cout << "RDKShell is launching " << mApplicationName << std::endl;
                     launchApplicationInBackground();
                 }
