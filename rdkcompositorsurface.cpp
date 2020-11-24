@@ -30,9 +30,48 @@
 namespace RdkShell
 {
     WstCompositor* RdkCompositorSurface::mMainWstContext = NULL;
+    std::vector<RdkCompositorSurface*> gAvailableRdkCompositors;
     uint32_t RdkCompositorSurface::mMainCompositorWidth = 0;
     uint32_t RdkCompositorSurface::mMainCompositorHeight = 0;
     std::string RdkCompositorSurface::mMainCompositorDisplayName = "";
+    void (*WstVirtEmbUnBoundClient)( WstCompositor *wctx, int clientPID, void *userData );
+
+    void RdkCompositorSurface::unBoundedClient( WstCompositor *wctx, int clientPID, void *userData )
+    {
+        if (gAvailableRdkCompositors.size() > 0)
+        {
+            std::vector<RdkCompositorSurface*>::iterator frontCompositor = (gAvailableRdkCompositors.begin());
+            if (nullptr != *frontCompositor)
+            {
+                bool ret = WstCompositorVirtualEmbeddedBindClient((*frontCompositor)->mWstContext, clientPID);
+                if (!ret)
+                {
+                    std::cout << "error setting surface to external client " << std::endl;
+                }
+            }
+            else
+            {
+                std::cout << "No display available or ready for external client" << std::endl;
+            }
+            gAvailableRdkCompositors.erase(frontCompositor);
+        }
+        else
+        {
+            std::cout << "No display available for external client" << std::endl;
+        }
+    }
+
+    RdkCompositorSurface::~RdkCompositorSurface()
+    {
+        for (auto it = gAvailableRdkCompositors.begin(); it != gAvailableRdkCompositors.end(); ++it)
+        {
+            if (*it == this)
+            {
+                gAvailableRdkCompositors.erase(it);
+                break;
+            }
+        }
+    }
 
     void RdkCompositorSurface::createMainCompositor(const std::string& displayName, uint32_t width, uint32_t height)
     {
@@ -73,6 +112,11 @@ namespace RdkShell
             }
 
             if (!error && !WstCompositorSetOutputSize(mMainWstContext, mMainCompositorWidth, mMainCompositorHeight))
+            {
+                error = true;
+            }
+
+            if (!error && !WstCompositorSetVirtualEmbeddedUnBoundClientListener( mMainWstContext, unBoundedClient, nullptr ))
             {
                 error = true;
             }
@@ -144,6 +188,10 @@ namespace RdkShell
                     setenv("WAYLAND_DISPLAY", mMainCompositorDisplayName.c_str(), 1);
                     std::cout << "RDKShell is launching " << mApplicationName << std::endl;
                     launchApplicationInBackground();
+                }
+                else
+                {
+                    gAvailableRdkCompositors.push_back(this);
                 }
             }
         }
