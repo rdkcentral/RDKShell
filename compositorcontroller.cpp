@@ -1474,6 +1474,16 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::isSurfaceModeEnabled()
+    {
+        bool surfaceModeEnabled = false;
+        if (gRdkShellCompositorType == SURFACE)
+        {
+            surfaceModeEnabled = true;
+        }
+        return surfaceModeEnabled;
+    }
+
     bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
     {
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)

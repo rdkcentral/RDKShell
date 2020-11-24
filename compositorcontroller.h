@@ -92,6 +92,7 @@ namespace RdkShell
             static bool setLogLevel(const std::string level);
             static bool getLogLevel(std::string& level);
             static bool sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data);
+            static bool isSurfaceModeEnabled();
     };
 }
 
