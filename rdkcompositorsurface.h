@@ -37,9 +37,11 @@ namespace RdkShell
     class RdkCompositorSurface:public RdkCompositor
     {
         public:
+            ~RdkCompositorSurface();
             static void createMainCompositor(const std::string& displayName, uint32_t width, uint32_t height);
             bool createDisplay(const std::string& displayName, uint32_t width, uint32_t height);
         private:
+            static void unBoundedClient( WstCompositor *wctx, int clientPID, void *userData );
             static WstCompositor *mMainWstContext;
             static uint32_t mMainCompositorWidth, mMainCompositorHeight;
             static std::string mMainCompositorDisplayName;

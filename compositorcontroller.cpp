@@ -1234,6 +1234,8 @@ namespace RdkShell
 
     bool CompositorController::onEvent(RdkCompositor* eventCompositor, const std::string& eventName)
     {
+        bool killClient = false;
+        std::string clientToKill("");
         for (auto compositor : gCompositorList)
          {
             if (compositor.compositor.get() == eventCompositor)
@@ -1242,8 +1244,17 @@ namespace RdkShell
                 {
                     sendApplicationEvent(compositor.eventListeners[i], eventName, compositor.name);
                 }
+                if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
+                {
+                    clientToKill = compositor.name;
+                    killClient = true;
+                }
                 break;
             }
+        }
+        if (true == killClient)
+        {
+            CompositorController::kill(clientToKill);
         }
         return true;
     }
