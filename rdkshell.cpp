@@ -368,6 +368,7 @@ namespace RdkShell
 
     void draw()
     {
+        RdkShell::EssosInstance::instance()->update();
         uint32_t width = 0;
         uint32_t height = 0;
         RdkShell::EssosInstance::instance()->resolution(width, height);
@@ -376,7 +377,6 @@ namespace RdkShell
         glClear(GL_COLOR_BUFFER_BIT);
 
         RdkShell::CompositorController::draw();
-        RdkShell::EssosInstance::instance()->update();
     }
 
     void update()
