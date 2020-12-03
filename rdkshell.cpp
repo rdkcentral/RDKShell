@@ -35,9 +35,9 @@
 #include "logger.h"
 #include "rdkshell.h"
 #include "rdkshellimage.h"
+#include "permissions.h"
 #include <unistd.h>
 #include <time.h>
-#include <GLES2/gl2.h>
 #include <sys/sysinfo.h>
 #include <fstream>
 
@@ -198,6 +198,7 @@ namespace RdkShell
         mapNativeKeyCodes();
         populateEasterEggDetails();
         readInputDevicesConfiguration();
+        readPermissionsConfiguration();
 
         char const *loglevel = getenv("RDKSHELL_LOG_LEVEL");
         if (loglevel)

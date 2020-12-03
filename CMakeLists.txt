@@ -32,7 +32,7 @@ option(RDKSHELL_BUILD_FORCE_ANIMATE "RDKSHELL_BUILD_FORCE_ANIMATE" OFF)
 
 set(COMMUNICATIONDIR ${CMAKE_CURRENT_SOURCE_DIR}/communication)
 
-set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp rdkcompositorsurface.cpp rdkcompositornested.cpp linuxkeys.cpp eastereggs.cpp animation.cpp animationutilities.cpp  rdkshelldata.cpp rdkshelljson.cpp linuxinput.cpp logger.cpp rdkshellimage.cpp)
+set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp rdkcompositorsurface.cpp rdkcompositornested.cpp linuxkeys.cpp eastereggs.cpp animation.cpp animationutilities.cpp  rdkshelldata.cpp rdkshelljson.cpp linuxinput.cpp logger.cpp rdkshellimage.cpp permissions.cpp)
 set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor -lpthread -ljpeg)
 
 if (RDKSHELL_BUILD_WEBSOCKET_IPC)
@@ -80,7 +80,8 @@ if (RDKSHELL_BUILD_KEY_METADATA_EXTENDED_SUPPORT_FOR_IR)
   add_definitions("-DRDKSHELL_ENABLE_KEY_METADATA_EXTENDED_SUPPORT_FOR_IR")
 endif (RDKSHELL_BUILD_KEY_METADATA_EXTENDED_SUPPORT_FOR_IR)
 
-add_subdirectory( extensions/RdkShellExtendedInput )
+add_subdirectory(extensions/RdkShellExtendedInput)
+add_subdirectory(extensions/RdkShellClientControl)
 add_library(rdkshell_shared SHARED ${RDKSHELL_SOURCES})
 set_target_properties(rdkshell_shared PROPERTIES OUTPUT_NAME rdkshell)
 target_link_libraries(rdkshell_shared ${RDKSHELL_LINK_LIBRARIES})
