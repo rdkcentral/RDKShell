@@ -19,10 +19,6 @@
 -->
 <protocol name="rdkshell_client_control">
 
-    <copyright>
-        Copyright 2020 RDK Management
-    </copyright>
-
     <interface name="rdkshell_client_control" version="1">
 
         <description summary="">
