@@ -484,6 +484,23 @@ namespace RdkShell
 
     bool CompositorController::removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        if (keyCode == 255)
+        {
+            std::string clientDisplayName = standardizeName(client);
+            for (std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator keyInterceptIterator = gKeyInterceptInfoMap.begin(); keyInterceptIterator != gKeyInterceptInfoMap.end(); keyInterceptIterator++)
+            {
+                std::vector<KeyInterceptInfo>& interceptInfo = keyInterceptIterator->second;
+                std::vector<KeyInterceptInfo>::iterator interceptInfoIterator = interceptInfo.begin();
+                while(interceptInfoIterator != interceptInfo.end())
+                {
+                    if ((*interceptInfoIterator).compositorInfo.name == client)
+                    {
+                        std::cout << "removing entry for client with keycode " << keyInterceptIterator->first << std::endl;
+                        interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
+                    }
+                }
+            }
+        }
         if (client == "*")
         {
             std::vector<std::vector<KeyInterceptInfo>::iterator> keyMapEntries;
