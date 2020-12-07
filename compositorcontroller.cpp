@@ -495,8 +495,7 @@ namespace RdkShell
                 {
                     if ((*interceptInfoIterator).compositorInfo.name == client)
                     {
-                        std::cout << "removing entry for client with keycode " << keyInterceptIterator->first << std::endl;
-                        interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
+                         interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
                     }
                 }
             }
