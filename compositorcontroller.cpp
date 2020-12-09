@@ -1428,7 +1428,7 @@ namespace RdkShell
         RdkShell::Logger::log(RdkShell::LogLevel::Information, "attempting to display splash image with time: %u", displayTimeInSeconds);
         if (!gShowSplashImage)
         {
-            const char* splashFile = getenv("RDKSHELL_SPLASH_IMAGE_JPEG");
+            const char* splashFile = getenv("RDKSHELL_SPLASH_IMAGE");
             if (splashFile)
             {
                 gSplashImage = std::make_shared<RdkShell::Image>();
