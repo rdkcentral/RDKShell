@@ -88,6 +88,8 @@ namespace RdkShell
     bool gShowSplashImage = false;
     uint32_t gSplashDisplayTimeInSeconds = 0;
     double gSplashStartTime = 0;
+    uint32_t gPowerKeyCode = 0;
+    bool gPowerKeyEnabled = false;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -269,6 +271,31 @@ namespace RdkShell
         static bool sCompositorInitialized = false;
         if (sCompositorInitialized)
             return;
+
+        char const *rdkshellPowerKey = getenv("RDKSHELL_POWER_KEY_CODE");
+
+        if (rdkshellPowerKey)
+        {
+            int keyCode = atoi(rdkshellPowerKey);
+            if (keyCode > 0)
+            {
+                gPowerKeyCode = (uint32_t)keyCode;
+            }
+        }
+        std::cout << "the power key is set to " <<  gPowerKeyCode << std::endl;
+
+        char const *rdkshellPowerKeyEnable = getenv("RDKSHELL_ENABLE_POWER_KEY");
+
+        if (rdkshellPowerKeyEnable)
+        {
+            int powerValue = atoi(rdkshellPowerKeyEnable);
+            if (powerValue > 0)
+            {
+                gPowerKeyEnabled = true;
+            }
+        }
+
+        std::cout << "power key support enabled: " << gPowerKeyEnabled << std::endl;
  
         char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
 
@@ -998,6 +1025,16 @@ namespace RdkShell
             compositor->onKeyRelease(keycode, flags, metadata);
         }
         gPendingKeyUpListeners.clear();
+
+        if (keycode != 0 && gPowerKeyEnabled && keycode == gPowerKeyCode)
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Information, "power key pressed");
+            if (gRdkShellEventListener)
+            {
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "sending the power key event");
+                gRdkShellEventListener->onPowerKey();
+            }
+        }
     }
 
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth, uint32_t displayHeight)
