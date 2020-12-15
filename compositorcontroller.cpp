@@ -1213,6 +1213,7 @@ namespace RdkShell
 
     bool CompositorController::update()
     {
+        resolveWaitingEasterEggs();
         RdkShell::Animator::instance()->animate();
         if (gEnableInactivityReporting)
         {

@@ -28,12 +28,15 @@
 
 #include <map>
 #include <vector>
+#include <algorithm>
 
 namespace RdkShell
 {
     static std::vector<EasterEgg> sEasterEggs;
+    static bool sMatchedAnyEasterEgg = false;
+    static double sEasterEggResolveTime = 0.0;
 
-    EasterEgg::EasterEgg (std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson):mKeyDetails(details), mName(name), mTimeout(timeout), mActionJson(actionJson), mCurrentKeyIndex(0), mTotalUsedTime(0.0)
+    EasterEgg::EasterEgg (std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson):mKeyDetails(details), mName(name), mTimeout(timeout), mActionJson(actionJson), mCurrentKeyIndex(0), mTotalUsedTime(0.0), mSatisfied(false)
     {
     }
 
@@ -52,20 +55,49 @@ namespace RdkShell
             size_t numberOfKeys = mKeyDetails.size();
             if (mCurrentKeyIndex == (numberOfKeys - 1))
             {
-                std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
-                eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
-                eventData[0]["name"] = mName;
-                eventData[0]["action"] = mActionJson;
-                RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+                mSatisfied = true;
                 mTotalUsedTime = 0.0;
+                sMatchedAnyEasterEgg = true;
             }
             mCurrentKeyIndex = (mCurrentKeyIndex+1)%numberOfKeys;
         }
         else
         {
+            mSatisfied = false;
             mCurrentKeyIndex = 0;
             mTotalUsedTime = 0.0;
         }
+    }
+
+    bool EasterEgg::invokeEvent()
+    {
+        bool ret = false;
+        if (mSatisfied)
+        {
+            std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
+            eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
+            eventData[0]["name"] = mName;
+            eventData[0]["action"] = mActionJson;
+            RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+            ret = true;
+        }
+        mSatisfied = false;
+        return ret;
+    }
+
+    void EasterEgg::reset()
+    {
+        mSatisfied = false;
+    }
+
+    size_t EasterEgg::numberOfKeys()
+    {
+        return mKeyDetails.size();
+    }
+
+    bool compareKeySize (EasterEgg& first, EasterEgg& second)
+    {
+      return first.numberOfKeys() >= second.numberOfKeys()?true:false;
     }
 
     void populateEasterEggDetails()
@@ -200,6 +232,7 @@ namespace RdkShell
         {
           std::cout << "Ignored file read due to easter egg environment variable not set\n";
         }
+        std::sort<std::vector<EasterEgg>::iterator>(sEasterEggs.begin(), sEasterEggs.end(), compareKeySize);
     }
     
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double keyPressTime)
@@ -213,5 +246,34 @@ namespace RdkShell
            EasterEgg& easterEgg = sEasterEggs[i];
            easterEgg.checkKey(keyCode, flags, keyPressTime);
         }
+        if (sMatchedAnyEasterEgg)
+        {
+            sEasterEggResolveTime = RdkShell::seconds() + 1.0;
+        }
+    }
+
+    void resolveWaitingEasterEggs()
+    {
+        if (!sMatchedAnyEasterEgg)
+        {
+            return;
+        }
+        double currentTime = RdkShell::seconds();
+        if (currentTime > sEasterEggResolveTime)
+        {
+            bool invokedEvent = false;
+            for (int i=0; i<sEasterEggs.size(); i++)
+            {
+                EasterEgg& easterEgg = sEasterEggs[i];
+                if ((false == invokedEvent) && (true == easterEgg.invokeEvent()))
+                {
+                    invokedEvent = true;
+                }
+                easterEgg.reset();
+            }
+            sMatchedAnyEasterEgg = false;
+            sEasterEggResolveTime = 0.0;
+        }
+        // perform reset 
     }
 }
