@@ -50,6 +50,8 @@ static bool leftAltPressed = false;
 static bool rightCtrlPressed = false;
 static bool leftCtrlPressed = false;
 
+extern bool gForce720;
+
 static uint8_t modeSettingForDev(uint8_t devType, uint8_t mode)
 {
     switch (devType)
@@ -331,8 +333,16 @@ namespace RdkShell
     void EssosInstance::onDisplaySizeChanged(uint32_t width, uint32_t height)
     {
 #ifdef RDKSHELL_ENABLE_FORCE_1080
-        width = 1920;
-        height = 1080;
+        if (gForce720)
+        {
+            width = 1280;
+            height = 720;
+        }
+        else
+        {
+            width = 1920;
+            height = 1080;
+        }
 #endif //RDKSHELL_ENABLE_FORCE_1080
         if (mInstance)
         {
