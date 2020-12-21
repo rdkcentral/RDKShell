@@ -218,8 +218,6 @@ namespace RdkShell
 
                 if (!mApplicationName.empty())
                 {
-                    setenv("WAYLAND_DISPLAY", mDisplayName.c_str(), 1);
-
                     std::cout << "RDKShell is launching " << mApplicationName << std::endl;
                     launchApplicationInBackground();
                 }
@@ -364,6 +362,10 @@ namespace RdkShell
 
     void RdkCompositor::setSize(uint32_t width, uint32_t height)
     {
+        if ( (mWstContext != NULL) && ((mWidth != width) || (mHeight != height)) )
+        {
+            WstCompositorSetOutputSize(mWstContext, width, height);
+        }
         mWidth = width;
         mHeight = height;
     }
@@ -465,7 +467,10 @@ namespace RdkShell
             std::cout << "westeros error: " << detail << std::endl;
         }
         std::cout << "application close: " << applicationName << std::endl << std::flush;
-        mApplicationState = RdkShell::ApplicationState::Running;
+        {
+            std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+            mApplicationState = RdkShell::ApplicationState::Running;
+        }
     }
 
     void RdkCompositor::closeApplication()
@@ -519,7 +524,6 @@ namespace RdkShell
         if (mApplicationClosedByCompositor && (mApplicationPid > 0) && (0 == kill(mApplicationPid, 0)))
         {
             std::cout << "sending SIGKILL to application with pid " <<  mApplicationPid << std::endl;
-            sleep(1);
             kill(mApplicationPid, SIGKILL);
             mApplicationClosedByCompositor = false;
         }

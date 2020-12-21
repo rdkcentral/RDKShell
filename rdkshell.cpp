@@ -147,7 +147,7 @@ namespace RdkShell
     void checkSystemMemory()
     {
         uint32_t freeKb=0, usedKb=0, totalKb=0;
-        bool ret = systemRam(freeKb, usedKb, totalKb);
+        bool ret = systemRam(freeKb, totalKb, usedKb);
 
         if (false == ret)
         {
@@ -368,6 +368,7 @@ namespace RdkShell
 
     void draw()
     {
+        RdkShell::EssosInstance::instance()->update();
         uint32_t width = 0;
         uint32_t height = 0;
         RdkShell::EssosInstance::instance()->resolution(width, height);
@@ -376,7 +377,6 @@ namespace RdkShell
         glClear(GL_COLOR_BUFFER_BIT);
 
         RdkShell::CompositorController::draw();
-        RdkShell::EssosInstance::instance()->update();
     }
 
     void update()
