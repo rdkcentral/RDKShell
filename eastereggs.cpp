@@ -24,6 +24,7 @@
 #include "compositorcontroller.h"
 #include "rdkshell.h"
 #include "rdkshelldata.h"
+#include "linuxkeys.h"
 
 #include <map>
 #include <vector>
@@ -40,11 +41,18 @@ namespace RdkShell
     {
         mTotalUsedTime += time;
         struct RdkShellEasterEggKeyDetails& keyToCheck = mKeyDetails[mCurrentKeyIndex];
-        if ((keyToCheck.keyCode == keyCode) && (keyToCheck.keyHoldTime <= time) && (mTotalUsedTime <= mTimeout))
+        bool emptyFlagsMatched = false;
+        if ((keyToCheck.keyModifiers == 0) && (flags == 0))
         {
+            emptyFlagsMatched = true;
+        }
+        if ((keyToCheck.keyCode == keyCode) && ((true == emptyFlagsMatched) || (keyToCheck.keyModifiers & flags)) && (keyToCheck.keyHoldTime <= time) && (mTotalUsedTime <= mTimeout))
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "Easter Eggs - Matched portion key: %u modifier:%u", keyToCheck.keyCode, keyToCheck.keyModifiers);
             size_t numberOfKeys = mKeyDetails.size();
             if (mCurrentKeyIndex == (numberOfKeys - 1))
             {
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "Easter Eggs - Matced [%s]", mName);
                 std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
                 eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
                 eventData[0]["name"] = mName;
@@ -110,6 +118,7 @@ namespace RdkShell
                         {
                             uint32_t keyCode = 0;
                             uint32_t keyHoldTime = 0;
+                            uint32_t keyModifiers = 0;
       
                             const rapidjson::Value& easterEggKeyDetail = easterEggSequence[j];
                             if (!(easterEggKeyDetail.IsObject() && easterEggKeyDetail.HasMember("keyCode")))
@@ -133,10 +142,15 @@ namespace RdkShell
                             {
                                 keyHoldTime = easterEggKeyDetail["hold"].GetUint();
                             }
+                            if (easterEggKeyDetail.HasMember("modifiers"))
+                            {
+                                keyModifiers = easterEggKeyDetail["modifiers"].GetUint();
+                            }
                             
                             struct RdkShellEasterEggKeyDetails keyDetail;
                             keyDetail.keyCode = keyCode;
                             keyDetail.keyHoldTime = keyHoldTime;
+                            keyDetail.keyModifiers = keyModifiers;
                             keyDetailsList.push_back(keyDetail);
                         }
       
@@ -191,6 +205,10 @@ namespace RdkShell
     
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double keyPressTime)
     {
+        if ((keyCode == RDKSHELL_KEY_CTRL) || (keyCode == RDKSHELL_KEY_ALT) || (keyCode == RDKSHELL_KEY_SHIFT))
+        {
+           return;
+        }
         for (int i=0; i < sEasterEggs.size(); i++)
         {
            EasterEgg& easterEgg = sEasterEggs[i];

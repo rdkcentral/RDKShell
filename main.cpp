@@ -23,8 +23,15 @@
 
 int main(int argc, char* argv[])
 {
-    RdkShell::initialize();
-    RdkShell::run();
+    try
+    {
+        RdkShell::initialize();
+        RdkShell::run();
+    }
+    catch(...)
+    {
+        std::cout << "got exception during rdkshell execution\n" << std::endl;
+    }
     std::cout << "exiting rdk shell\n";
     return 0;
 }

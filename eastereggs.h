@@ -28,6 +28,7 @@ namespace RdkShell
     struct RdkShellEasterEggKeyDetails
     {
         uint32_t keyCode;
+        uint32_t keyModifiers;
         uint32_t keyHoldTime;
     };
 
