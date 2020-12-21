@@ -862,14 +862,14 @@ namespace RdkShell
             {
                 double o = 1.0;
                 compositor.compositor->opacity(o);
+                if (o <= 0.0)
+                {
+                    o = 0.0;
+                }
                 opacity = (unsigned int)(o * 100);
                 if (opacity > 100)
                 {
                      opacity = 100;
-                }
-                else if (opacity < 0)
-                {
-                    opacity = 0;
                 }
                 return true;
             }
@@ -943,7 +943,7 @@ namespace RdkShell
             if (compositor.name == clientDisplayName)
             {
                 compositor.compositor->setHolePunch(holePunch);
-                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName, holePunch ? "true" : "false");
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName.c_str(), holePunch ? "true" : "false");
                 return true;
             }
         }

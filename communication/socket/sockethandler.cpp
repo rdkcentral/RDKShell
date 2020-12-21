@@ -90,7 +90,11 @@ namespace RdkShell
             return false;
   
         uint32_t one = 1;
-        fcntl(mFd, F_SETFD, fcntl(mFd, F_GETFD) | FD_CLOEXEC);
+        ret = fcntl(mFd, F_SETFD, fcntl(mFd, F_GETFD) | FD_CLOEXEC);
+
+        if (ret == -1)
+            return false;
+
         ret = setsockopt(mFd, SOL_TCP, TCP_NODELAY, &one, sizeof(one));
         bool isSocketReady = false;
         if (mIsServer)
@@ -222,6 +226,12 @@ namespace RdkShell
         {
             return false;
         }
+        if (headerLength > (READ_BUFFER_SIZE-4))
+        {
+            Logger::log(Error, "received long or corrupted header and removing client");
+            sClientsToRemove.push_back(fd);
+            return false;
+        }
         bytesRead = recv(fd, mBuffer+4, headerLength, MSG_NOSIGNAL);
         if (bytesRead == 0)
         {
@@ -243,11 +253,6 @@ namespace RdkShell
                 id = d["id"].GetInt();
             }
             bytesToRead = (payloadLength>READ_BUFFER_SIZE)?READ_BUFFER_SIZE:payloadLength;
-            if (bytesRead == 0)
-            {
-                sClientsToRemove.push_back(fd);
-                return false;
-            }
             while(bytesToRead > 0)
             {
                 memset(mBuffer, 0, READ_BUFFER_SIZE);

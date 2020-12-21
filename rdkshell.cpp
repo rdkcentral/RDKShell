@@ -147,7 +147,7 @@ namespace RdkShell
     void checkSystemMemory()
     {
         uint32_t freeKb=0, usedKb=0, totalKb=0;
-        bool ret = systemRam(freeKb, usedKb, totalKb);
+        bool ret = systemRam(freeKb, totalKb, usedKb);
 
         if (false == ret)
         {
