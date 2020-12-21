@@ -218,8 +218,6 @@ namespace RdkShell
 
                 if (!mApplicationName.empty())
                 {
-                    setenv("WAYLAND_DISPLAY", mDisplayName.c_str(), 1);
-
                     std::cout << "RDKShell is launching " << mApplicationName << std::endl;
                     launchApplicationInBackground();
                 }
@@ -364,6 +362,10 @@ namespace RdkShell
 
     void RdkCompositor::setSize(uint32_t width, uint32_t height)
     {
+        if ( (mWstContext != NULL) && ((mWidth != width) || (mHeight != height)) )
+        {
+            WstCompositorSetOutputSize(mWstContext, width, height);
+        }
         mWidth = width;
         mHeight = height;
     }
