@@ -41,7 +41,6 @@ namespace RdkShell
     {
         mTotalUsedTime += time;
         struct RdkShellEasterEggKeyDetails& keyToCheck = mKeyDetails[mCurrentKeyIndex];
-        RdkShell::Logger::log(RdkShell::LogLevel::Debug, "Easter Eggs - Evaluating keycode[%u][%u] modifier[%u][%u] holdtime[%u][%u] timeout[%u][%u]", keyToCheck.keyCode,keyCode,  keyToCheck.keyModifiers, flags, keyToCheck.keyHoldTime, time, mTotalUsedTime, mTimeout);
         bool emptyFlagsMatched = false;
         if ((keyToCheck.keyModifiers == 0) && (flags == 0))
         {
