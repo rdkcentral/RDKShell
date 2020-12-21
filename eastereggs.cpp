@@ -41,7 +41,6 @@ namespace RdkShell
     {
         mTotalUsedTime += time;
         struct RdkShellEasterEggKeyDetails& keyToCheck = mKeyDetails[mCurrentKeyIndex];
-
         bool emptyFlagsMatched = false;
         if ((keyToCheck.keyModifiers == 0) && (flags == 0))
         {
@@ -49,9 +48,11 @@ namespace RdkShell
         }
         if ((keyToCheck.keyCode == keyCode) && ((true == emptyFlagsMatched) || (keyToCheck.keyModifiers & flags)) && (keyToCheck.keyHoldTime <= time) && (mTotalUsedTime <= mTimeout))
         {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "Easter Eggs - Matched portion key: %u modifier:%u", keyToCheck.keyCode, keyToCheck.keyModifiers);
             size_t numberOfKeys = mKeyDetails.size();
             if (mCurrentKeyIndex == (numberOfKeys - 1))
             {
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "Easter Eggs - Matced [%s]", mName);
                 std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
                 eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
                 eventData[0]["name"] = mName;
