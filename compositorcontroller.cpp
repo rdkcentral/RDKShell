@@ -35,6 +35,7 @@
 
 #define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
+#define RDKSHELL_WILDCARD_KEY_CODE 255
 
 namespace RdkShell
 {
@@ -511,6 +512,22 @@ namespace RdkShell
 
     bool CompositorController::removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        if (keyCode == RDKSHELL_WILDCARD_KEY_CODE)
+        {
+            std::string clientDisplayName = standardizeName(client);
+            for (std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator keyInterceptIterator = gKeyInterceptInfoMap.begin(); keyInterceptIterator != gKeyInterceptInfoMap.end(); keyInterceptIterator++)
+            {
+                std::vector<KeyInterceptInfo>& interceptInfo = keyInterceptIterator->second;
+                std::vector<KeyInterceptInfo>::iterator interceptInfoIterator = interceptInfo.begin();
+                while(interceptInfoIterator != interceptInfo.end())
+                {
+                    if ((*interceptInfoIterator).compositorInfo.name == client)
+                    {
+                         interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
+                    }
+                }
+            }
+        }
         if (client == "*")
         {
             std::vector<std::vector<KeyInterceptInfo>::iterator> keyMapEntries;
@@ -862,14 +879,14 @@ namespace RdkShell
             {
                 double o = 1.0;
                 compositor.compositor->opacity(o);
+                if (o <= 0.0)
+                {
+                    o = 0.0;
+                }
                 opacity = (unsigned int)(o * 100);
                 if (opacity > 100)
                 {
                      opacity = 100;
-                }
-                else if (opacity < 0)
-                {
-                    opacity = 0;
                 }
                 return true;
             }
@@ -943,7 +960,7 @@ namespace RdkShell
             if (compositor.name == clientDisplayName)
             {
                 compositor.compositor->setHolePunch(holePunch);
-                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName, holePunch ? "true" : "false");
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName.c_str(), holePunch ? "true" : "false");
                 return true;
             }
         }

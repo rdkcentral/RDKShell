@@ -41,6 +41,7 @@ namespace RdkShell
              void reset();
              size_t numberOfKeys();
         private:
+            void toggleForce720();
             std::vector<RdkShellEasterEggKeyDetails> mKeyDetails;
             std::string mName;
             uint32_t mTimeout; 

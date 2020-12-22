@@ -22,6 +22,8 @@
 #include "logger.h"
 #include "compositorcontroller.h"
 #include <jpeglib.h>
+#include <png.h>
+#include <string.h>
 #include <setjmp.h>
 
 namespace RdkShell
@@ -226,7 +228,16 @@ namespace RdkShell
             unsigned char *image = nullptr;
             int32_t width = 0;
             int32_t height = 0;
-            success = loadJpeg(fileName, image, width, height);
+            bool isPngImage = false;
+            if (-1 != fileName.find(".png"))
+            {
+                success = loadPng(fileName, image, width, height);
+                isPngImage = true;
+            }
+            else
+            {
+                success = loadJpeg(fileName, image, width, height);
+            }
             if (success)
             {
                 glGenTextures(1, &mTexture);
@@ -239,8 +250,8 @@ namespace RdkShell
                 
 
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
-                            width, height, 0, GL_RGB,
+                glTexImage2D(GL_TEXTURE_2D, 0, (isPngImage)?GL_RGBA:GL_RGB,
+                            width, height, 0, (isPngImage)?GL_RGBA:GL_RGB,
                             GL_UNSIGNED_BYTE, image);
             }
             free(image);
@@ -314,5 +325,126 @@ namespace RdkShell
         jpeg_destroy_decompress(&cinfo);
         fflush(stdout);
         return true;
+    }
+
+    bool Image::loadPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height)
+    {
+        FILE *file;
+        int depth;
+        file = fopen(fileName.c_str(), "rb");
+        if (!file)
+        {
+            Logger::log(LogLevel::Error, "unable to open %s", fileName.c_str());
+            return false;
+        }
+        fflush(stdout);
+
+        unsigned char pngHeader[8];
+        memset(pngHeader, 0, sizeof(pngHeader));
+        fread(pngHeader, 1, 8, file);
+        if (png_sig_cmp(pngHeader, 0, 8))
+        {
+            Logger::log(LogLevel::Error, "not a png file [%s]", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+        png_structp pngPointer;
+        png_infop infoPointer;
+
+        pngPointer = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        if (NULL == pngPointer)
+        {
+            Logger::log(LogLevel::Error, "unable to create png structure [%s]", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+        infoPointer = png_create_info_struct(pngPointer);
+        if (NULL == infoPointer)
+        {
+            Logger::log(LogLevel::Error, "unable to create info structure [%s]", fileName.c_str());
+            png_destroy_read_struct(&pngPointer, NULL, NULL);
+            fclose(file);
+            return false;
+        }
+
+        bool ret = false;
+        if (!setjmp(png_jmpbuf(pngPointer)))
+        {
+            png_init_io(pngPointer, file);
+            png_set_sig_bytes(pngPointer, 8);
+ 
+            png_read_info(pngPointer, infoPointer);
+
+            width = png_get_image_width(pngPointer, infoPointer);
+            height = png_get_image_height(pngPointer, infoPointer);
+            png_byte colorType = png_get_color_type(pngPointer, infoPointer);
+            png_byte bitDepth = png_get_bit_depth(pngPointer, infoPointer);
+             
+            if (bitDepth == 16)
+            {
+                png_set_strip_16(pngPointer);
+            }
+             
+            if (colorType == PNG_COLOR_TYPE_PALETTE)
+            {
+                png_set_palette_to_rgb(pngPointer);
+            }
+
+            if (colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
+            {
+                png_set_gray_to_rgb(pngPointer);
+            }
+
+            if (png_get_valid(pngPointer, infoPointer, PNG_INFO_tRNS))
+            {
+                png_set_tRNS_to_alpha(pngPointer);
+            }
+            
+            png_set_add_alpha(pngPointer, 0xff, PNG_FILLER_AFTER);
+            
+            png_read_update_info(pngPointer, infoPointer);
+
+            if (!setjmp(png_jmpbuf(pngPointer)))
+            {
+                uint32_t rowBytes = png_get_rowbytes(pngPointer,infoPointer);
+                png_bytep* rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
+                if (NULL != rowPointers)
+                {
+                    image = (unsigned char*) malloc(rowBytes * height);
+                    if (NULL != image)
+                    {
+                        for (int row=0; row<height; row++)
+                        {
+                            rowPointers[row] = (png_byte*)((png_byte*)image + (row*rowBytes));
+                        }
+                        
+                        png_read_image(pngPointer, rowPointers);
+
+                        png_read_end(pngPointer, NULL);
+
+                        free(rowPointers);
+                        rowPointers = NULL;
+                        ret = true;
+                    }
+                }
+                else
+                {
+                    Logger::log(LogLevel::Error, "unable to create memory for image data [%s]", fileName.c_str());
+                }
+            }
+            else
+            {
+                Logger::log(LogLevel::Error, "unable to read png info [%s]", fileName.c_str());
+            }
+        }
+        else
+        {
+            Logger::log(LogLevel::Error, "unable to initialize png [%s]", fileName.c_str());
+        }
+        png_destroy_read_struct(&pngPointer, &infoPointer, NULL);
+        fclose(file);
+        return ret;
     }
 }

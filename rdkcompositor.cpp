@@ -27,6 +27,8 @@
 #include "linuxkeys.h"
 #include "rdkshell.h"
 
+extern bool gForce720;
+
 namespace RdkShell
 {
     #define RDKSHELL_INITIAL_INPUT_LISTENER_TAG 1001
@@ -45,6 +47,12 @@ namespace RdkShell
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false)
     {
+        if (gForce720)
+        {
+            std::cout << "forcing 720 for rdkc\n";
+            mWidth = 1280;
+            mHeight = 720;
+        }
         float* matrixPointer = mMatrix;
         float matrix[16] = 
         {
@@ -156,6 +164,12 @@ namespace RdkShell
         {
             mWidth = width;
             mHeight = height;
+            if (gForce720)
+            {
+                std::cout << "forcing 720 for create display\n";
+                mWidth = 1280;
+                mHeight = 720;
+            }
         }
         mWstContext = WstCompositorCreate();
 
@@ -362,6 +376,11 @@ namespace RdkShell
 
     void RdkCompositor::setSize(uint32_t width, uint32_t height)
     {
+        if (gForce720)
+        {
+            width = 1280;
+            height = 720;
+        }
         if ( (mWstContext != NULL) && ((mWidth != width) || (mHeight != height)) )
         {
             WstCompositorSetOutputSize(mWstContext, width, height);
@@ -467,7 +486,10 @@ namespace RdkShell
             std::cout << "westeros error: " << detail << std::endl;
         }
         std::cout << "application close: " << applicationName << std::endl << std::flush;
-        mApplicationState = RdkShell::ApplicationState::Running;
+        {
+            std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+            mApplicationState = RdkShell::ApplicationState::Running;
+        }
     }
 
     void RdkCompositor::closeApplication()
@@ -521,7 +543,6 @@ namespace RdkShell
         if (mApplicationClosedByCompositor && (mApplicationPid > 0) && (0 == kill(mApplicationPid, 0)))
         {
             std::cout << "sending SIGKILL to application with pid " <<  mApplicationPid << std::endl;
-            sleep(1);
             kill(mApplicationPid, SIGKILL);
             mApplicationClosedByCompositor = false;
         }
