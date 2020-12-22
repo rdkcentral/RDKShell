@@ -37,6 +37,9 @@ namespace RdkShell
         public:
              EasterEgg (std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson);
              void checkKey(uint32_t keyCode, uint32_t flags, double keyPressTime);
+             bool invokeEvent();
+             void reset();
+             size_t numberOfKeys();
         private:
             void toggleForce720();
             std::vector<RdkShellEasterEggKeyDetails> mKeyDetails;
@@ -45,10 +48,12 @@ namespace RdkShell
             std::string mActionJson;
             uint32_t mCurrentKeyIndex;
             double mTotalUsedTime;
+            bool mSatisfied;
     };
 
     void populateEasterEggDetails();
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double time);
+    void resolveWaitingEasterEggs();
 }
 
 #endif //RDKSHELL_EASTER_EGG_H
