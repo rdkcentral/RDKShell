@@ -38,6 +38,8 @@ namespace RdkShell
             void update();
             void resolution(uint32_t &width, uint32_t &height);
             void setResolution(uint32_t width, uint32_t height);
+            void setKeyRepeats(bool enable);
+            void keyRepeats(bool& enable);
 
         private:
             EssosInstance();
@@ -49,6 +51,7 @@ namespace RdkShell
             bool mOverrideResolution;
             uint32_t mKeyInitialDelay;
             uint32_t mKeyRepeatInterval;
+            bool mKeyRepeatsEnabled;
     };
 }
 

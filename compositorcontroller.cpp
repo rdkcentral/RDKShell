@@ -1574,4 +1574,15 @@ namespace RdkShell
         }
         return true;
     }
+    bool CompositorController::enableKeyRepeats(bool enable)
+    {
+        RdkShell::EssosInstance::instance()->setKeyRepeats(enable);
+        return true;
+    }
+
+    bool CompositorController::getKeyRepeatsEnabled(bool& enable)
+    {
+        RdkShell::EssosInstance::instance()->keyRepeats(enable);
+        return true;
+    }
 }

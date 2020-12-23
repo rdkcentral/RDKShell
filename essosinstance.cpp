@@ -179,6 +179,10 @@ static void essosKeyReleased( void *userData, unsigned int key )
     processKeyEvent(false, key, nullptr);
 }
 
+static void essosKeyRepeat( void *userData, unsigned int key )
+{
+}
+
 static EssKeyListener essosKeyListener=
 {
     essosKeyPressed,
@@ -198,7 +202,7 @@ static EssSettingsListener essosSettingsListener =
 namespace RdkShell
 {
     EssosInstance::EssosInstance() : mEssosContext(NULL), mUseWayland(false),
-           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250)
+           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250), mKeyRepeatsEnabled(true)
     {
     }
     
