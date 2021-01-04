@@ -33,7 +33,7 @@ option(RDKSHELL_BUILD_FORCE_ANIMATE "RDKSHELL_BUILD_FORCE_ANIMATE" OFF)
 set(COMMUNICATIONDIR ${CMAKE_CURRENT_SOURCE_DIR}/communication)
 
 set(RDKSHELL_SOURCES rdkshell.cpp compositorcontroller.cpp essosinstance.cpp rdkcompositor.cpp rdkcompositorsurface.cpp rdkcompositornested.cpp linuxkeys.cpp eastereggs.cpp animation.cpp animationutilities.cpp  rdkshelldata.cpp rdkshelljson.cpp linuxinput.cpp logger.cpp rdkshellimage.cpp permissions.cpp)
-set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor -lpthread -ljpeg)
+set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor -lpthread -ljpeg -lpng16)
 
 if (RDKSHELL_BUILD_WEBSOCKET_IPC)
   set(RDKSHELL_SOURCES ${RDKSHELL_SOURCES} messageHandler.cpp)

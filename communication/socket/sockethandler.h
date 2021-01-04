@@ -18,7 +18,7 @@ namespace RdkShell
     {
         public:
             SocketHandler(std::string& server, int port, bool isServer=false);
-            ~SocketHandler();
+            virtual ~SocketHandler();
             bool initialize();
             void terminate();
             bool sendMessage(int id, std::string& message);
