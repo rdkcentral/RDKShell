@@ -155,7 +155,7 @@ namespace RdkShell
     {
         std::cout << "loadExtensions clientName: " << clientName << std::endl << std::flush;
 
-        bool error = false;
+        bool success = true;
         if (compositor)
         {
             const char* enableRdkShellExtendedInput = getenv("RDKSHELL_EXTENDED_INPUT_ENABLED");
@@ -167,7 +167,7 @@ namespace RdkShell
                 if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
                     std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_extended_input.so'" << std::endl;
-                    error = true;
+                    success = false;
                 }
             }
 
@@ -184,16 +184,16 @@ namespace RdkShell
                 if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
                     std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_client_control.so '" << std::endl;
-                    error = true;
+                    success = false;
                 }
             }
         }
         else
         {
-            error = true;
+            success = false;
         }
 
-        return error;
+        return success;
     }
 
     bool RdkCompositor::createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height)
@@ -209,7 +209,7 @@ namespace RdkShell
 
         if (mWstContext)
         {
-            error = loadExtensions(mWstContext, clientName);
+            error = !loadExtensions(mWstContext, clientName);
 
             if (!error && !WstCompositorSetIsEmbedded(mWstContext, true))
             {

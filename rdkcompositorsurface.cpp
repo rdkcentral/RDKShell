@@ -104,7 +104,7 @@ namespace RdkShell
 
         if (mWstContext)
         {
-            error = loadExtensions(mMainWstContext, clientName);
+            error = !loadExtensions(mMainWstContext, clientName);
 
             if (!error && !WstCompositorSetIsEmbedded(mWstContext, true))
             {
