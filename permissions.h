@@ -17,21 +17,16 @@
 * limitations under the License.
 **/
 
-#include <iostream>
-#include "rdkshell.h"
+#pragma once
 
+#include <string>
+#include <vector>
 
-int main(int argc, char* argv[])
+namespace RdkShell
 {
-    try
-    {
-        RdkShell::initialize();
-        RdkShell::run();
-    }
-    catch(...)
-    {
-        std::cout << "got exception during rdkshell execution\n" << std::endl;
-    }
-    std::cout << "exiting rdk shell\n";
-    return 0;
+
+    void readPermissionsConfiguration();
+    void logPermissionsConfiguration();
+    void getAllowedExtensions(const std::string& clientName, std::vector<std::string>& extensions);
+
 }

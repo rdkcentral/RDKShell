@@ -87,6 +87,8 @@ namespace RdkShell
             static bool setMimeType(const std::string& client, const std::string& mimeType);
             static bool hideSplashScreen();
             static bool showSplashScreen(uint32_t displayTimeInSeconds);
+            static bool hideWatermark();
+            static bool showWatermark();
             static bool draw();
             static bool update();
             static bool setLogLevel(const std::string level);

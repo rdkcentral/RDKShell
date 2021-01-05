@@ -26,6 +26,9 @@
 #include <unistd.h>
 #include "linuxkeys.h"
 #include "rdkshell.h"
+#include "permissions.h"
+
+extern bool gForce720;
 
 namespace RdkShell
 {
@@ -45,6 +48,12 @@ namespace RdkShell
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false)
     {
+        if (gForce720)
+        {
+            std::cout << "forcing 720 for rdkc\n";
+            mWidth = 1280;
+            mHeight = 720;
+        }
         float* matrixPointer = mMatrix;
         float matrix[16] = 
         {
@@ -150,18 +159,12 @@ namespace RdkShell
         }
     }
 
-    bool RdkCompositor::createDisplay(const std::string& displayName, uint32_t width, uint32_t height)
+    bool RdkCompositor::loadExtensions(WstCompositor *compositor, const std::string& clientName)
     {
-        if (width > 0 && height > 0)
-        {
-            mWidth = width;
-            mHeight = height;
-        }
-        mWstContext = WstCompositorCreate();
+        std::cout << "loadExtensions clientName: " << clientName << std::endl << std::flush;
 
-        bool error = false;
-
-        if (mWstContext)
+        bool success = true;
+        if (compositor)
         {
             const char* enableRdkShellExtendedInput = getenv("RDKSHELL_EXTENDED_INPUT_ENABLED");
 
@@ -169,14 +172,60 @@ namespace RdkShell
             {
                 std::string extensionInputPath = std::string(RDKSHELL_WESTEROS_PLUGIN_DIRECTORY) + "libwesteros_plugin_rdkshell_extended_input.so";
                 std::cout << "attempting to load extension: " << extensionInputPath << std::endl << std::flush;
-                if (!WstCompositorAddModule(mWstContext, extensionInputPath.c_str()))
+                if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
                     std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_extended_input.so'" << std::endl;
-                    error = true;
+                    success = false;
                 }
             }
 
-            if (!WstCompositorSetIsEmbedded(mWstContext, true))
+            std::vector<std::string> extensions;
+            getAllowedExtensions(clientName, extensions);
+
+            std::cout << "loadExtensions getAllowedExtensions found: " << extensions.size() << " extensions for client: "
+                << clientName << std::endl << std::flush;
+
+            for (int i = 0; i < extensions.size(); ++i)
+            {
+                const std::string extensionInputPath = RDKSHELL_WESTEROS_PLUGIN_DIRECTORY + extensions[i];
+                std::cout << "attempting to load extension: " << extensionInputPath << std::endl << std::flush;
+                if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
+                {
+                    std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_client_control.so '" << std::endl;
+                    success = false;
+                }
+            }
+        }
+        else
+        {
+            success = false;
+        }
+
+        return success;
+    }
+
+    bool RdkCompositor::createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height)
+    {
+        if (width > 0 && height > 0)
+        {
+            mWidth = width;
+            mHeight = height;
+            if (gForce720)
+            {
+                std::cout << "forcing 720 for create display\n";
+                mWidth = 1280;
+                mHeight = 720;
+            }
+        }
+        mWstContext = WstCompositorCreate();
+
+        bool error = false;
+
+        if (mWstContext)
+        {
+            error = !loadExtensions(mWstContext, clientName);
+
+            if (!error && !WstCompositorSetIsEmbedded(mWstContext, true))
             {
                 error = true;
             }
@@ -362,6 +411,11 @@ namespace RdkShell
 
     void RdkCompositor::setSize(uint32_t width, uint32_t height)
     {
+        if (gForce720)
+        {
+            width = 1280;
+            height = 720;
+        }
         if ( (mWstContext != NULL) && ((mWidth != width) || (mHeight != height)) )
         {
             WstCompositorSetOutputSize(mWstContext, width, height);
@@ -467,7 +521,10 @@ namespace RdkShell
             std::cout << "westeros error: " << detail << std::endl;
         }
         std::cout << "application close: " << applicationName << std::endl << std::flush;
-        mApplicationState = RdkShell::ApplicationState::Running;
+        {
+            std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
+            mApplicationState = RdkShell::ApplicationState::Running;
+        }
     }
 
     void RdkCompositor::closeApplication()
@@ -521,7 +578,6 @@ namespace RdkShell
         if (mApplicationClosedByCompositor && (mApplicationPid > 0) && (0 == kill(mApplicationPid, 0)))
         {
             std::cout << "sending SIGKILL to application with pid " <<  mApplicationPid << std::endl;
-            sleep(1);
             kill(mApplicationPid, SIGKILL);
             mApplicationClosedByCompositor = false;
         }

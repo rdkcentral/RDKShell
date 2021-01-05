@@ -28,6 +28,11 @@
 
 #include <map>
 #include <vector>
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+
+#define RDKSHELL_720_EASTER_EGG_FILE "/tmp/rdkshell720"
 
 namespace RdkShell
 {
@@ -41,7 +46,6 @@ namespace RdkShell
     {
         mTotalUsedTime += time;
         struct RdkShellEasterEggKeyDetails& keyToCheck = mKeyDetails[mCurrentKeyIndex];
-
         bool emptyFlagsMatched = false;
         if ((keyToCheck.keyModifiers == 0) && (flags == 0))
         {
@@ -49,14 +53,24 @@ namespace RdkShell
         }
         if ((keyToCheck.keyCode == keyCode) && ((true == emptyFlagsMatched) || (keyToCheck.keyModifiers & flags)) && (keyToCheck.keyHoldTime <= time) && (mTotalUsedTime <= mTimeout))
         {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "Easter Eggs - Matched portion key: %u modifier:%u", keyToCheck.keyCode, keyToCheck.keyModifiers);
             size_t numberOfKeys = mKeyDetails.size();
             if (mCurrentKeyIndex == (numberOfKeys - 1))
             {
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "Easter Eggs - Matced [%s]", mName);
                 std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
                 eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
                 eventData[0]["name"] = mName;
                 eventData[0]["action"] = mActionJson;
-                RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+                if (mName == "RDKSHELL_FORCE_720")
+                {
+                    std::cout << "about to toggle force 720 easter egg\n";
+                    toggleForce720();
+                }
+                else
+                {
+                    RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+                }
                 mTotalUsedTime = 0.0;
             }
             mCurrentKeyIndex = (mCurrentKeyIndex+1)%numberOfKeys;
@@ -66,6 +80,23 @@ namespace RdkShell
             mCurrentKeyIndex = 0;
             mTotalUsedTime = 0.0;
         }
+    }
+
+    void EasterEgg::toggleForce720()
+    {
+        std::ifstream file720(RDKSHELL_720_EASTER_EGG_FILE);
+        if (file720.good())
+        {
+            std::cout << "removing 720 restriction \n";
+            remove( RDKSHELL_720_EASTER_EGG_FILE );
+        }
+        else
+        {
+            std::cout << "adding 720 restriction \n";
+            std::ofstream outputFile(RDKSHELL_720_EASTER_EGG_FILE);
+            outputFile.close();
+        }
+        system("systemctl restart wpeframework &");
     }
 
     void populateEasterEggDetails()

@@ -27,7 +27,7 @@ namespace RdkShell
     class RdkCompositorNested:public RdkCompositor
     {
         public:
-            bool createDisplay(const std::string& displayName, uint32_t width, uint32_t height);
+            bool createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height);
     };
 }
 

@@ -35,6 +35,7 @@
 
 #define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
+#define RDKSHELL_WILDCARD_KEY_CODE 255
 
 namespace RdkShell
 {
@@ -88,6 +89,10 @@ namespace RdkShell
     bool gShowSplashImage = false;
     uint32_t gSplashDisplayTimeInSeconds = 0;
     double gSplashStartTime = 0;
+    std::shared_ptr<RdkShell::Image> gWaterMarkImage = nullptr;
+    bool gShowWaterMarkImage = false;
+    uint32_t gPowerKeyCode = 0;
+    bool gPowerKeyEnabled = false;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -269,6 +274,31 @@ namespace RdkShell
         static bool sCompositorInitialized = false;
         if (sCompositorInitialized)
             return;
+
+        char const *rdkshellPowerKey = getenv("RDKSHELL_POWER_KEY_CODE");
+
+        if (rdkshellPowerKey)
+        {
+            int keyCode = atoi(rdkshellPowerKey);
+            if (keyCode > 0)
+            {
+                gPowerKeyCode = (uint32_t)keyCode;
+            }
+        }
+        std::cout << "the power key is set to " <<  gPowerKeyCode << std::endl;
+
+        char const *rdkshellPowerKeyEnable = getenv("RDKSHELL_ENABLE_POWER_KEY");
+
+        if (rdkshellPowerKeyEnable)
+        {
+            int powerValue = atoi(rdkshellPowerKeyEnable);
+            if (powerValue > 0)
+            {
+                gPowerKeyEnabled = true;
+            }
+        }
+
+        std::cout << "power key support enabled: " << gPowerKeyEnabled << std::endl;
  
         char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
 
@@ -484,6 +514,22 @@ namespace RdkShell
 
     bool CompositorController::removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        if (keyCode == RDKSHELL_WILDCARD_KEY_CODE)
+        {
+            std::string clientDisplayName = standardizeName(client);
+            for (std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator keyInterceptIterator = gKeyInterceptInfoMap.begin(); keyInterceptIterator != gKeyInterceptInfoMap.end(); keyInterceptIterator++)
+            {
+                std::vector<KeyInterceptInfo>& interceptInfo = keyInterceptIterator->second;
+                std::vector<KeyInterceptInfo>::iterator interceptInfoIterator = interceptInfo.begin();
+                while(interceptInfoIterator != interceptInfo.end())
+                {
+                    if ((*interceptInfoIterator).compositorInfo.name == client)
+                    {
+                         interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
+                    }
+                }
+            }
+        }
         if (client == "*")
         {
             std::vector<std::vector<KeyInterceptInfo>::iterator> keyMapEntries;
@@ -835,14 +881,14 @@ namespace RdkShell
             {
                 double o = 1.0;
                 compositor.compositor->opacity(o);
+                if (o <= 0.0)
+                {
+                    o = 0.0;
+                }
                 opacity = (unsigned int)(o * 100);
                 if (opacity > 100)
                 {
                      opacity = 100;
-                }
-                else if (opacity < 0)
-                {
-                    opacity = 0;
                 }
                 return true;
             }
@@ -916,7 +962,7 @@ namespace RdkShell
             if (compositor.name == clientDisplayName)
             {
                 compositor.compositor->setHolePunch(holePunch);
-                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName, holePunch ? "true" : "false");
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName.c_str(), holePunch ? "true" : "false");
                 return true;
             }
         }
@@ -998,10 +1044,21 @@ namespace RdkShell
             compositor->onKeyRelease(keycode, flags, metadata);
         }
         gPendingKeyUpListeners.clear();
+
+        if (keycode != 0 && gPowerKeyEnabled && keycode == gPowerKeyCode)
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Information, "power key pressed");
+            if (gRdkShellEventListener)
+            {
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "sending the power key event");
+                gRdkShellEventListener->onPowerKey();
+            }
+        }
     }
 
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth, uint32_t displayHeight)
     {
+        std::cout << "rdkshell createDisplay client: " << client << " displayName: " << displayName << "\n";
         std::string clientDisplayName = standardizeName(client);
         std::string compositorDisplayName = displayName;
         if (displayName.empty())
@@ -1037,7 +1094,7 @@ namespace RdkShell
         {
             height = displayHeight;
         }
-        bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, width, height);
+        bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, clientDisplayName, width, height);
         if (ret)
         {
           if (gCompositorList.empty())
@@ -1053,6 +1110,11 @@ namespace RdkShell
 
     bool CompositorController::draw()
     {
+        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
+        {
+            gWaterMarkImage->draw();
+        }
+
         for (std::vector<CompositorInfo>::reverse_iterator reverseIterator = gCompositorList.rbegin() ; reverseIterator != gCompositorList.rend(); reverseIterator++)
         {
             reverseIterator->compositor->draw();
@@ -1298,7 +1360,7 @@ namespace RdkShell
             uint32_t height = 0;
             RdkShell::EssosInstance::instance()->resolution(width, height);
             compositorInfo.compositor->setApplication(uri);
-            bool ret = compositorInfo.compositor->createDisplay("", width, height);
+            bool ret = compositorInfo.compositor->createDisplay(clientDisplayName, "", width, height);
             if (ret)
             {
                 if (gCompositorList.empty())
@@ -1414,6 +1476,40 @@ namespace RdkShell
             }
         }
         return false;
+    }
+
+    bool CompositorController::hideWatermark()
+    {
+        gShowWaterMarkImage = false;
+        gWaterMarkImage = nullptr;
+        return true;
+    }
+
+    bool CompositorController::showWatermark()
+    {
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "attempting to display watermark");
+        if (nullptr == gWaterMarkImage)
+        {
+            const char* waterMarkFile = getenv("RDKSHELL_WATERMARK_IMAGE_PNG");
+            if (waterMarkFile)
+            {
+                gWaterMarkImage = std::make_shared<RdkShell::Image>();
+                bool imageLoaded = gWaterMarkImage->loadLocalFile(waterMarkFile);
+                if (!imageLoaded)
+                {
+                    RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading watermark image: %s", waterMarkFile);
+                    gWaterMarkImage = nullptr;
+                    return false;
+                }
+            }
+            else
+            {
+                RdkShell::Logger::log(RdkShell::LogLevel::Warn, "no watermark image specified");
+                return false;
+            }
+        }
+        gShowWaterMarkImage = true;
+        return true;
     }
 
     bool CompositorController::hideSplashScreen()
