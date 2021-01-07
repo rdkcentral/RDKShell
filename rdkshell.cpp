@@ -35,9 +35,9 @@
 #include "logger.h"
 #include "rdkshell.h"
 #include "rdkshellimage.h"
+#include "permissions.h"
 #include <unistd.h>
 #include <time.h>
-#include <GLES2/gl2.h>
 #include <sys/sysinfo.h>
 #include <fstream>
 
@@ -59,6 +59,7 @@ double gCriticallyLowRamMemoryThresholdInMb = RDKSHELL_DEFAULT_CRITICALLY_LOW_ME
 bool gLowRamMemoryNotificationSent = false;
 bool gCriticallyLowRamMemoryNotificationSent = false;
 double gNextRamMonitorTime = 0.0;
+bool gForce720 = false;
 
 #ifdef RDKSHELL_ENABLE_IPC
 std::shared_ptr<RdkShell::ServerMessageHandler> gServerMessageHandler;
@@ -147,7 +148,7 @@ namespace RdkShell
     void checkSystemMemory()
     {
         uint32_t freeKb=0, usedKb=0, totalKb=0;
-        bool ret = systemRam(freeKb, usedKb, totalKb);
+        bool ret = systemRam(freeKb, totalKb, usedKb);
 
         if (false == ret)
         {
@@ -198,6 +199,7 @@ namespace RdkShell
         mapNativeKeyCodes();
         populateEasterEggDetails();
         readInputDevicesConfiguration();
+        readPermissionsConfiguration();
 
         char const *loglevel = getenv("RDKSHELL_LOG_LEVEL");
         if (loglevel)
@@ -294,8 +296,18 @@ namespace RdkShell
         #endif
 
         #ifdef RDKSHELL_ENABLE_FORCE_1080
-        std::cout << "!!!!! forcing 1080 start!\n";
-        RdkShell::EssosInstance::instance()->initialize(false, 1920, 1080);
+        std::ifstream file720("/tmp/rdkshell720");
+        if (file720.good())
+        {
+            std::cout << "!!!!! forcing 720 start!\n";
+            RdkShell::EssosInstance::instance()->initialize(false, 1280, 720);
+            gForce720 = true;
+        }
+        else
+        {
+            std::cout << "!!!!! forcing 1080 start!\n";
+            RdkShell::EssosInstance::instance()->initialize(false, 1920, 1080);
+        }
         #else
         RdkShell::EssosInstance::instance()->initialize(false);
         #endif //RDKSHELL_ENABLE_FORCE_1080
@@ -368,6 +380,7 @@ namespace RdkShell
 
     void draw()
     {
+        RdkShell::EssosInstance::instance()->update();
         uint32_t width = 0;
         uint32_t height = 0;
         RdkShell::EssosInstance::instance()->resolution(width, height);
@@ -376,7 +389,6 @@ namespace RdkShell
         glClear(GL_COLOR_BUFFER_BIT);
 
         RdkShell::CompositorController::draw();
-        RdkShell::EssosInstance::instance()->update();
     }
 
     void update()

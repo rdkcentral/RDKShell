@@ -43,19 +43,26 @@ bool RdkShellJson::readJsonFile(const char* path, rapidjson::Document& document)
   //get file size
   int fd = fileno(fp);
   struct stat fileStatValue;
-  fstat(fd, &fileStatValue);
+  int ret = fstat(fd, &fileStatValue);
+  if (-1 == ret)
+  {
+    std::cout << "unable to read json file state - " << path << "\n";
+    fclose(fp);
+    return false;
+  }
   int size = fileStatValue.st_size;
 
   if (size == 0)
   {
     std::cout << "json file is empty - " << path << "\n";
+    fclose(fp);
     return false;
   }
   
   rapidjson::ParseResult result;
   char* readBuffer = new char[size];
-  memset(readBuffer, 0, sizeof(readBuffer));
-  rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+  memset(readBuffer, 0, size);
+  rapidjson::FileReadStream is(fp, readBuffer, size);
   result = document.ParseStream(is);
 
   fclose(fp);

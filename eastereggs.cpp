@@ -24,15 +24,24 @@
 #include "compositorcontroller.h"
 #include "rdkshell.h"
 #include "rdkshelldata.h"
+#include "linuxkeys.h"
 
 #include <map>
 #include <vector>
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <algorithm>
+
+#define RDKSHELL_720_EASTER_EGG_FILE "/tmp/rdkshell720"
 
 namespace RdkShell
 {
     static std::vector<EasterEgg> sEasterEggs;
+    static bool sMatchedAnyEasterEgg = false;
+    static double sEasterEggResolveTime = 0.0;
 
-    EasterEgg::EasterEgg (std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson):mKeyDetails(details), mName(name), mTimeout(timeout), mActionJson(actionJson), mCurrentKeyIndex(0), mTotalUsedTime(0.0)
+    EasterEgg::EasterEgg (std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson):mKeyDetails(details), mName(name), mTimeout(timeout), mActionJson(actionJson), mCurrentKeyIndex(0), mTotalUsedTime(0.0), mSatisfied(false)
     {
     }
 
@@ -40,25 +49,87 @@ namespace RdkShell
     {
         mTotalUsedTime += time;
         struct RdkShellEasterEggKeyDetails& keyToCheck = mKeyDetails[mCurrentKeyIndex];
-        if ((keyToCheck.keyCode == keyCode) && (keyToCheck.keyHoldTime <= time) && (mTotalUsedTime <= mTimeout))
+        bool emptyFlagsMatched = false;
+        if ((keyToCheck.keyModifiers == 0) && (flags == 0))
         {
+            emptyFlagsMatched = true;
+        }
+        if ((keyToCheck.keyCode == keyCode) && ((true == emptyFlagsMatched) || (keyToCheck.keyModifiers & flags)) && (keyToCheck.keyHoldTime <= time) && (mTotalUsedTime <= mTimeout))
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "Easter Eggs - Matched portion key: %u modifier:%u", keyToCheck.keyCode, keyToCheck.keyModifiers);
             size_t numberOfKeys = mKeyDetails.size();
             if (mCurrentKeyIndex == (numberOfKeys - 1))
             {
-                std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
-                eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
-                eventData[0]["name"] = mName;
-                eventData[0]["action"] = mActionJson;
-                RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+                mSatisfied = true;
                 mTotalUsedTime = 0.0;
+                sMatchedAnyEasterEgg = true;
             }
             mCurrentKeyIndex = (mCurrentKeyIndex+1)%numberOfKeys;
         }
         else
         {
+            mSatisfied = false;
             mCurrentKeyIndex = 0;
             mTotalUsedTime = 0.0;
         }
+    }
+
+    void EasterEgg::toggleForce720()
+    {
+        std::ifstream file720(RDKSHELL_720_EASTER_EGG_FILE);
+        if (file720.good())
+        {
+            std::cout << "removing 720 restriction \n";
+            remove( RDKSHELL_720_EASTER_EGG_FILE );
+        }
+        else
+        {
+            std::cout << "adding 720 restriction \n";
+            std::ofstream outputFile(RDKSHELL_720_EASTER_EGG_FILE);
+            outputFile.close();
+        }
+        system("systemctl restart wpeframework &");
+    }
+
+    bool EasterEgg::invokeEvent()
+    {
+        bool ret = false;
+        if (mSatisfied)
+        {
+            std::vector<std::map<std::string, RdkShell::RdkShellData>> eventData(1);
+            eventData[0] = std::map<std::string, RdkShell::RdkShellData>();
+            eventData[0]["name"] = mName;
+            eventData[0]["action"] = mActionJson;
+            if (mName == "RDKSHELL_FORCE_720")
+            {
+                std::cout << "about to toggle force 720 easter egg\n";
+                toggleForce720();
+            }
+            else
+            {
+                RdkShell::CompositorController::sendEvent("onEasterEgg", eventData);
+            }
+            ret = true;
+        }
+        mSatisfied = false;
+        return ret;
+    }
+
+    void EasterEgg::reset()
+    {
+        mSatisfied = false;
+        mCurrentKeyIndex = 0;
+        mTotalUsedTime = 0.0;
+    }
+
+    size_t EasterEgg::numberOfKeys()
+    {
+        return mKeyDetails.size();
+    }
+
+    bool compareKeySize (EasterEgg& first, EasterEgg& second)
+    {
+      return first.numberOfKeys() >= second.numberOfKeys()?true:false;
     }
 
     void populateEasterEggDetails()
@@ -110,6 +181,7 @@ namespace RdkShell
                         {
                             uint32_t keyCode = 0;
                             uint32_t keyHoldTime = 0;
+                            uint32_t keyModifiers = 0;
       
                             const rapidjson::Value& easterEggKeyDetail = easterEggSequence[j];
                             if (!(easterEggKeyDetail.IsObject() && easterEggKeyDetail.HasMember("keyCode")))
@@ -133,10 +205,15 @@ namespace RdkShell
                             {
                                 keyHoldTime = easterEggKeyDetail["hold"].GetUint();
                             }
+                            if (easterEggKeyDetail.HasMember("modifiers"))
+                            {
+                                keyModifiers = easterEggKeyDetail["modifiers"].GetUint();
+                            }
                             
                             struct RdkShellEasterEggKeyDetails keyDetail;
                             keyDetail.keyCode = keyCode;
                             keyDetail.keyHoldTime = keyHoldTime;
+                            keyDetail.keyModifiers = keyModifiers;
                             keyDetailsList.push_back(keyDetail);
                         }
       
@@ -187,14 +264,48 @@ namespace RdkShell
         {
           std::cout << "Ignored file read due to easter egg environment variable not set\n";
         }
+        std::sort<std::vector<EasterEgg>::iterator>(sEasterEggs.begin(), sEasterEggs.end(), compareKeySize);
     }
     
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double keyPressTime)
     {
+        if ((keyCode == RDKSHELL_KEY_CTRL) || (keyCode == RDKSHELL_KEY_ALT) || (keyCode == RDKSHELL_KEY_SHIFT))
+        {
+           return;
+        }
         for (int i=0; i < sEasterEggs.size(); i++)
         {
            EasterEgg& easterEgg = sEasterEggs[i];
            easterEgg.checkKey(keyCode, flags, keyPressTime);
         }
+        if (sMatchedAnyEasterEgg)
+        {
+            sEasterEggResolveTime = RdkShell::seconds() + 1.0;
+        }
+    }
+
+    void resolveWaitingEasterEggs()
+    {
+        if (!sMatchedAnyEasterEgg)
+        {
+            return;
+        }
+        double currentTime = RdkShell::seconds();
+        if (currentTime > sEasterEggResolveTime)
+        {
+            bool invokedEvent = false;
+            for (int i=0; i<sEasterEggs.size(); i++)
+            {
+                EasterEgg& easterEgg = sEasterEggs[i];
+                if ((false == invokedEvent) && (true == easterEgg.invokeEvent()))
+                {
+                    invokedEvent = true;
+                }
+                easterEgg.reset();
+            }
+            sMatchedAnyEasterEgg = false;
+            sEasterEggResolveTime = 0.0;
+        }
+        // perform reset 
     }
 }
