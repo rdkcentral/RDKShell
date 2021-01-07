@@ -46,7 +46,7 @@ namespace RdkShell
                 bool ret = WstCompositorVirtualEmbeddedBindClient((*frontCompositor)->mWstContext, clientPID);
                 if (!ret)
                 {
-                    std::cout << "error setting surface to external client " << std::endl;
+                    std::cout << "Error setting surface to external client " << std::endl;
                 }
             }
             else
