@@ -30,10 +30,12 @@
 namespace RdkShell
 {
     WstCompositor* RdkCompositorSurface::mMainWstContext = NULL;
-    std::vector<RdkCompositorSurface*> gAvailableRdkCompositors;
     uint32_t RdkCompositorSurface::mMainCompositorWidth = 0;
     uint32_t RdkCompositorSurface::mMainCompositorHeight = 0;
     std::string RdkCompositorSurface::mMainCompositorDisplayName = "";
+
+    #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
+    std::vector<RdkCompositorSurface*> gAvailableRdkCompositors;
     void (*WstVirtEmbUnBoundClient)( WstCompositor *wctx, int clientPID, void *userData );
 
     void RdkCompositorSurface::unBoundedClient( WstCompositor *wctx, int clientPID, void *userData )
@@ -46,7 +48,7 @@ namespace RdkShell
                 bool ret = WstCompositorVirtualEmbeddedBindClient((*frontCompositor)->mWstContext, clientPID);
                 if (!ret)
                 {
-                    std::cout << "error setting surface to external client " << std::endl;
+                    std::cout << "Error setting surface to external client " << std::endl;
                 }
             }
             else
@@ -60,9 +62,11 @@ namespace RdkShell
             std::cout << "No display available for external client" << std::endl;
         }
     }
+    #endif
 
     RdkCompositorSurface::~RdkCompositorSurface()
     {
+        #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
         for (auto it = gAvailableRdkCompositors.begin(); it != gAvailableRdkCompositors.end(); ++it)
         {
             if (*it == this)
@@ -71,6 +75,7 @@ namespace RdkShell
                 break;
             }
         }
+        #endif
     }
 
     void RdkCompositorSurface::createMainCompositor(const std::string& displayName, uint32_t width, uint32_t height)
@@ -103,10 +108,12 @@ namespace RdkShell
                 error = true;
             }
 
+            #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
             if (!error && !WstCompositorSetVirtualEmbeddedUnBoundClientListener( mMainWstContext, unBoundedClient, nullptr ))
             {
                 error = true;
             }
+            #endif
 
             if (!error)
             {
@@ -177,10 +184,12 @@ namespace RdkShell
                     std::cout << "RDKShell is launching " << mApplicationName << std::endl;
                     launchApplicationInBackground();
                 }
+                #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
                 else
                 {
                     gAvailableRdkCompositors.push_back(this);
                 }
+                #endif
             }
         }
 
