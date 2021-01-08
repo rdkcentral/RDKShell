@@ -1140,6 +1140,7 @@ namespace RdkShell
                 gSplashImage->draw();
             }
         }
+	return true;
     }
 
     bool CompositorController::addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties)
