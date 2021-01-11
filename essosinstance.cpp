@@ -369,14 +369,15 @@ namespace RdkShell
 
     void EssosInstance::setKeyRepeats(bool enable)
     {
+        // enabling key repeats will enable keydown events coming from rdkshell on keyhold till keyup is performed
         mKeyRepeatsEnabled = enable;
         if (mKeyRepeatsEnabled)
         {
-            essosKeyListener.keyRepeat = essosKeyRepeat; 
+            essosKeyListener.keyRepeat = nullptr;
         }
         else
         {
-            essosKeyListener.keyRepeat = nullptr;
+            essosKeyListener.keyRepeat = essosKeyRepeat; 
         }
     }
 
