@@ -74,6 +74,7 @@ namespace RdkShell
 
     std::vector<CompositorInfo> gCompositorList;
     CompositorInfo gFocusedCompositor;
+    CompositorInfo gTopmostCompositor;
     std::vector<std::shared_ptr<RdkCompositor>> gPendingKeyUpListeners;
 
     static std::map<uint32_t, std::vector<KeyInterceptInfo>> gKeyInterceptInfoMap;
@@ -465,6 +466,12 @@ namespace RdkShell
                   gFocusedCompositor.name = "";
                   gFocusedCompositor.compositor = nullptr;
                   std::cout << "rdkshell_focus kill: the focused client has been killed: " << clientDisplayName  << ".  there is no focused client.\n";
+                }
+                if (gTopmostCompositor.name == clientDisplayName)
+                {
+                  // this may be changed to next available compositor
+                  gTopmostCompositor.name = "";
+                  gTopmostCompositor.compositor = nullptr;
                 }
                 return true;
             }
@@ -1100,7 +1107,14 @@ namespace RdkShell
               std::cout << "rdkshell_focus create: setting focus of first application created " << gFocusedCompositor.name << std::endl;
           }
           //std::cout << "display created with name: " << client << std::endl;
-          gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+          if (nullptr != gTopmostCompositor.compositor)
+          {
+            gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+          }
+          else
+          {
+            gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+          }
         }
         return ret;
     }
@@ -1360,7 +1374,14 @@ namespace RdkShell
                     gFocusedCompositor = compositorInfo;
                     std::cout << "rdkshell_focus launch: setting focus of first application created " << gFocusedCompositor.name << std::endl;
                 }
-                gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                if (nullptr != gTopmostCompositor.compositor)
+                {
+                  gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+                }
+                else
+                {
+                  gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                }
             }
             return true;
         }
@@ -1574,4 +1595,30 @@ namespace RdkShell
         }
         return true;
     }
+
+    bool CompositorController::setTopmost(const std::string& client, bool topmost)
+    {
+        bool ret = false;
+        if (topmost)
+        {
+            ret = moveToFront(client);
+            if (ret)
+            {
+                gTopmostCompositor = gCompositorList.front();
+            }
+        }
+        return true;
+    }
+
+    bool CompositorController::getTopmost(std::string& client)
+    {
+        bool ret = false;
+        if (nullptr != gTopmostCompositor.compositor)
+        {
+            client = gTopmostCompositor.name;
+            ret = true;
+        }
+        return ret;
+    }
+
 }
