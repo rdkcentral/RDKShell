@@ -186,8 +186,7 @@ static void essosKeyRepeat( void *userData, unsigned int key )
 static EssKeyListener essosKeyListener=
 {
     essosKeyPressed,
-    essosKeyReleased,
-    essosKeyRepeat
+    essosKeyReleased
 };
 
 static void essosDisplaySize( void *userData, int width, int height )
@@ -366,6 +365,24 @@ namespace RdkShell
     void EssosInstance::setResolution(uint32_t width, uint32_t height)
     {
         onDisplaySizeChanged(width, height);
+    }
+
+    void EssosInstance::setKeyRepeats(bool enable)
+    {
+        mKeyRepeatsEnabled = enable;
+        if (mKeyRepeatsEnabled)
+        {
+            essosKeyListener.keyRepeat = essosKeyRepeat; 
+        }
+        else
+        {
+            essosKeyListener.keyRepeat = nullptr;
+        }
+    }
+
+    void EssosInstance::keyRepeats(bool& enable)
+    {
+        enable = mKeyRepeatsEnabled;
     }
 
     void EssosInstance::update()
