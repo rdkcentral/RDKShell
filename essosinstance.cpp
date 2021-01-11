@@ -186,7 +186,8 @@ static void essosKeyRepeat( void *userData, unsigned int key )
 static EssKeyListener essosKeyListener=
 {
     essosKeyPressed,
-    essosKeyReleased
+    essosKeyReleased,
+    essosKeyRepeat
 };
 
 static void essosDisplaySize( void *userData, int width, int height )
