@@ -54,20 +54,7 @@ namespace RdkShell
 
         if (mMainWstContext)
         {
-            const char* enableRdkShellExtendedInput = getenv("RDKSHELL_EXTENDED_INPUT_ENABLED");
-
-            if (enableRdkShellExtendedInput)
-            {
-                std::string extensionInputPath = std::string(RDKSHELL_WESTEROS_PLUGIN_DIRECTORY) + "libwesteros_plugin_rdkshell_extended_input.so";
-                std::cout << "attempting to load extension: " << extensionInputPath << std::endl << std::flush;
-                if (!WstCompositorAddModule(mMainWstContext, extensionInputPath.c_str()))
-                {
-                    std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_extended_input.so'" << std::endl;
-                    error = true;
-                }
-            }
-
-            if (!WstCompositorSetIsEmbedded(mMainWstContext, true))
+            if (!error && !WstCompositorSetIsEmbedded(mMainWstContext, true))
             {
                 error = true;
             }
@@ -104,7 +91,7 @@ namespace RdkShell
         }
     }
 
-    bool RdkCompositorSurface::createDisplay(const std::string& displayName, uint32_t width, uint32_t height)
+    bool RdkCompositorSurface::createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height)
     {
         if (width > 0 && height > 0)
         {
@@ -117,7 +104,9 @@ namespace RdkShell
 
         if (mWstContext)
         {
-            if (!WstCompositorSetIsEmbedded(mWstContext, true))
+            error = !loadExtensions(mMainWstContext, clientName);
+
+            if (!error && !WstCompositorSetIsEmbedded(mWstContext, true))
             {
                 error = true;
             }
@@ -141,7 +130,6 @@ namespace RdkShell
             {
                 if (!mApplicationName.empty())
                 {
-                    setenv("WAYLAND_DISPLAY", mMainCompositorDisplayName.c_str(), 1);
                     std::cout << "RDKShell is launching " << mApplicationName << std::endl;
                     launchApplicationInBackground();
                 }

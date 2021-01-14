@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    If not stated otherwise in this file or this component's LICENSE
+    file the following copyright and licenses apply:
+
+    Copyright 2020 RDK Management
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    * http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<protocol name="rdkshell_client_control">
+
+    <interface name="rdkshell_client_control" version="1">
+
+        <description summary="">
+            It can be used by the home app to control the window of an inactive app.
+        </description>
+
+        <request name="set_client_bounds_and_scale">
+            <description summary="sets client window bounds and scale">
+                Sets client window bounds and scale.
+            </description>
+            <arg name="id" type="string"
+                 summary="Id of the app"/>
+            <arg name="x" type="int"
+                 summary="the left position of the surface in pixel screen coordinates"/>
+            <arg name="y" type="int"
+                 summary="the top position of the surface in pixel screen coordinates"/>
+            <arg name="width" type="uint"
+                 summary="the width of the video surface in pixel screen coordinates"/>
+            <arg name="height" type="uint"
+                 summary="the height of the video surface in pixel screen coordinates"/>                 
+            <arg name="sx" type="fixed"
+                 summary="horizontal scale factor, fixed point number"/>
+            <arg name="sy" type="fixed"
+                 summary="vertical scale factor, fixed point number representing "/>
+        </request>
+
+        <request name="set_client_bounds">
+            <description summary="sets client window bounds">
+                Sets client window bounds. Scale of the client window is not changed.
+            </description>
+            <arg name="id" type="string"
+                 summary="Id of the app"/>
+            <arg name="x" type="int"
+                 summary="the left position of the surface in pixel screen coordinates"/>
+            <arg name="y" type="int"
+                 summary="the top position of the surface in pixel screen coordinates"/>
+            <arg name="width" type="uint"
+                 summary="the width of the video surface in pixel screen coordinates"/>
+            <arg name="height" type="uint"
+                 summary="the height of the video surface in pixel screen coordinates"/>                 
+        </request>
+
+        <request name="set_client_scale">
+            <description summary="sets client window scale">
+                Sets client window scale. Bounds of the client window are not changed.
+            </description>
+            <arg name="id" type="string"
+                 summary="Id of the app"/>
+            <arg name="sx" type="fixed"
+                 summary="horizontal scale factor, fixed point number"/>
+            <arg name="sy" type="fixed"
+                 summary="vertical scale factor, fixed point number representing "/>             
+        </request>
+
+    </interface>
+
+</protocol>

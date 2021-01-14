@@ -17,21 +17,22 @@
 * limitations under the License.
 **/
 
-#include <iostream>
-#include "rdkshell.h"
+#ifndef RDKSHELL_CLIENT_POSITION_MODULE_H
+#define RDKSHELL_CLIENT_POSITION_MODULE_H
+
+#include "../../../rdkcompositor.h"
 
 
-int main(int argc, char* argv[])
+class RdkShellClientControlModule
 {
-    try
-    {
-        RdkShell::initialize();
-        RdkShell::run();
-    }
-    catch(...)
-    {
-        std::cout << "got exception during rdkshell execution\n" << std::endl;
-    }
-    std::cout << "exiting rdk shell\n";
-    return 0;
-}
+public:
+    RdkShellClientControlModule(std::shared_ptr<RdkShell::RdkCompositor> &client);
+    ~RdkShellClientControlModule();
+
+    std::shared_ptr<RdkShell::RdkCompositor> client() const;
+
+private:
+    std::weak_ptr<RdkShell::RdkCompositor> mClient;
+};
+
+#endif
