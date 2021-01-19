@@ -90,6 +90,8 @@ namespace RdkShell
     bool gShowSplashImage = false;
     uint32_t gSplashDisplayTimeInSeconds = 0;
     double gSplashStartTime = 0;
+    std::shared_ptr<RdkShell::Image> gWaterMarkImage = nullptr;
+    bool gShowWaterMarkImage = false;
     uint32_t gPowerKeyCode = 0;
     bool gPowerKeyEnabled = false;
 
@@ -1063,6 +1065,7 @@ namespace RdkShell
 
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth, uint32_t displayHeight)
     {
+        std::cout << "rdkshell createDisplay client: " << client << " displayName: " << displayName << "\n";
         std::string clientDisplayName = standardizeName(client);
         std::string compositorDisplayName = displayName;
         if (displayName.empty())
@@ -1098,7 +1101,7 @@ namespace RdkShell
         {
             height = displayHeight;
         }
-        bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, width, height);
+        bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, clientDisplayName, width, height);
         if (ret)
         {
           if (gCompositorList.empty())
@@ -1121,6 +1124,11 @@ namespace RdkShell
 
     bool CompositorController::draw()
     {
+        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
+        {
+            gWaterMarkImage->draw();
+        }
+
         for (std::vector<CompositorInfo>::reverse_iterator reverseIterator = gCompositorList.rbegin() ; reverseIterator != gCompositorList.rend(); reverseIterator++)
         {
             reverseIterator->compositor->draw();
@@ -1146,6 +1154,7 @@ namespace RdkShell
                 gSplashImage->draw();
             }
         }
+	return true;
     }
 
     bool CompositorController::addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties)
@@ -1244,6 +1253,7 @@ namespace RdkShell
 
     bool CompositorController::update()
     {
+        resolveWaitingEasterEggs();
         RdkShell::Animator::instance()->animate();
         if (gEnableInactivityReporting)
         {
@@ -1366,7 +1376,7 @@ namespace RdkShell
             uint32_t height = 0;
             RdkShell::EssosInstance::instance()->resolution(width, height);
             compositorInfo.compositor->setApplication(uri);
-            bool ret = compositorInfo.compositor->createDisplay("", width, height);
+            bool ret = compositorInfo.compositor->createDisplay(clientDisplayName, "", width, height);
             if (ret)
             {
                 if (gCompositorList.empty())
@@ -1489,6 +1499,40 @@ namespace RdkShell
             }
         }
         return false;
+    }
+
+    bool CompositorController::hideWatermark()
+    {
+        gShowWaterMarkImage = false;
+        gWaterMarkImage = nullptr;
+        return true;
+    }
+
+    bool CompositorController::showWatermark()
+    {
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "attempting to display watermark");
+        if (nullptr == gWaterMarkImage)
+        {
+            const char* waterMarkFile = getenv("RDKSHELL_WATERMARK_IMAGE_PNG");
+            if (waterMarkFile)
+            {
+                gWaterMarkImage = std::make_shared<RdkShell::Image>();
+                bool imageLoaded = gWaterMarkImage->loadLocalFile(waterMarkFile);
+                if (!imageLoaded)
+                {
+                    RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading watermark image: %s", waterMarkFile);
+                    gWaterMarkImage = nullptr;
+                    return false;
+                }
+            }
+            else
+            {
+                RdkShell::Logger::log(RdkShell::LogLevel::Warn, "no watermark image specified");
+                return false;
+            }
+        }
+        gShowWaterMarkImage = true;
+        return true;
     }
 
     bool CompositorController::hideSplashScreen()
