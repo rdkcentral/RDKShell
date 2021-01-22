@@ -96,6 +96,7 @@ namespace RdkShell
             static bool setTopmost(const std::string& client, bool topmost);
             static bool getTopmost(std::string& client);
             static bool sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data);
+            static bool isSurfaceModeEnabled();
             static bool enableKeyRepeats(bool enable);
             static bool getKeyRepeatsEnabled(bool& enable);
     };

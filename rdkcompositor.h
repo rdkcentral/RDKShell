@@ -38,7 +38,7 @@ namespace RdkShell
         public:
 
             RdkCompositor();
-            ~RdkCompositor();
+            virtual ~RdkCompositor();
             virtual bool createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height) = 0;
             void draw();
             void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata);
