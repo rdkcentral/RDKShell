@@ -295,25 +295,25 @@ namespace RdkShell
         }
         #endif
 
-        bool Iswayland = false;
+        bool isWayland = false;
         char const *disp = getenv("WAYLAND_DISPLAY");
         if (disp != 0) {
-                Iswayland = true; }	
+                isWayland = true; }	
         #ifdef RDKSHELL_ENABLE_FORCE_1080
         std::ifstream file720("/tmp/rdkshell720");
         if (file720.good())
         {
             std::cout << "!!!!! forcing 720 start!\n";
-            RdkShell::EssosInstance::instance()->initialize(Iswayland, 1280, 720);
+            RdkShell::EssosInstance::instance()->initialize(isWayland, 1280, 720);
             gForce720 = true;
         }
         else
         {
             std::cout << "!!!!! forcing 1080 start!\n";
-            RdkShell::EssosInstance::instance()->initialize(Iswayland, 1920, 1080);
+            RdkShell::EssosInstance::instance()->initialize(isWayland, 1920, 1080);
         }
         #else
-        RdkShell::EssosInstance::instance()->initialize(Iswayland);
+        RdkShell::EssosInstance::instance()->initialize(isWayland);
         #endif //RDKSHELL_ENABLE_FORCE_1080
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
