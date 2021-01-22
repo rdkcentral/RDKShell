@@ -204,6 +204,7 @@ namespace RdkShell
         {
             ((ServerMessageHandler*)context)->communicationHandler()->sendMessage(id,message);
         }
+        return true;
     }
   
     bool getScaleHandler(int id, const rapidjson::Value& params, void* context)
