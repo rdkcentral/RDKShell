@@ -37,9 +37,11 @@ namespace RdkShell
     #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
     std::vector<RdkCompositorSurface*> gAvailableRdkCompositors;
     void (*WstVirtEmbUnBoundClient)( WstCompositor *wctx, int clientPID, void *userData );
+    #endif //RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
 
     void RdkCompositorSurface::unBoundedClient( WstCompositor *wctx, int clientPID, void *userData )
     {
+        #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
         if (gAvailableRdkCompositors.size() > 0)
         {
             std::vector<RdkCompositorSurface*>::iterator frontCompositor = (gAvailableRdkCompositors.begin());
@@ -61,8 +63,8 @@ namespace RdkShell
         {
             std::cout << "No display available for external client" << std::endl;
         }
+        #endif //RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
     }
-    #endif
 
     RdkCompositorSurface::~RdkCompositorSurface()
     {
