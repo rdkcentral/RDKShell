@@ -297,8 +297,10 @@ namespace RdkShell
 
         bool isWayland = false;
         char const *disp = getenv("WAYLAND_DISPLAY");
-        if (disp != 0) {
-                isWayland = true; }	
+        if (disp != 0)
+        {
+                isWayland = true;
+        }	
         #ifdef RDKSHELL_ENABLE_FORCE_1080
         std::ifstream file720("/tmp/rdkshell720");
         if (file720.good())
