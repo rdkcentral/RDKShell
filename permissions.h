@@ -17,18 +17,16 @@
 * limitations under the License.
 **/
 
-#ifndef RDKSHELL_RDK_COMPOSITOR_NESTED_H
-#define RDKSHELL_RDK_COMPOSITOR_NESTED_H
+#pragma once
 
-#include "rdkcompositor.h"
+#include <string>
+#include <vector>
 
 namespace RdkShell
 {
-    class RdkCompositorNested:public RdkCompositor
-    {
-        public:
-            bool createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height);
-    };
-}
 
-#endif //RDKSHELL_RDK_COMPOSITOR_NESTED_H
+    void readPermissionsConfiguration();
+    void logPermissionsConfiguration();
+    void getAllowedExtensions(const std::string& clientName, std::vector<std::string>& extensions);
+
+}

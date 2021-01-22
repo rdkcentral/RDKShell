@@ -17,18 +17,22 @@
 * limitations under the License.
 **/
 
-#ifndef RDKSHELL_RDK_COMPOSITOR_NESTED_H
-#define RDKSHELL_RDK_COMPOSITOR_NESTED_H
+#ifndef RDKSHELL_CLIENT_POSITION_MODULE_H
+#define RDKSHELL_CLIENT_POSITION_MODULE_H
 
-#include "rdkcompositor.h"
+#include "../../../rdkcompositor.h"
 
-namespace RdkShell
+
+class RdkShellClientControlModule
 {
-    class RdkCompositorNested:public RdkCompositor
-    {
-        public:
-            bool createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height);
-    };
-}
+public:
+    RdkShellClientControlModule(std::shared_ptr<RdkShell::RdkCompositor> &client);
+    ~RdkShellClientControlModule();
 
-#endif //RDKSHELL_RDK_COMPOSITOR_NESTED_H
+    std::shared_ptr<RdkShell::RdkCompositor> client() const;
+
+private:
+    std::weak_ptr<RdkShell::RdkCompositor> mClient;
+};
+
+#endif

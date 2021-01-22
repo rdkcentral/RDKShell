@@ -87,10 +87,14 @@ namespace RdkShell
             static bool setMimeType(const std::string& client, const std::string& mimeType);
             static bool hideSplashScreen();
             static bool showSplashScreen(uint32_t displayTimeInSeconds);
+            static bool hideWatermark();
+            static bool showWatermark();
             static bool draw();
             static bool update();
             static bool setLogLevel(const std::string level);
             static bool getLogLevel(std::string& level);
+            static bool setTopmost(const std::string& client, bool topmost);
+            static bool getTopmost(std::string& client);
             static bool sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data);
             static bool enableKeyRepeats(bool enable);
             static bool getKeyRepeatsEnabled(bool& enable);
