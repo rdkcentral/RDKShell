@@ -41,9 +41,7 @@ namespace RdkShell
             static void createMainCompositor(const std::string& displayName, uint32_t width, uint32_t height);
             bool createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height);
         private:
-            #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
             static void unBoundedClient( WstCompositor *wctx, int clientPID, void *userData );
-            #endif
             static WstCompositor *mMainWstContext;
             static uint32_t mMainCompositorWidth, mMainCompositorHeight;
             static std::string mMainCompositorDisplayName;
