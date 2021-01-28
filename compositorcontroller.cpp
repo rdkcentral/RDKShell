@@ -192,6 +192,8 @@ namespace RdkShell
     void bubbleKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
         std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
+        std::string focusedCompositorName = gFocusedCompositor.name;
+        #ifndef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
         for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
         {
           if (compositorIterator->name == gFocusedCompositor.name)
@@ -199,12 +201,23 @@ namespace RdkShell
             break;
           }
         }
+        #else
+        Logger::log(Debug, "Key bubbling is made from top application");
+        #endif //RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
 
         bool activateCompositor = false, propagateKey = true, foundListener = false;
         bool stopPropagation = false;
         bool isFocusedCompositor = true;
         while (compositorIterator != gCompositorList.end())
         {
+          #ifdef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
+          if (compositorIterator->name == focusedCompositorName)
+          {
+              compositorIterator++;
+              continue;
+          }
+          isFocusedCompositor = false;
+          #endif //RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
           activateCompositor = false;
           propagateKey = true;
           foundListener = false;
