@@ -751,8 +751,8 @@ namespace RdkShell
 
     bool CompositorController::injectKey(const uint32_t& keyCode, const uint32_t& flags)
     {
-        CompositorController::onKeyPress(keyCode, flags, 0);
-        CompositorController::onKeyRelease(keyCode, flags, 0);
+        CompositorController::onKeyPress(keyCode, flags, 0, false);
+        CompositorController::onKeyRelease(keyCode, flags, 0, false);
         return true;
     }
 
@@ -761,8 +761,8 @@ namespace RdkShell
         bool ret = false;
         if (client.empty())
         {
-            CompositorController::onKeyPress(keyCode, flags, 0);
-            CompositorController::onKeyRelease(keyCode, flags, 0);
+            CompositorController::onKeyPress(keyCode, flags, 0, false);
+            CompositorController::onKeyRelease(keyCode, flags, 0, false);
             ret = true;
         }
         else
@@ -998,11 +998,11 @@ namespace RdkShell
         return true;
     }
 
-    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
         double currentTime = RdkShell::seconds();
-        if (0.0 == gLastKeyPressStartTime)
+        if ((true == physicalKeyPress) && (0.0 == gLastKeyPressStartTime))
         {
             gLastKeyPressStartTime = currentTime;
         }
@@ -1026,13 +1026,16 @@ namespace RdkShell
 
     }
 
-    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
-        double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
-        checkEasterEggs(keycode, flags, keyPressTime);
+        if (true == physicalKeyPress)
+        {
+            double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
+            checkEasterEggs(keycode, flags, keyPressTime);
+            gLastKeyPressStartTime = 0.0;
+        }
         gLastKeyEventTime = RdkShell::seconds();
-        gLastKeyPressStartTime = 0.0;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
         bool isInterceptAvailable = false;
