@@ -2,7 +2,7 @@
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
 *
-* Copyright 2020 RDK Management
+* Copyright 2021 RDK Management
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,19 +17,33 @@
 * limitations under the License.
 **/
 
-#ifndef RDKSHELL_RDK_COMPOSITOR_NESTED_H
-#define RDKSHELL_RDK_COMPOSITOR_NESTED_H
+#pragma once
 
-#include "rdkcompositor.h"
+#include <GLES2/gl2.h>
 
 namespace RdkShell
 {
-    class RdkCompositorNested:public RdkCompositor
+    class FrameBuffer
     {
-        public:
-            bool createDisplay(const std::string& displayName, const std::string& clientName,
-                uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight);
+    public:
+        FrameBuffer(int width, int height);
+        ~FrameBuffer();
+
+        int width() const { return mWidth; }
+        int height() const { return mHeight; }
+
+        GLuint texture() const { return mTextureId; }
+
+        bool bind(GLenum target = GL_FRAMEBUFFER);
+        bool unbind(GLenum target = GL_FRAMEBUFFER);
+
+        //MHMH todo: what about resizing the frame buffer?
+
+    private:
+        int mWidth;
+        int mHeight;
+
+        GLuint mTextureId;
+        GLuint mFboId;
     };
 }
-
-#endif //RDKSHELL_RDK_COMPOSITOR_NESTED_H

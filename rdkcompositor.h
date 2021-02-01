@@ -23,8 +23,6 @@
 #include <string>
 #include <thread>
 #include <mutex>
-
-#include <mutex>
 #include <functional>
 #include <unordered_map>
 #include "westeros-compositor.h"
@@ -33,13 +31,17 @@
 
 namespace RdkShell
 {
+
+    class FrameBuffer;
+
     class RdkCompositor
     {
         public:
 
             RdkCompositor();
             ~RdkCompositor();
-            virtual bool createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height) = 0;
+            virtual bool createDisplay(const std::string& displayName, const std::string& clientName,
+                uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight) = 0;
             void draw();
             void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata);
             void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata);
@@ -67,6 +69,10 @@ namespace RdkShell
             bool suspendApplication();
             void setApplication(const std::string& application);
             bool isKeyPressed();
+            void getVirtualResolution(uint32_t &virtualWidth, uint32_t &virtualHeight);
+            void setVirtualResolution(uint32_t virtualWidth, uint32_t virtualHeight);
+            void enableVirtualDisplay(bool enable);
+            bool getVirtualDisplayEnabled();
 
         protected:
             static void invalidate(WstCompositor *context, void *userData);
@@ -78,6 +84,8 @@ namespace RdkShell
             void launchApplicationInBackground();
             void shutdownApplication();
             static bool loadExtensions(WstCompositor *compositor, const std::string& clientName);
+            void drawDirect();
+            void drawFbo();
             
             std::string mDisplayName;
             WstCompositor *mWstContext;
@@ -104,6 +112,10 @@ namespace RdkShell
             bool mApplicationClosedByCompositor;
             std::recursive_mutex mApplicationMutex;
             bool mReceivedKeyPress;
+            bool mVirtualDisplayEnabled;
+            uint32_t mVirtualWidth;
+            uint32_t mVirtualHeight;
+            std::shared_ptr<FrameBuffer> mFbo;
     };
 }
 

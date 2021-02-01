@@ -38,7 +38,8 @@ namespace RdkShell
     {
         public:
             static void createMainCompositor(const std::string& displayName, uint32_t width, uint32_t height);
-            bool createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height);
+            bool createDisplay(const std::string& displayName, const std::string& clientName,
+                uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight);
         private:
             static WstCompositor *mMainWstContext;
             static uint32_t mMainCompositorWidth, mMainCompositorHeight;

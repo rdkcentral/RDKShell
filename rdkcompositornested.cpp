@@ -29,7 +29,8 @@
 
 namespace RdkShell
 {
-    bool RdkCompositorNested::createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height)
+    bool RdkCompositorNested::createDisplay(const std::string& displayName, const std::string& clientName,
+        uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight)
     {
         if (width > 0 && height > 0)
         {
@@ -91,6 +92,10 @@ namespace RdkShell
                 }
             }
         }
+
+        mVirtualDisplayEnabled = virtualDisplayEnabled;
+        mVirtualWidth = (virtualWidth > 0) ? virtualWidth : mWidth;
+        mVirtualHeight = (virtualHeight > 0) ? virtualHeight : mHeight;
 
         if (error)
         {

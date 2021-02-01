@@ -82,7 +82,7 @@ namespace RdkShell
       int threadId = syscall(__NR_gettid);
       const char* logLevel = logLevelToString(level);
 
-      printf("[%s] Thread-%d: ", logLevel, threadId);
+      printf("[%s] RDKShell Thread-%d: ", logLevel, threadId);
       va_list ptr;
       va_start(ptr, format);
       vprintf(format, ptr);

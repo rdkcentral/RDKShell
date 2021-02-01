@@ -27,6 +27,8 @@
 #include "linuxkeys.h"
 #include "rdkshell.h"
 #include "permissions.h"
+#include "framebuffer.h"
+#include "framebufferblitter.h"
 
 extern bool gForce720;
 
@@ -46,7 +48,8 @@ namespace RdkShell
         mWidth(1920), mHeight(1080), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
         mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
-        mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false)
+        mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false),
+        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0)
     {
         if (gForce720)
         {
@@ -204,7 +207,8 @@ namespace RdkShell
         return success;
     }
 
-    bool RdkCompositor::createDisplay(const std::string& displayName, const std::string& clientName, uint32_t width, uint32_t height)
+    bool RdkCompositor::createDisplay(const std::string& displayName, const std::string& clientName,
+        uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight)
     {
         if (width > 0 && height > 0)
         {
@@ -290,6 +294,69 @@ namespace RdkShell
             return;
         }
         #endif //!RDKSHELL_ENABLE_HIDDEN_SUPPORT
+
+        if (mVirtualDisplayEnabled)
+        {
+            drawFbo();
+        }
+        else
+        {
+            drawDirect();
+        }
+    }
+
+    void RdkCompositor::drawFbo()
+    {
+        // create the FBO if it's not created yet or its size was changed
+        if (!mFbo ||
+            mFbo->width() != mVirtualWidth ||
+            mFbo->height() != mVirtualHeight)
+        {
+            std::cout << "creating FBO resolution: " << mVirtualWidth << " x " << mVirtualHeight << "\n";
+            mFbo = std::make_shared<FrameBuffer>(mVirtualWidth, mVirtualHeight);
+        }
+
+        unsigned int outputWidth, outputHeight;
+        WstCompositorGetOutputSize(mWstContext, &outputWidth, &outputHeight);
+        if ((mVirtualWidth != (uint32_t)outputWidth) || (mVirtualHeight != (uint32_t)outputHeight))
+        {
+            WstCompositorSetOutputSize(mWstContext, mVirtualWidth, mVirtualHeight);
+        }
+
+        mFbo->bind();
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        GLint viewport[4];
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        glViewport(0, 0, mVirtualWidth, mVirtualHeight);
+
+        int hints = WstHints_none;//WstHints_fboTarget;
+        bool needsHolePunch = false;
+        std::vector<WstRect> rects;
+        float opacity = 1.f;
+        float matrix[16] = {
+            1.f, 0.f, 0.f, 0.f,
+            0.f, 1.f, 0.f, 0.f,
+            0.f, 0.f, 1.f, 0.f,
+            0.f, 0.f, 0.f, 1.f
+        };
+
+        WstCompositorComposeEmbedded(mWstContext, 0, 0, mVirtualWidth, mVirtualHeight,
+            matrix, opacity, hints, &needsHolePunch, rects);
+
+        glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+        mFbo->unbind();
+
+        uint32_t screenWidth, screenHeight;
+        CompositorController::getScreenResolution(screenWidth, screenHeight);
+
+        FrameBufferBlitter::instance().blit(mFbo, screenWidth, screenHeight, mMatrix,
+            mPositionX, mPositionY, mWidth, mHeight);
+    }
+
+    void RdkCompositor::drawDirect()
+    {
         int hints = WstHints_none;
         hints |= WstHints_applyTransform;
         if (mHolePunch)
@@ -416,7 +483,7 @@ namespace RdkShell
             width = 1280;
             height = 720;
         }
-        if ( (mWstContext != NULL) && ((mWidth != width) || (mHeight != height)) )
+        if ( (mWstContext != NULL) && !mVirtualDisplayEnabled && ((mWidth != width) || (mHeight != height)) )
         {
             WstCompositorSetOutputSize(mWstContext, width, height);
         }
@@ -593,4 +660,27 @@ namespace RdkShell
     {
         return mReceivedKeyPress;
     }
+
+    void RdkCompositor::getVirtualResolution(uint32_t &virtualWidth, uint32_t &virtualHeight)
+    {
+        virtualWidth = mVirtualWidth;
+        virtualHeight = mVirtualHeight;
+    }
+
+    void RdkCompositor::setVirtualResolution(uint32_t virtualWidth, uint32_t virtualHeight)
+    {
+        mVirtualWidth = virtualWidth;
+        mVirtualHeight = virtualHeight;
+    }
+
+    void RdkCompositor::enableVirtualDisplay(bool enable)
+    {
+        mVirtualDisplayEnabled = enable;   
+    }
+
+    bool RdkCompositor::getVirtualDisplayEnabled()
+    {
+        return mVirtualDisplayEnabled;
+    }
+
 }
