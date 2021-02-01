@@ -326,12 +326,12 @@ namespace RdkShell
 
     void EssosInstance::onKeyPress(uint32_t keyCode, unsigned long flags, uint64_t metadata)
     {
-        CompositorController::onKeyPress(keyCode, flags, metadata);
+        CompositorController::queueKeyEvent(true, keyCode, flags, metadata, true);
     }
 
     void EssosInstance::onKeyRelease(uint32_t keyCode, unsigned long flags, uint64_t metadata)
     {
-        CompositorController::onKeyRelease(keyCode, flags, metadata);
+        CompositorController::queueKeyEvent(false, keyCode, flags, metadata, true);
     }
 
     void EssosInstance::onDisplaySizeChanged(uint32_t width, uint32_t height)
