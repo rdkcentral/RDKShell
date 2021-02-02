@@ -51,7 +51,7 @@ set(RDKSHELL_SOURCES
   rdkshellimage.cpp
   permissions.cpp
   framebuffer.cpp
-  framebufferblitter.cpp
+  framebufferrenderer.cpp
 )
 set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor -lpthread -ljpeg -lpng16)
 

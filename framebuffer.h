@@ -34,10 +34,8 @@ namespace RdkShell
 
         GLuint texture() const { return mTextureId; }
 
-        bool bind(GLenum target = GL_FRAMEBUFFER);
-        bool unbind(GLenum target = GL_FRAMEBUFFER);
-
-        //MHMH todo: what about resizing the frame buffer?
+        bool bind();
+        bool unbind();
 
     private:
         int mWidth;

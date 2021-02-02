@@ -26,24 +26,20 @@ namespace RdkShell
 {
     class FrameBuffer;
 
-    class FrameBufferBlitter
+    class FrameBufferRenderer
     {
     public:
-        static FrameBufferBlitter& instance();
+        static FrameBufferRenderer *instance();
         
-        void blit(std::shared_ptr<FrameBuffer> fbo, uint32_t screenWidth, uint32_t screenHeight,
+        void draw(std::shared_ptr<FrameBuffer> fbo, uint32_t screenWidth, uint32_t screenHeight,
             float *matrix, int32_t x, int32_t y, uint32_t width, uint32_t height);
     
     private:
-        FrameBufferBlitter();
-        ~FrameBufferBlitter();
+        FrameBufferRenderer();
+        ~FrameBufferRenderer();
 
         void createShaderProgram();
 
-        static FrameBufferBlitter *mInstance;
-
-        // GLuint mVertexShader;
-        // GLuint mFragmentShader;
         GLuint mShaderProgram;
 
         GLint mPositionLocation;

@@ -28,7 +28,7 @@
 #include "rdkshell.h"
 #include "permissions.h"
 #include "framebuffer.h"
-#include "framebufferblitter.h"
+#include "framebufferrenderer.h"
 
 extern bool gForce720;
 
@@ -351,7 +351,7 @@ namespace RdkShell
         uint32_t screenWidth, screenHeight;
         CompositorController::getScreenResolution(screenWidth, screenHeight);
 
-        FrameBufferBlitter::instance().blit(mFbo, screenWidth, screenHeight, mMatrix,
+        FrameBufferRenderer::instance()->draw(mFbo, screenWidth, screenHeight, mMatrix,
             mPositionX, mPositionY, mWidth, mHeight);
     }
 

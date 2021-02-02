@@ -17,7 +17,7 @@
 * limitations under the License.
 **/
 
-#include "framebufferblitter.h"
+#include "framebufferrenderer.h"
 #include "framebuffer.h"
 #include "logger.h"
 
@@ -25,27 +25,27 @@
 
 namespace RdkShell
 {
-    FrameBufferBlitter::FrameBufferBlitter()
+    FrameBufferRenderer::FrameBufferRenderer()
     {
         createShaderProgram();
     }
 
-    FrameBufferBlitter::~FrameBufferBlitter()
+    FrameBufferRenderer::~FrameBufferRenderer()
     {
         glDeleteProgram(mShaderProgram);
     }
 
-    FrameBufferBlitter& FrameBufferBlitter::instance()
+    FrameBufferRenderer *FrameBufferRenderer::instance()
     {
-        static FrameBufferBlitter blitter;
+        static FrameBufferRenderer renderer;
 
-        return blitter;
+        return &renderer;
     }
 
-    void FrameBufferBlitter::blit(std::shared_ptr<FrameBuffer> fbo, uint32_t screenWidth, uint32_t screenHeight, 
+    void FrameBufferRenderer::draw(std::shared_ptr<FrameBuffer> fbo, uint32_t screenWidth, uint32_t screenHeight, 
         float *matrix, int32_t boundsX, int32_t boundsY, uint32_t boundsWidth, uint32_t boundsHeight)
     {
-        // Logger::log(LogLevel::Error, "FrameBufferBlitter::blit 1 fbo: %x, screen res: %d x %d, dst rect: %d, %d, %d, %d, fbo res: %d x %d",
+        // Logger::log(LogLevel::Error, "FrameBufferRenderer::blit 1 fbo: %x, screen res: %d x %d, dst rect: %d, %d, %d, %d, fbo res: %d x %d",
         //     fbo, screenWidth, screenHeight, boundsX, boundsY, boundsWidth, boundsHeight, fbo->width(), fbo->height());
 
         glUseProgram(mShaderProgram);
@@ -82,7 +82,7 @@ namespace RdkShell
         glUseProgram(0);
     }
 
-    void FrameBufferBlitter::createShaderProgram()
+    void FrameBufferRenderer::createShaderProgram()
     {
         const char* vertexShaderSource = 
             "attribute vec2 a_position; \n"
