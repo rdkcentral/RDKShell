@@ -74,6 +74,7 @@ namespace RdkShell
 
     std::vector<CompositorInfo> gCompositorList;
     CompositorInfo gFocusedCompositor;
+    CompositorInfo gTopmostCompositor;
     std::vector<std::shared_ptr<RdkCompositor>> gPendingKeyUpListeners;
 
     static std::map<uint32_t, std::vector<KeyInterceptInfo>> gKeyInterceptInfoMap;
@@ -191,6 +192,8 @@ namespace RdkShell
     void bubbleKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
         std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
+        std::string focusedCompositorName = gFocusedCompositor.name;
+        #ifndef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
         for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
         {
           if (compositorIterator->name == gFocusedCompositor.name)
@@ -198,12 +201,23 @@ namespace RdkShell
             break;
           }
         }
+        #else
+        Logger::log(Debug, "Key bubbling is made from top application");
+        #endif //RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
 
         bool activateCompositor = false, propagateKey = true, foundListener = false;
         bool stopPropagation = false;
         bool isFocusedCompositor = true;
         while (compositorIterator != gCompositorList.end())
         {
+          #ifdef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
+          if (compositorIterator->name == focusedCompositorName)
+          {
+              compositorIterator++;
+              continue;
+          }
+          isFocusedCompositor = false;
+          #endif //RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
           activateCompositor = false;
           propagateKey = true;
           foundListener = false;
@@ -467,6 +481,12 @@ namespace RdkShell
                   gFocusedCompositor.name = "";
                   gFocusedCompositor.compositor = nullptr;
                   std::cout << "rdkshell_focus kill: the focused client has been killed: " << clientDisplayName  << ".  there is no focused client.\n";
+                }
+                if (gTopmostCompositor.name == clientDisplayName)
+                {
+                  // this may be changed to next available compositor
+                  gTopmostCompositor.name = "";
+                  gTopmostCompositor.compositor = nullptr;
                 }
                 return true;
             }
@@ -744,8 +764,8 @@ namespace RdkShell
 
     bool CompositorController::injectKey(const uint32_t& keyCode, const uint32_t& flags)
     {
-        CompositorController::onKeyPress(keyCode, flags, 0);
-        CompositorController::onKeyRelease(keyCode, flags, 0);
+        CompositorController::onKeyPress(keyCode, flags, 0, false);
+        CompositorController::onKeyRelease(keyCode, flags, 0, false);
         return true;
     }
 
@@ -754,8 +774,8 @@ namespace RdkShell
         bool ret = false;
         if (client.empty())
         {
-            CompositorController::onKeyPress(keyCode, flags, 0);
-            CompositorController::onKeyRelease(keyCode, flags, 0);
+            CompositorController::onKeyPress(keyCode, flags, 0, false);
+            CompositorController::onKeyRelease(keyCode, flags, 0, false);
             ret = true;
         }
         else
@@ -991,11 +1011,11 @@ namespace RdkShell
         return true;
     }
 
-    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
         double currentTime = RdkShell::seconds();
-        if (0.0 == gLastKeyPressStartTime)
+        if ((true == physicalKeyPress) && (0.0 == gLastKeyPressStartTime))
         {
             gLastKeyPressStartTime = currentTime;
         }
@@ -1019,13 +1039,16 @@ namespace RdkShell
 
     }
 
-    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
-        double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
-        checkEasterEggs(keycode, flags, keyPressTime);
+        if (true == physicalKeyPress)
+        {
+            double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
+            checkEasterEggs(keycode, flags, keyPressTime);
+            gLastKeyPressStartTime = 0.0;
+        }
         gLastKeyEventTime = RdkShell::seconds();
-        gLastKeyPressStartTime = 0.0;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
         bool isInterceptAvailable = false;
@@ -1122,7 +1145,14 @@ namespace RdkShell
               std::cout << "rdkshell_focus create: setting focus of first application created " << gFocusedCompositor.name << std::endl;
           }
           //std::cout << "display created with name: " << client << std::endl;
-          gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+          if (nullptr != gTopmostCompositor.compositor)
+          {
+            gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+          }
+          else
+          {
+            gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+          }
         }
         return ret;
     }
@@ -1159,6 +1189,7 @@ namespace RdkShell
                 gSplashImage->draw();
             }
         }
+	return true;
     }
 
     bool CompositorController::addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties)
@@ -1316,6 +1347,8 @@ namespace RdkShell
 
     bool CompositorController::onEvent(RdkCompositor* eventCompositor, const std::string& eventName)
     {
+        bool killClient = false;
+        std::string clientToKill("");
         for (auto compositor : gCompositorList)
          {
             if (compositor.compositor.get() == eventCompositor)
@@ -1324,8 +1357,17 @@ namespace RdkShell
                 {
                     sendApplicationEvent(compositor.eventListeners[i], eventName, compositor.name);
                 }
+                if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
+                {
+                    clientToKill = compositor.name;
+                    killClient = true;
+                }
                 break;
             }
+        }
+        if (true == killClient)
+        {
+            CompositorController::kill(clientToKill);
         }
         return true;
     }
@@ -1388,7 +1430,14 @@ namespace RdkShell
                     gFocusedCompositor = compositorInfo;
                     std::cout << "rdkshell_focus launch: setting focus of first application created " << gFocusedCompositor.name << std::endl;
                 }
-                gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                if (nullptr != gTopmostCompositor.compositor)
+                {
+                  gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+                }
+                else
+                {
+                  gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                }
             }
             return true;
         }
@@ -1579,6 +1628,16 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::isSurfaceModeEnabled()
+    {
+        bool surfaceModeEnabled = false;
+        if (gRdkShellCompositorType == SURFACE)
+        {
+            surfaceModeEnabled = true;
+        }
+        return surfaceModeEnabled;
+    }
+
     bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
     {
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
@@ -1637,6 +1696,43 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::enableKeyRepeats(bool enable)
+    {
+        RdkShell::EssosInstance::instance()->setKeyRepeats(enable);
+        return true;
+    }
+
+    bool CompositorController::getKeyRepeatsEnabled(bool& enable)
+    {
+        RdkShell::EssosInstance::instance()->keyRepeats(enable);
+        return true;
+    }
+
+    bool CompositorController::setTopmost(const std::string& client, bool topmost)
+    {
+        bool ret = false;
+        if (topmost)
+        {
+            ret = moveToFront(client);
+            if (ret)
+            {
+                gTopmostCompositor = gCompositorList.front();
+            }
+        }
+        return true;
+    }
+
+    bool CompositorController::getTopmost(std::string& client)
+    {
+        bool ret = false;
+        if (nullptr != gTopmostCompositor.compositor)
+        {
+            client = gTopmostCompositor.name;
+            ret = true;
+        }
+        return ret;
+    }
+
     bool CompositorController::getVirtualResolution(const std::string& client, uint32_t &virtualWidth, uint32_t &virtualHeight)
     {
         std::string clientDisplayName = standardizeName(client);
@@ -1692,5 +1788,4 @@ namespace RdkShell
         }
         return false;
     }
-
 }
