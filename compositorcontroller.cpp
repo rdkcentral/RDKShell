@@ -92,6 +92,9 @@ namespace RdkShell
     double gSplashStartTime = 0;
     std::shared_ptr<RdkShell::Image> gWaterMarkImage = nullptr;
     bool gShowWaterMarkImage = false;
+    std::shared_ptr<RdkShell::Image> gFullScreenImage = nullptr;
+    bool gShowFullScreenImage = false;
+    std::string gCurrentFullScreenImage = "";
     uint32_t gPowerKeyCode = 0;
     bool gPowerKeyEnabled = false;
 
@@ -1134,6 +1137,11 @@ namespace RdkShell
             reverseIterator->compositor->draw();
         }
 
+        if (gShowFullScreenImage && gFullScreenImage != nullptr)
+        {
+            gFullScreenImage->draw();
+        }
+
         if (gShowSplashImage && gSplashImage != nullptr)
         {
             if (gSplashDisplayTimeInSeconds > 0)
@@ -1543,6 +1551,36 @@ namespace RdkShell
             }
         }
         gShowWaterMarkImage = true;
+        return true;
+    }
+
+    bool CompositorController::hideFullScreenImage()
+    {
+        gShowFullScreenImage = false;
+        gFullScreenImage = nullptr;
+        return true;
+    }
+
+    bool CompositorController::showFullScreenImage(std::string file)
+    {
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "attempting to display full screen image");
+        if ((nullptr != gFullScreenImage) && (file.compare(gCurrentFullScreenImage) == 0))
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Warn, "image %s is already loaded", file.c_str());
+        }
+        else
+        {
+            gFullScreenImage = std::make_shared<RdkShell::Image>();
+            bool imageLoaded = gFullScreenImage->loadLocalFile(file);
+            if (!imageLoaded)
+            {
+                RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading fullscreen image: %s", file);
+                gFullScreenImage = nullptr;
+                return false;
+            }
+        }
+        gShowFullScreenImage = true;
+        gCurrentFullScreenImage = file;
         return true;
     }
 
