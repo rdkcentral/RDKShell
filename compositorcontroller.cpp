@@ -195,6 +195,8 @@ namespace RdkShell
     void bubbleKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
         std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
+        std::string focusedCompositorName = gFocusedCompositor.name;
+        #ifndef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
         for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
         {
           if (compositorIterator->name == gFocusedCompositor.name)
@@ -202,12 +204,23 @@ namespace RdkShell
             break;
           }
         }
+        #else
+        Logger::log(Debug, "Key bubbling is made from top application");
+        #endif //RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
 
         bool activateCompositor = false, propagateKey = true, foundListener = false;
         bool stopPropagation = false;
         bool isFocusedCompositor = true;
         while (compositorIterator != gCompositorList.end())
         {
+          #ifdef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
+          if (compositorIterator->name == focusedCompositorName)
+          {
+              compositorIterator++;
+              continue;
+          }
+          isFocusedCompositor = false;
+          #endif //RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
           activateCompositor = false;
           propagateKey = true;
           foundListener = false;
@@ -754,8 +767,8 @@ namespace RdkShell
 
     bool CompositorController::injectKey(const uint32_t& keyCode, const uint32_t& flags)
     {
-        CompositorController::onKeyPress(keyCode, flags, 0);
-        CompositorController::onKeyRelease(keyCode, flags, 0);
+        CompositorController::onKeyPress(keyCode, flags, 0, false);
+        CompositorController::onKeyRelease(keyCode, flags, 0, false);
         return true;
     }
 
@@ -764,8 +777,8 @@ namespace RdkShell
         bool ret = false;
         if (client.empty())
         {
-            CompositorController::onKeyPress(keyCode, flags, 0);
-            CompositorController::onKeyRelease(keyCode, flags, 0);
+            CompositorController::onKeyPress(keyCode, flags, 0, false);
+            CompositorController::onKeyRelease(keyCode, flags, 0, false);
             ret = true;
         }
         else
@@ -1001,11 +1014,11 @@ namespace RdkShell
         return true;
     }
 
-    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
         double currentTime = RdkShell::seconds();
-        if (0.0 == gLastKeyPressStartTime)
+        if ((true == physicalKeyPress) && (0.0 == gLastKeyPressStartTime))
         {
             gLastKeyPressStartTime = currentTime;
         }
@@ -1029,13 +1042,16 @@ namespace RdkShell
 
     }
 
-    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata)
+    void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
-        double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
-        checkEasterEggs(keycode, flags, keyPressTime);
+        if (true == physicalKeyPress)
+        {
+            double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
+            checkEasterEggs(keycode, flags, keyPressTime);
+            gLastKeyPressStartTime = 0.0;
+        }
         gLastKeyEventTime = RdkShell::seconds();
-        gLastKeyPressStartTime = 0.0;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
         bool isInterceptAvailable = false;
