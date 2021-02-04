@@ -228,8 +228,13 @@ namespace RdkShell
             unsigned char *image = nullptr;
             int32_t width = 0;
             int32_t height = 0;
-            bool isPngImage = false;
-            if (-1 != fileName.find(".png"))
+            bool isPngImage = false, isBitMapImage = false;
+            if ((-1 != fileName.find(".bmp")) || (-1 != fileName.find(".BMP")))
+            {
+                isBitMapImage = true;
+                success = loadBmp(fileName, image, width, height);
+            }
+            else if (-1 != fileName.find(".png"))
             {
                 success = loadPng(fileName, image, width, height);
                 isPngImage = true;
@@ -250,8 +255,8 @@ namespace RdkShell
                 
 
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexImage2D(GL_TEXTURE_2D, 0, (isPngImage)?GL_RGBA:GL_RGB,
-                            width, height, 0, (isPngImage)?GL_RGBA:GL_RGB,
+                glTexImage2D(GL_TEXTURE_2D, 0, (isPngImage||isBitMapImage)?GL_RGBA:GL_RGB,
+                            width, height, 0, (isPngImage||isBitMapImage)?GL_RGBA:GL_RGB,
                             GL_UNSIGNED_BYTE, image);
             }
             free(image);
@@ -446,5 +451,110 @@ namespace RdkShell
         png_destroy_read_struct(&pngPointer, &infoPointer, NULL);
         fclose(file);
         return ret;
+    }
+
+    bool Image::loadBmp(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height)
+    {
+        FILE *file;
+        int depth;
+        file = fopen(fileName.c_str(), "rb");
+        if (!file)
+        {
+            Logger::log(LogLevel::Error, "unable to open bitmap file %s", fileName.c_str());
+            return false;
+        }
+
+        int16_t bitsPerPixel=0, dataOffset=0, compressionMethod=0;
+        unsigned char bmpHeader[14];
+        memset(bmpHeader, 0, sizeof(bmpHeader));
+        fread(bmpHeader, 1, 14, file);
+
+        if (memcmp(bmpHeader, "BM", 2) != 0)
+        {
+            Logger::log(LogLevel::Error, "bitmap file header is not valid %s", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+        fseek(file, 10, SEEK_SET);
+        fread(&dataOffset, 4, 1, file);
+
+        fseek(file, 18, SEEK_SET);
+        fread(&width, 4, 1, file);
+
+        fseek(file, 22, SEEK_SET);
+        fread(&height, 4, 1, file);
+
+        fseek(file, 28, SEEK_SET);
+        fread(&bitsPerPixel, 2, 1, file);
+
+        fseek(file, 30, SEEK_SET);
+        fread(&compressionMethod, 4, 1, file);
+
+        Logger::log(LogLevel::Debug, "Bitmap infoformation: filename[%s] width[%d] height[%d] bitsperpixel[%d] compressionmethod [%d]", fileName.c_str(), width, height, bitsPerPixel, compressionMethod);
+        fflush(stdout);
+
+        if ((width == 0) || (height == 0))
+        {
+            Logger::log(LogLevel::Error, "width or height is 0 for file %s", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+        if (compressionMethod != 0)
+        {
+            Logger::log(LogLevel::Error, "compression method not supported %s", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+        if (bitsPerPixel !=24)
+        {
+            Logger::log(LogLevel::Error, "only 24 bits per pixel supported %s", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+
+        int32_t originalPixelSize = ((int32_t)bitsPerPixel) / 8;
+        int32_t pixelSize = ((int32_t)bitsPerPixel+8) / 8;
+        int rowSize = (width)*(originalPixelSize); 
+        int paddedRowSize = (int)(4 * ceil((float)(width) / 4.0f))*(originalPixelSize);
+        int newRowSize = (width)*(pixelSize);
+        int totalSize = height*newRowSize;
+
+        image = (unsigned char*)malloc(totalSize);
+        if (NULL == image)
+        {
+            Logger::log(LogLevel::Error, "unable to prepare bitmap data [%s]", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+        int8_t alpha = 255;
+        unsigned char *dataPointer = (unsigned char*)(image+((height-1)*newRowSize));
+        for (int i = 0; i <height; i++)
+        {
+            dataPointer = (unsigned char*)(image+((height-i-1)*newRowSize));
+            for (int j=0; j<paddedRowSize; j+=3)
+            {
+                fseek(file, dataOffset+(i*paddedRowSize) + j, SEEK_SET);
+                if ((paddedRowSize -j) <  3)
+                {
+                    continue;
+                }
+                char pixel[3];
+                memset(pixel, 0, 3);
+                fread(pixel, 1, 3, file);
+                dataPointer[0] = pixel[2];
+                dataPointer[1] = pixel[1];
+                dataPointer[2] = pixel[0];
+                memcpy(dataPointer+3, &alpha, 1);
+                dataPointer = dataPointer+4;
+            }
+        }
+        fclose(file);
+        Logger::log(LogLevel::Debug, "completed reading bitmap file [%s]", fileName.c_str());
+        return true;
     }
 }
