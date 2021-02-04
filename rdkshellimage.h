@@ -41,6 +41,7 @@ namespace RdkShell
             void initialize();
             bool loadJpeg(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
+            bool loadBmp(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             std::string mFileName;
             int32_t mX;
             int32_t mY;
