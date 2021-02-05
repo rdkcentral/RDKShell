@@ -207,85 +207,6 @@ namespace RdkShell
         return success;
     }
 
-    bool RdkCompositor::createDisplay(const std::string& displayName, const std::string& clientName,
-        uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight)
-    {
-        if (width > 0 && height > 0)
-        {
-            mWidth = width;
-            mHeight = height;
-            if (gForce720)
-            {
-                std::cout << "forcing 720 for create display\n";
-                mWidth = 1280;
-                mHeight = 720;
-            }
-        }
-        mWstContext = WstCompositorCreate();
-
-        bool error = false;
-
-        if (mWstContext)
-        {
-            error = !loadExtensions(mWstContext, clientName);
-
-            if (!error && !WstCompositorSetIsEmbedded(mWstContext, true))
-            {
-                error = true;
-            }
-
-            if (!error && !WstCompositorSetOutputSize(mWstContext, mWidth, mHeight))
-            {
-                error = true;
-            }
-
-            if (!error && !WstCompositorSetInvalidateCallback( mWstContext, invalidate, this))
-            {
-                error = true;
-            }
-
-            if (!error && !WstCompositorSetClientStatusCallback( mWstContext, clientStatus, this))
-            {
-                error = true;
-            }
-
-            if (!error)
-            {
-                if (!displayName.empty())
-                {
-                    if (!WstCompositorSetDisplayName( mWstContext, displayName.c_str()))
-                    {
-                        error = true;
-                    }
-                }
-                if (mDisplayName.empty())
-                {
-                    mDisplayName = WstCompositorGetDisplayName(mWstContext);
-                }
-                std::cout << "The display name is: " << mDisplayName << std::endl;
-                
-                if (!error && !WstCompositorStart(mWstContext))
-                {
-                    error= true;
-                }
-
-                if (!mApplicationName.empty())
-                {
-                    std::cout << "RDKShell is launching " << mApplicationName << std::endl;
-                    launchApplicationInBackground();
-                }
-            }
-        }
-
-        if (error)
-        {
-            const char *detail= WstCompositorGetLastErrorDetail( mWstContext );
-            std::cout << "error setting up the compositor: " << detail << std::endl;
-            return false;
-        }
-        return true;
-    }
-
     void RdkCompositor::draw()
     {
         #ifndef RDKSHELL_ENABLE_HIDDEN_SUPPORT
@@ -669,8 +590,8 @@ namespace RdkShell
 
     void RdkCompositor::setVirtualResolution(uint32_t virtualWidth, uint32_t virtualHeight)
     {
-        mVirtualWidth = virtualWidth;
-        mVirtualHeight = virtualHeight;
+        mVirtualWidth = (virtualWidth > 0) ? virtualWidth : mWidth;
+        mVirtualHeight = (virtualHeight > 0) ? virtualHeight : mHeight;
     }
 
     void RdkCompositor::enableVirtualDisplay(bool enable)

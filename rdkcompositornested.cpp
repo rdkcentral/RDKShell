@@ -93,9 +93,8 @@ namespace RdkShell
             }
         }
 
-        mVirtualDisplayEnabled = virtualDisplayEnabled;
-        mVirtualWidth = (virtualWidth > 0) ? virtualWidth : mWidth;
-        mVirtualHeight = (virtualHeight > 0) ? virtualHeight : mHeight;
+        enableVirtualDisplay(virtualDisplayEnabled);
+        setVirtualResolution(virtualWidth, virtualHeight);
 
         if (error)
         {

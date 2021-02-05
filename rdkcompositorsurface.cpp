@@ -196,6 +196,9 @@ namespace RdkShell
             }
         }
 
+        enableVirtualDisplay(virtualDisplayEnabled);
+        setVirtualResolution(virtualWidth, virtualHeight);
+
         if (error)
         {
             const char *detail= WstCompositorGetLastErrorDetail( mWstContext );
