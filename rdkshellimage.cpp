@@ -164,8 +164,6 @@ namespace RdkShell
                 Logger::log(LogLevel::Error, "error linking the program %s", log);
             }
             mTextureLocation = glGetUniformLocation(mProgram, "s_texture");
-
-            glUseProgram(mProgram);
         }
     }
 
@@ -175,6 +173,8 @@ namespace RdkShell
         {
             return;
         }
+        glUseProgram(mProgram);
+
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, mTexture);
         glUniform1i(mTextureLocation, 1);
@@ -205,6 +205,8 @@ namespace RdkShell
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glDisableVertexAttribArray(mPositionLocation);
         glDisableVertexAttribArray(mUvLocation);
+
+        glUseProgram(0);
     }
 
     void Image::fileName(std::string& fileName)
