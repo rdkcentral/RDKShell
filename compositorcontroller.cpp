@@ -1093,9 +1093,13 @@ namespace RdkShell
         }
     }
 
-    bool CompositorController::createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth, uint32_t displayHeight)
+    bool CompositorController::createDisplay(const std::string& client, const std::string& displayName,
+        uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight)
     {
-        std::cout << "rdkshell createDisplay client: " << client << " displayName: " << displayName << "\n";
+        Logger::log(LogLevel::Information,
+            "rdkshell createDisplay client: %s, displayName: %s, res: %d x %d, virtualDisplayEnabled: %d, virtualRes: %d x %d\n",
+            client.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplayEnabled, virtualWidth, virtualHeight);
+
         std::string clientDisplayName = standardizeName(client);
         std::string compositorDisplayName = displayName;
         if (displayName.empty())
@@ -1131,7 +1135,22 @@ namespace RdkShell
         {
             height = displayHeight;
         }
-        bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, clientDisplayName, width, height);
+
+        if (virtualDisplayEnabled)
+        {
+            if (virtualWidth == 0)
+            {
+                virtualWidth = width;
+            }
+            if (virtualHeight == 0)
+            {
+                virtualHeight = height;
+            }
+        }
+
+        bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, clientDisplayName, width, height,
+            virtualDisplayEnabled, virtualWidth, virtualHeight);
+
         if (ret)
         {
           if (gCompositorList.empty())
@@ -1422,7 +1441,7 @@ namespace RdkShell
             uint32_t height = 0;
             RdkShell::EssosInstance::instance()->resolution(width, height);
             compositorInfo.compositor->setApplication(uri);
-            bool ret = compositorInfo.compositor->createDisplay(clientDisplayName, "", width, height);
+            bool ret = compositorInfo.compositor->createDisplay(clientDisplayName, "", width, height, false, 0, 0);
             if (ret)
             {
                 if (gCompositorList.empty())
@@ -1768,4 +1787,59 @@ namespace RdkShell
         return ret;
     }
 
+    bool CompositorController::getVirtualResolution(const std::string& client, uint32_t &virtualWidth, uint32_t &virtualHeight)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->getVirtualResolution(virtualWidth, virtualHeight);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::setVirtualResolution(const std::string& client, const uint32_t virtualWidth, const uint32_t virtualHeight)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setVirtualResolution(virtualWidth, virtualHeight);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::enableVirtualDisplay(const std::string& client, const bool enable)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->enableVirtualDisplay(enable);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool CompositorController::getVirtualDisplayEnabled(const std::string& client, bool &enabled)
+    {
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
+        {
+            if (compositor.name == clientDisplayName)
+            {
+                enabled = compositor.compositor->getVirtualDisplayEnabled();
+                return true;
+            }
+        }
+        return false;
+    }
 }
