@@ -343,6 +343,12 @@ namespace RdkShell
 
     bool CompositorController::moveToFront(const std::string& client)
     {
+        if (nullptr != gTopmostCompositor.compositor)
+        {
+            std::cout << "client " << client << " canot be moved to front, as there is a top-most application set " << std::endl;
+            return false;
+        }
+
         std::string clientDisplayName = standardizeName(client);
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
          {
@@ -364,6 +370,11 @@ namespace RdkShell
         {
             if (it->name == clientDisplayName)
             {
+                if ((nullptr != gTopmostCompositor.compositor) && (gTopmostCompositor.name == clientDisplayName))
+                {
+                    std::cout << "topmost compositor cannot be moved behind " << std::endl;
+                    break;
+                }
                 auto compositorInfo = *it;
                 gCompositorList.erase(it);
                 gCompositorList.push_back(compositorInfo);
@@ -384,7 +395,7 @@ namespace RdkShell
         CompositorInfo compositorInfo;
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            if (it->name == clientDisplayName)
+            if ((it->name == clientDisplayName) && (gTopmostCompositor.name != clientDisplayName))
             {
                 clientIterator = it;
                 break;
@@ -1756,6 +1767,11 @@ namespace RdkShell
             {
                 gTopmostCompositor = gCompositorList.front();
             }
+        }
+        else
+        {
+            gTopmostCompositor.name = "";
+            gTopmostCompositor.compositor = nullptr;
         }
         return true;
     }
