@@ -343,6 +343,7 @@ namespace RdkShell
 
     bool CompositorController::moveToFront(const std::string& client)
     {
+
         std::string clientDisplayName = standardizeName(client);
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
          {
@@ -350,7 +351,14 @@ namespace RdkShell
             {
                 auto compositorInfo = *it;
                 gCompositorList.erase(it);
-                gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                if (nullptr != gTopmostCompositor.compositor)
+                {
+                    gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+                }
+                else
+                {
+                    gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                }
                 return true;
             }
         }
@@ -364,6 +372,11 @@ namespace RdkShell
         {
             if (it->name == clientDisplayName)
             {
+                if ((nullptr != gTopmostCompositor.compositor) && (gTopmostCompositor.name == clientDisplayName))
+                {
+                    std::cout << "topmost compositor cannot be moved behind " << std::endl;
+                    break;
+                }
                 auto compositorInfo = *it;
                 gCompositorList.erase(it);
                 gCompositorList.push_back(compositorInfo);
@@ -384,14 +397,17 @@ namespace RdkShell
         CompositorInfo compositorInfo;
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            if (it->name == clientDisplayName)
+            if ((it->name == clientDisplayName) && (gTopmostCompositor.name != clientDisplayName))
             {
                 clientIterator = it;
-                break;
+            }
+            if (it->name == targetDisplayName)
+            {
+                targetIterator = it;
             }
         }
 
-        if (clientIterator != gCompositorList.end())
+        if ((clientIterator != gCompositorList.end()) && (targetIterator != gCompositorList.end()))
         {
             compositorInfo = *clientIterator;
             gCompositorList.erase(clientIterator);
@@ -1736,6 +1752,14 @@ namespace RdkShell
             if (ret)
             {
                 gTopmostCompositor = gCompositorList.front();
+            }
+        }
+        else
+        {
+            if (gTopmostCompositor.name == client)
+            {
+                gTopmostCompositor.name = "";
+                gTopmostCompositor.compositor = nullptr;
             }
         }
         return true;
