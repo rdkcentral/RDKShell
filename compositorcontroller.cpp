@@ -343,12 +343,6 @@ namespace RdkShell
 
     bool CompositorController::moveToFront(const std::string& client)
     {
-        if (nullptr != gTopmostCompositor.compositor)
-        {
-            std::cout << "client " << client << " canot be moved to front, as there is a top-most application set " << std::endl;
-            return false;
-        }
-
         std::string clientDisplayName = standardizeName(client);
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
          {
@@ -356,7 +350,14 @@ namespace RdkShell
             {
                 auto compositorInfo = *it;
                 gCompositorList.erase(it);
-                gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                if (nullptr != gTopmostCompositor.compositor)
+                {
+                    gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+                }
+                else
+                {
+                    gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                }
                 return true;
             }
         }
@@ -398,11 +399,14 @@ namespace RdkShell
             if ((it->name == clientDisplayName) && (gTopmostCompositor.name != clientDisplayName))
             {
                 clientIterator = it;
-                break;
+            }
+            if (it->name == targetDisplayName)
+            {
+                targetIterator = it;
             }
         }
 
-        if (clientIterator != gCompositorList.end())
+        if ((clientIterator != gCompositorList.end()) && (targetIterator != gCompositorList.end()))
         {
             compositorInfo = *clientIterator;
             gCompositorList.erase(clientIterator);
@@ -1770,8 +1774,11 @@ namespace RdkShell
         }
         else
         {
-            gTopmostCompositor.name = "";
-            gTopmostCompositor.compositor = nullptr;
+            if (gTopmostCompositor.name == client)
+            {
+                gTopmostCompositor.name = "";
+                gTopmostCompositor.compositor = nullptr;
+            }
         }
         return true;
     }
