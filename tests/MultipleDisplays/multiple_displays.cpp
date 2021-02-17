@@ -17,17 +17,6 @@
 * limitations under the License.
 **/
 
-/* This file contains a test application for client control extension for RDKShell.
-*  It is based on westeros-test.cpp. It was stripped out of the features not needed in this test.
-*  To enable building it in RDKShell set the RDKSHELL_BUILD_CLIENT_CONTROL_EXTENSION_TEST build 
-*  time option.
-*
-*  Some code is derived from weston and is:
-*  Copyright © 2010 Intel Corporation
-*  Copyright © 2011 Benjamin Franzke
-*  Copyright © 2012-2013 Collabora, Ltd.
-*  Licensed under the MIT License
-*/
 
 #include <stdlib.h>
 #include <stdio.h>
