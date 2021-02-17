@@ -96,7 +96,9 @@ namespace RdkShell
     bool gShowFullScreenImage = false;
     std::string gCurrentFullScreenImage = "";
     uint32_t gPowerKeyCode = 0;
+    uint32_t gFrontPanelButtonCode = 0;
     bool gPowerKeyEnabled = false;
+    bool gPowerKeyReleaseReceived = false;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -317,6 +319,19 @@ namespace RdkShell
 
         std::cout << "power key support enabled: " << gPowerKeyEnabled << std::endl;
  
+        char const *rdkshellFrontPanelButton = getenv("RDKSHELL_FRONT_PANEL_BUTTON_CODE");
+
+        if (rdkshellFrontPanelButton)
+        {
+            int keyCode = atoi(rdkshellFrontPanelButton);
+            if (keyCode > 0)
+            {
+                gFrontPanelButtonCode = (uint32_t)keyCode;
+            }
+        }
+
+        std::cout << "the front panel code is set to " <<  gFrontPanelButtonCode << std::endl;
+
         char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
 
         if (NULL == rdkshellCompositorType)
@@ -1040,6 +1055,12 @@ namespace RdkShell
         gLastKeyEventTime = currentTime;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
+        if ((keycode != 0) && ((gPowerKeyEnabled && keycode == gPowerKeyCode) || ((gFrontPanelButtonCode != 0) && (keycode == gFrontPanelButtonCode))) && (gPowerKeyReleaseReceived == false))
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "skip power key press");
+            return;
+        }
+
         bool isInterceptAvailable = false;
 
         isInterceptAvailable = interceptKey(keycode, flags, metadata, true);
@@ -1060,6 +1081,13 @@ namespace RdkShell
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
+        if ((keycode != 0) && ((gPowerKeyEnabled && keycode == gPowerKeyCode) || ((gFrontPanelButtonCode != 0) && (keycode == gFrontPanelButtonCode))))
+        {
+            gPowerKeyReleaseReceived = true;
+            CompositorController::onKeyPress(keycode, flags, metadata, physicalKeyPress);
+            gPowerKeyReleaseReceived = false;
+        }
+
         if (true == physicalKeyPress)
         {
             double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
