@@ -369,6 +369,11 @@ namespace RdkShell
     bool CompositorController::moveToFront(const std::string& client)
     {
         std::string clientDisplayName = standardizeName(client);
+        if (client == gTopmostCompositor.name)
+        {
+            std::cout << client << " is already topmost and cannot move to front " << std::endl;
+            return false;
+        }
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
          {
             if (it->name == clientDisplayName)
@@ -1804,6 +1809,11 @@ namespace RdkShell
         bool ret = false;
         if (topmost)
         {
+            if (client == gTopmostCompositor.name)
+            {
+                std::cout << client << " is already topmost and cannot set topmost again " << std::endl;
+                return false;
+            }
             ret = moveToFront(client);
             if (ret)
             {
@@ -1816,6 +1826,11 @@ namespace RdkShell
             {
                 gTopmostCompositor.name = "";
                 gTopmostCompositor.compositor = nullptr;
+            }
+            else
+            {
+                std::cout << client << " is not topmost and cannot perform topmost to false " << std::endl;
+                return false;
             }
         }
         return true;
