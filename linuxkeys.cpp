@@ -31,6 +31,7 @@ struct RdkShellKeyMap
 };
 
 static std::map<uint32_t, struct RdkShellKeyMap> sRdkShellKeyMap;
+static std::map<std::string, struct RdkShellKeyMap> sRdkShellVirtualKeyMap;
 
 uint32_t getKeyFlag(std::string modifier)
 {
@@ -140,6 +141,95 @@ void mapNativeKeyCodes()
     {
       std::cout << "Ignored file read due to keyMap env not set\n";
     }
+}
+
+void mapVirtualKeyCodes()
+{
+  //populate from the key map file
+  const char* virtualKeyMapFile = getenv("RDKSHELL_VIRTUAL_KEYMAP_FILE");
+  if (virtualKeyMapFile)
+  {
+    rapidjson::Document document;
+    bool ret = RdkShell::RdkShellJson::readJsonFile(virtualKeyMapFile, document);
+    if (false == ret)
+    {
+      std::cout << "RDKShell virtual keymap read error : [unable to open/read file (" <<  virtualKeyMapFile << ")]\n";
+      return;
+    }
+
+    if (document.HasMember("virtualKeys"))
+    {
+      const rapidjson::Value& jsonValue = document["virtualKeys"];
+
+      if (jsonValue.IsArray())
+      {
+        for (rapidjson::SizeType k = 0; k < jsonValue.Size(); k++)
+        {
+          std::string key;
+          uint32_t mappedKeyCode = 0;
+          uint32_t flags = 0;
+
+          const rapidjson::Value& mapEntry = jsonValue[k];
+          if (mapEntry.IsObject() && mapEntry.HasMember("key")  && mapEntry.HasMember("keyCode") && mapEntry.HasMember("modifiers"))
+          {
+            const rapidjson::Value& keyValue = mapEntry["key"];
+            if (keyValue.IsString())
+            {
+              key = keyValue.GetString();
+            }
+            else
+            {
+              std::cout << "Ignoring key entry because of format issues of key\n";
+              continue;
+            }
+
+            const rapidjson::Value& mappedKeyCodeValue = mapEntry["keyCode"];
+            if (mappedKeyCodeValue.IsUint())
+            {
+              mappedKeyCode = mappedKeyCodeValue.GetUint();
+            }
+            else
+            {
+              std::cout << "Ignoring keycode entry because of format issues of mapped keycode\n";
+              continue;
+            }
+
+            const rapidjson::Value& modifiersValue = mapEntry["modifiers"];
+            if (modifiersValue.IsArray()) {
+              for (rapidjson::SizeType i = 0; i < modifiersValue.Size(); i++)
+              {
+                if (modifiersValue[i].IsString()) {
+                  flags |= getKeyFlag(modifiersValue[i].GetString());
+                }
+              }
+            }
+
+            struct RdkShellKeyMap keyMap;
+            keyMap.code = mappedKeyCode;
+            keyMap.flags = flags;
+            sRdkShellVirtualKeyMap[key] = keyMap;
+          }
+          else
+          {
+            std::cout << "Ignoring entry because of missing key/keycode/modifiers params\n";
+            continue;
+          }
+        }
+      }
+      else
+      {
+        std::cout << "Ignoring keycode entry because of format issues of virtualkeys \n";
+      }
+    }
+    else
+    {
+      std::cout << "Ignored file read due to virtualKeys entry not present";
+    }
+  }
+  else
+  {
+    std::cout << "Ignored file read due to virtual keyMap env not set\n";
+  }
 }
 
 bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t &mappedKeyCode, uint32_t &mappedFlags)
@@ -511,6 +601,20 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
     mappedFlags = waylandFlags;
     RdkShell::Logger::log(RdkShell::LogLevel::Debug, "key mapped - mappedKeyCode: %u mappedFlags: %u", mappedKeyCode, mappedFlags);
     return true;
+}
+
+bool keyCodeFromVirtual(std::string& virtualKey, uint32_t &mappedKeyCode, uint32_t &mappedFlags)
+{
+    RdkShell::Logger::log(RdkShell::LogLevel::Debug, "virtual key event - key: %s", virtualKey);
+    std::map<std::string, struct RdkShellKeyMap>::iterator it  = sRdkShellVirtualKeyMap.find(virtualKey);
+    if (it != sRdkShellVirtualKeyMap.end())
+    {
+      mappedKeyCode = it->second.code;
+      mappedFlags = it->second.flags;
+      RdkShell::Logger::log(RdkShell::LogLevel::Debug, "virtaul key mapped from config - mappedKeyCode: %u mappedFlags: %u", mappedKeyCode, mappedFlags);
+      return true;
+    }
+    return false;
 }
 
 uint32_t keyCodeToWayland(uint32_t keyCode)
