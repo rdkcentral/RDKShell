@@ -197,6 +197,7 @@ namespace RdkShell
         std::cout << "initializing rdk shell\n";
 
         mapNativeKeyCodes();
+        mapVirtualKeyCodes();
         populateEasterEggDetails();
         readInputDevicesConfiguration();
         readPermissionsConfiguration();

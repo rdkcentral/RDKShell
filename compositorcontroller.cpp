@@ -817,13 +817,24 @@ namespace RdkShell
         return true;
     }
 
-    bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
+    bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::string virtualKey)
     {
         bool ret = false;
+        uint32_t code = keyCode, modifiers = flags;
+        if (!virtualKey.empty())
+        {
+            bool mappingPresent = keyCodeFromVirtual(virtualKey, code, modifiers);
+            if (!mappingPresent)
+            {
+                std::cout << "virtual key mapping not present for " << virtualKey << std::endl;
+                return false;
+            }
+        }
+
         if (client.empty())
         {
-            CompositorController::onKeyPress(keyCode, flags, 0, false);
-            CompositorController::onKeyRelease(keyCode, flags, 0, false);
+            CompositorController::onKeyPress(code, modifiers, 0, false);
+            CompositorController::onKeyRelease(code, modifiers, 0, false);
             ret = true;
         }
         else
@@ -833,8 +844,8 @@ namespace RdkShell
             {
                 if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
                 {
-                    compositor.compositor->onKeyPress(keyCode, flags, 0);
-                    compositor.compositor->onKeyRelease(keyCode, flags, 0);
+                    compositor.compositor->onKeyPress(code, modifiers, 0);
+                    compositor.compositor->onKeyRelease(code, modifiers, 0);
                     ret = true;
                     break;
                 }
