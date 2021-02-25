@@ -19,7 +19,7 @@
 
 #include "rdkcompositorsurface.h"
 #include "compositorcontroller.h"
-
+#include "logger.h"
 #include <iostream>
 #include <string.h>
 #include <signal.h>
@@ -50,18 +50,18 @@ namespace RdkShell
                 bool ret = WstCompositorVirtualEmbeddedBindClient((*frontCompositor)->mWstContext, clientPID);
                 if (!ret)
                 {
-                    std::cout << "Error setting surface to external client " << std::endl;
+                    Logger::log(LogLevel::Information,  "Error setting surface to external client ");
                 }
             }
             else
             {
-                std::cout << "No display available or ready for external client" << std::endl;
+                Logger::log(LogLevel::Information,  "No display available or ready for external client");
             }
             gAvailableRdkCompositors.erase(frontCompositor);
         }
         else
         {
-            std::cout << "No display available for external client" << std::endl;
+            Logger::log(LogLevel::Information,  "No display available for external client");
         }
         #endif //RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
     }
@@ -84,7 +84,7 @@ namespace RdkShell
     {
         if (NULL != mMainWstContext)
         {
-            std::cout << "already created a main compositor..." << std::endl;
+            Logger::log(LogLevel::Information,  "already created a main compositor...");
             return;
         }
 
@@ -125,21 +125,21 @@ namespace RdkShell
                 }
                 mMainCompositorDisplayName = displayName;
 
-                std::cout << "The display name is: " << mMainCompositorDisplayName << std::endl;
+                Logger::log(LogLevel::Information,  "The display name is: %s", mMainCompositorDisplayName);
                 
                 if (!error && !WstCompositorStart(mMainWstContext))
                 {
-                    std::cout << "errored in starting compositor " << std::endl;
+                    Logger::log(LogLevel::Information,  "errored in starting compositor ");
                     error= true;
                 }
-                std::cout << "started compositor " << mMainCompositorDisplayName << error << std::endl;
+                Logger::log(LogLevel::Information,  "started compositor %s error %d", mMainCompositorDisplayName, error);
             }
         }
 
         if (error)
         {
             const char *detail= WstCompositorGetLastErrorDetail( mMainWstContext );
-            std::cout << "error setting up the compositor: " << detail << std::endl;
+            Logger::log(LogLevel::Information,  "error setting up the compositor: %s", detail);
             return;
         }
     }
@@ -184,7 +184,7 @@ namespace RdkShell
             {
                 if (!mApplicationName.empty())
                 {
-                    std::cout << "RDKShell is launching " << mApplicationName << std::endl;
+                    Logger::log(LogLevel::Information,  "RDKShell is launching %s", mApplicationName);
                     launchApplicationInBackground();
                 }
                 #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION
@@ -202,7 +202,7 @@ namespace RdkShell
         if (error)
         {
             const char *detail= WstCompositorGetLastErrorDetail( mWstContext );
-            std::cout << "error setting up the compositor: " << detail << std::endl;
+            Logger::log(LogLevel::Information,  "error setting up the compositor: %s", detail);
             return false;
         }
         return true;

@@ -60,7 +60,7 @@ void mapNativeKeyCodes()
     bool ret = RdkShell::RdkShellJson::readJsonFile(keyMapFile, document);
     if (false == ret)
     {
-      std::cout << "RDKShell keymap read error : [unable to open/read file (" <<  keyMapFile << ")]\n";
+      RdkShell::Logger::log(RdkShell::LogLevel::Information,  "RDKShell keymap read error : [unable to open/read file (%s)", keyMapFile);
       return;
     }
 
@@ -84,7 +84,7 @@ void mapNativeKeyCodes()
             }
             else
             {
-              std::cout << "Ignoring keycode entry because of format issues of keycode\n";
+              RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Ignoring keycode entry because of format issues of keycode");
               continue;
             }
 
@@ -98,7 +98,7 @@ void mapNativeKeyCodes()
                 }
                 else
                 {
-                  std::cout << "Ignoring keycode entry because of format issues of mapped keycode\n";
+                  RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Ignoring keycode entry because of format issues of mapped keycode");
                   continue;
                 }
 
@@ -119,13 +119,13 @@ void mapNativeKeyCodes()
               }
               else
               {
-                std::cout << "Ignoring keycode entry because of format issues in mapped params\n";
+                RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Ignoring keycode entry because of format issues in mapped params");
                 continue;
               }
             }
             else
             {
-              std::cout << "Ignoring keycode entry because of format issues of keycode entry value\n";
+              RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Ignoring keycode entry because of format issues of keycode entry value");
               continue;
             }
           }
@@ -133,12 +133,12 @@ void mapNativeKeyCodes()
       }
       else
       {
-        std::cout << "Ignored file read due to keyMappings entry not present";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Ignored file read due to keyMappings entry not present");
       }
     }
     else
     {
-      std::cout << "Ignored file read due to keyMap env not set\n";
+      RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Ignored file read due to keyMap env not set");
     }
 }
 
@@ -503,7 +503,7 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
     #endif /* WAYLAND_KEY_HOMEPAGE */
 
     default:
-        std::cout << "unknown key code " << waylandKeyCode << std::endl;
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "unknown key code %d", waylandKeyCode);
         standardKeyCode = waylandKeyCode;
         break;
     }
@@ -853,10 +853,10 @@ uint32_t keyCodeToWayland(uint32_t keyCode)
          waylandKeyCode = WAYLAND_KEY_VOLUME_UP;
          break;
       default:
-         std::cout << "common key code not found " << keyCode << std::endl;
+         RdkShell::Logger::log(RdkShell::LogLevel::Information,  "common key code not found %d",keyCode);
          waylandKeyCode= -1;
          break;
    }
 
    return  waylandKeyCode;
-}
+ }

@@ -28,7 +28,7 @@
 #include <iostream>
 #include <iomanip>
 #include "../../../compositorcontroller.h"
-
+#include "../../../logger.h"
 
 RdkShellExtendedInputModule::RdkShellExtendedInputModule(std::shared_ptr<RdkShell::RdkCompositor> &client,
                                struct wl_client *wlClient,
@@ -45,7 +45,7 @@ RdkShellExtendedInputModule::RdkShellExtendedInputModule(std::shared_ptr<RdkShel
     int fds[2];
     if (pipe2(fds, O_CLOEXEC | O_NONBLOCK | O_DIRECT) < 0)
     {
-        std::cout << "Error: failed to create event pipe";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: failed to create event pipe");
     }
     else
     {
@@ -56,7 +56,7 @@ RdkShellExtendedInputModule::RdkShellExtendedInputModule(std::shared_ptr<RdkShel
         wl_event_loop *wlEventLoop = wl_display_get_event_loop(wl_client_get_display(wlClient));
         if (!wlEventLoop)
         {
-            std::cout << "Error: failed to get wayland event loop";
+            RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: failed to get wayland event loop");
         }
         else
         {
@@ -81,7 +81,7 @@ RdkShellExtendedInputModule::RdkShellExtendedInputModule(std::shared_ptr<RdkShel
 RdkShellExtendedInputModule::~RdkShellExtendedInputModule()
 {
     if (std::this_thread::get_id() != mWaylandThreadId)
-        std::cout << "Error: destructor called from invalid thread";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: destructor called from invalid thread");
 
     if (mListenerTag > 0)
     {
@@ -100,11 +100,11 @@ RdkShellExtendedInputModule::~RdkShellExtendedInputModule()
 
     if ((mNotifierPipeFd >= 0) && (close(mNotifierPipeFd) != 0))
     {
-        std::cout << "Error: failed to close pipe";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: failed to close pipe");
     }
     if ((mNotifierReadPipeFd >= 0) && (close(mNotifierReadPipeFd) != 0))
     {
-        std::cout << "Error: failed to close pipe";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: failed to close pipe");
     }
 }
 
@@ -121,7 +121,7 @@ void RdkShellExtendedInputModule::onWesterosInputEvent(const RdkShell::InputEven
 {
     if (TEMP_FAILURE_RETRY(write(mNotifierPipeFd, &event, sizeof(event))) != sizeof(event))
     {
-        std::cout << "Error: failed to write to input event to pipe";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: failed to write to input event to pipe");
     }
 }
 
@@ -177,7 +177,7 @@ int RdkShellExtendedInputModule::onWaylandInputEventNotification(int fd, uint32_
         if (errno == EAGAIN)
             return 0;
 
-        std::cout << "Error: failed to read from input event pipe";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: failed to read from input event pipe");
         return -1;
     }
 
@@ -248,7 +248,7 @@ static void rdkShellExtendedInputBind(struct wl_client *client, void *data, uint
 
     if (!rdkCompositor)
     {
-        std::cout <<"Error: missing rdkCompositor object for compositor instance";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "Error: missing rdkCompositor object for compositor instance");
         wl_client_post_no_memory(client);
         return;
     }
@@ -258,7 +258,7 @@ static void rdkShellExtendedInputBind(struct wl_client *client, void *data, uint
                                                       std::min<int>(version, 1), id);
     if (!resource)
     {
-        std::cout << "Error: failed to create rdkshell_extended_input_interface resource";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "Error: failed to create rdkshell_extended_input_interface resource");
         wl_client_post_no_memory(client);
         return;
     }
@@ -287,7 +287,7 @@ extern "C"
                                                    1, ctx, rdkShellExtendedInputBind);
         if (!shell)
         {
-            std::cout << " Error: failed to register rdkshell_extended_input_interface shell interface";
+            RdkShell::Logger::log(RdkShell::LogLevel::Information,  " Error: failed to register rdkshell_extended_input_interface shell interface");
             return false;
         }
 
@@ -296,7 +296,7 @@ extern "C"
 
     void moduleTerm(WstCompositor *ctx)
     {
-        std::cout << "moduleTerm called for rdkShellExtendedInput module";
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "moduleTerm called for rdkShellExtendedInput module");
 
         // wl_global_destroy( shell->wl_simple_shell_global );
     }
