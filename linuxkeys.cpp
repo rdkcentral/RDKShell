@@ -503,7 +503,7 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
     #endif /* WAYLAND_KEY_HOMEPAGE */
 
     default:
-        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "unknown key code %d", waylandKeyCode);
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "unknown key code %u", waylandKeyCode);
         standardKeyCode = waylandKeyCode;
         break;
     }

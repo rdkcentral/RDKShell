@@ -72,7 +72,7 @@ bool RdkShellJson::readJsonFile(const char* path, rapidjson::Document& document)
   if (!result)
   {
     rapidjson::ParseErrorCode e = document.GetParseError();
-    Logger::log(LogLevel::Information,  "[JSON parse error : (%s) (%s)]", rapidjson::GetParseError_En(e), result.Offset());
+    Logger::log(LogLevel::Information,  "[JSON parse error : (%s) (%u)]", rapidjson::GetParseError_En(e), result.Offset());
     return false;
   }
   return true;

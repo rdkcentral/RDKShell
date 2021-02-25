@@ -125,14 +125,14 @@ namespace RdkShell
                 }
                 mMainCompositorDisplayName = displayName;
 
-                Logger::log(LogLevel::Information,  "The display name is: %s", mMainCompositorDisplayName);
+                Logger::log(LogLevel::Information,  "The display name is: %s", mMainCompositorDisplayName.c_str());
                 
                 if (!error && !WstCompositorStart(mMainWstContext))
                 {
                     Logger::log(LogLevel::Information,  "errored in starting compositor ");
                     error= true;
                 }
-                Logger::log(LogLevel::Information,  "started compositor %s error %d", mMainCompositorDisplayName, error);
+                Logger::log(LogLevel::Information,  "started compositor %s error %d", mMainCompositorDisplayName.c_str(), error);
             }
         }
 
@@ -184,7 +184,7 @@ namespace RdkShell
             {
                 if (!mApplicationName.empty())
                 {
-                    Logger::log(LogLevel::Information,  "RDKShell is launching %s", mApplicationName);
+                    Logger::log(LogLevel::Information,  "RDKShell is launching %s", mApplicationName.c_str());
                     launchApplicationInBackground();
                 }
                 #ifdef RDKSHELL_ENABLE_EXTERNAL_APPLICATION_SURFACE_COMPOSITION

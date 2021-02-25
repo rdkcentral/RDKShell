@@ -165,7 +165,7 @@ namespace RdkShell
 
     bool RdkCompositor::loadExtensions(WstCompositor *compositor, const std::string& clientName)
     {
-        RdkShell::Logger::log(LogLevel::Information,  "loadExtensions clientName: %s", clientName);
+        RdkShell::Logger::log(LogLevel::Information,  "loadExtensions clientName: %s", clientName.c_str());
 
         bool success = true;
         if (compositor)
@@ -175,7 +175,7 @@ namespace RdkShell
             if (enableRdkShellExtendedInput)
             {
                 std::string extensionInputPath = std::string(RDKSHELL_WESTEROS_PLUGIN_DIRECTORY) + "libwesteros_plugin_rdkshell_extended_input.so";
-                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath);
+                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath.c_str());
                 if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
                     RdkShell::Logger::log(LogLevel::Information,  "Failed to load plugin: libwesteros_plugin_rdkshell_extended_input.so");
@@ -186,12 +186,12 @@ namespace RdkShell
             std::vector<std::string> extensions;
             getAllowedExtensions(clientName, extensions);
 
-            RdkShell::Logger::log(LogLevel::Information,  "loadExtensions getAllowedExtensions found: %d extensions for client %s ", extensions.size(), clientName);
+            RdkShell::Logger::log(LogLevel::Information,  "loadExtensions getAllowedExtensions found: %d extensions for client %s ", extensions.size(), clientName.c_str());
 
             for (int i = 0; i < extensions.size(); ++i)
             {
                 const std::string extensionInputPath = RDKSHELL_WESTEROS_PLUGIN_DIRECTORY + extensions[i];
-                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath);
+                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath.c_str());
                 if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
                     RdkShell::Logger::log(LogLevel::Information,  "Failed to load plugin: libwesteros_plugin_rdkshell_client_control.so");
@@ -504,11 +504,11 @@ namespace RdkShell
         }
         if (!WstCompositorLaunchClient(mWstContext, applicationName.c_str()))
         {
-            RdkShell::Logger::log(LogLevel::Information,  "RdkCompositor failed to launch %s", applicationName);
+            RdkShell::Logger::log(LogLevel::Information,  "RdkCompositor failed to launch %s", applicationName.c_str());
             const char *detail = WstCompositorGetLastErrorDetail( mWstContext );
             RdkShell::Logger::log(LogLevel::Information,  "westeros error: %s", detail);
         }
-        RdkShell::Logger::log(LogLevel::Information,  "application close: %s", applicationName);
+        RdkShell::Logger::log(LogLevel::Information,  "application close: %s", applicationName.c_str());
         {
             std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
             mApplicationState = RdkShell::ApplicationState::Running;

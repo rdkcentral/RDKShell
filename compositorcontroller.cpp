@@ -248,7 +248,7 @@ namespace RdkShell
               if (gFocusedCompositor.name != compositorIterator->name)
               {
                   std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-                  Logger::log(LogLevel::Information,  "rdkshell_focus bubbleKey: the focused client is now %s . previous: %s", (*compositorIterator).name, previousFocusedClient);
+                  Logger::log(LogLevel::Information,  "rdkshell_focus bubbleKey: the focused client is now %s . previous: %s", (*compositorIterator).name.c_str(), previousFocusedClient.c_str());
                   if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
                   {
                       gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
@@ -371,7 +371,7 @@ namespace RdkShell
         std::string clientDisplayName = standardizeName(client);
         if (client == gTopmostCompositor.name)
         {
-            Logger::log(LogLevel::Information,  "%s is already topmost and cannot move to front ", client);
+            Logger::log(LogLevel::Information,  "%s is already topmost and cannot move to front ", client.c_str());
             return false;
         }
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
@@ -466,7 +466,7 @@ namespace RdkShell
             if (compositor.name == clientDisplayName)
             {
                 std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-                Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", compositor.name, previousFocusedClient);
+                Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", compositor.name.c_str(), previousFocusedClient.c_str());
                 if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
                 {
                     gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
@@ -528,7 +528,7 @@ namespace RdkShell
                   // this may be changed to next available compositor
                   gFocusedCompositor.name = "";
                   gFocusedCompositor.compositor = nullptr;
-                  Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName);
+                  Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName.c_str());
                 }
                 if (gTopmostCompositor.name == clientDisplayName)
                 {
@@ -1085,7 +1085,7 @@ namespace RdkShell
         else
         {
             std::string focusedClientName = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name : "none";
-            Logger::log(LogLevel::Information,  "rdkshell_focus key intercepted: %d focused client: %s", isInterceptAvailable, focusedClientName);
+            Logger::log(LogLevel::Information,  "rdkshell_focus key intercepted: %d focused client: %s", isInterceptAvailable, focusedClientName.c_str());
         }
 
     }
@@ -1154,7 +1154,7 @@ namespace RdkShell
         {
             if (compositor.name == clientDisplayName)
             {
-                Logger::log(LogLevel::Information,  "display with name %s already exists", client);
+                Logger::log(LogLevel::Information,  "display with name %s already exists", client.c_str());
                 return false;
             }
         }
@@ -1200,7 +1200,7 @@ namespace RdkShell
           if (gCompositorList.empty())
           {
               gFocusedCompositor = compositorInfo;
-              Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name);
+              Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
           }
           //Logger::log(LogLevel::Information,  "display created with name: " << client << std::endl;
           if (nullptr != gTopmostCompositor.compositor)
@@ -1466,7 +1466,7 @@ namespace RdkShell
             {
                 if (compositor.name == clientDisplayName)
                 {
-                    Logger::log(LogLevel::Information,  "application with name %s is already launched", client);
+                    Logger::log(LogLevel::Information,  "application with name %s is already launched", client.c_str());
                     return false;
                 }
             }
@@ -1491,7 +1491,7 @@ namespace RdkShell
                 if (gCompositorList.empty())
                 {
                     gFocusedCompositor = compositorInfo;
-                    Logger::log(LogLevel::Information,  "rdkshell_focus launch: setting focus of first application created %s", gFocusedCompositor.name);
+                    Logger::log(LogLevel::Information,  "rdkshell_focus launch: setting focus of first application created %s", gFocusedCompositor.name.c_str());
                 }
                 if (nullptr != gTopmostCompositor.compositor)
                 {
@@ -1524,16 +1524,16 @@ namespace RdkShell
                     bool result = compositor.compositor->suspendApplication();
                     if (result)
                     {
-                        Logger::log(LogLevel::Information,  "%s client has been suspended", client);
+                        Logger::log(LogLevel::Information,  "%s client has been suspended", client.c_str());
                         compositor.compositor->setVisible(false);
                     }
                     return result;
                 }
-                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client);
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
                 return false;
             }
         }
-        Logger::log(LogLevel::Information,  "display with name %s was not found", client);
+        Logger::log(LogLevel::Information,  "display with name %s was not found", client.c_str());
         return false;
     }
 
@@ -1549,11 +1549,11 @@ namespace RdkShell
                     bool result = compositor.compositor->resumeApplication();
                     if (result)
                     {
-                        Logger::log(LogLevel::Information,  "%s client has been resumed", client);
+                        Logger::log(LogLevel::Information,  "%s client has been resumed", client.c_str());
                         compositor.compositor->setVisible(true);
                     }
                 }
-                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client);
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
                 return false;
             }
         }
@@ -1808,12 +1808,12 @@ namespace RdkShell
         {
             if (client == gTopmostCompositor.name)
             {
-                Logger::log(LogLevel::Information,  "%s is already topmost and cannot set topmost again ", client);
+                Logger::log(LogLevel::Information,  "%s is already topmost and cannot set topmost again ", client.c_str());
                 return false;
             }
             if (nullptr != gTopmostCompositor.compositor)
             {
-                Logger::log(LogLevel::Information,  "%s is set as topmost already. please set it to false and make a new call", gTopmostCompositor.name);
+                Logger::log(LogLevel::Information,  "%s is set as topmost already. please set it to false and make a new call", gTopmostCompositor.name.c_str());
                 return false;
             }
             ret = moveToFront(client);
@@ -1831,7 +1831,7 @@ namespace RdkShell
             }
             else
             {
-                Logger::log(LogLevel::Information,  "%s is not topmost and cannot perform topmost to false ", client);
+                Logger::log(LogLevel::Information,  "%s is not topmost and cannot perform topmost to false ", client.c_str());
                 return false;
             }
         }

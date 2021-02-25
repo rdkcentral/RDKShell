@@ -79,7 +79,7 @@ namespace RdkShell
                 {
                     mDisplayName = WstCompositorGetDisplayName(mWstContext);
                 }
-                Logger::log(LogLevel::Information,  "The display name is: %s", mDisplayName);
+                Logger::log(LogLevel::Information,  "The display name is: %s", mDisplayName.c_str());
                 
                 if (!error && !WstCompositorStart(mWstContext))
                 {
@@ -88,7 +88,7 @@ namespace RdkShell
 
                 if (!mApplicationName.empty())
                 {
-                    Logger::log(LogLevel::Information,  "RDKShell is launching %s", mApplicationName);
+                    Logger::log(LogLevel::Information,  "RDKShell is launching %s", mApplicationName.c_str());
                     launchApplicationInBackground();
                 }
             }
