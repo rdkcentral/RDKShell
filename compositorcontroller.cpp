@@ -595,6 +595,10 @@ namespace RdkShell
                     {
                          interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
                     }
+                    else
+                    {
+                        interceptInfoIterator++;
+                    }
                 }
             }
         }
@@ -1217,14 +1221,14 @@ namespace RdkShell
 
     bool CompositorController::draw()
     {
-        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
-        {
-            gWaterMarkImage->draw();
-        }
-
         for (std::vector<CompositorInfo>::reverse_iterator reverseIterator = gCompositorList.rbegin() ; reverseIterator != gCompositorList.rend(); reverseIterator++)
         {
             reverseIterator->compositor->draw();
+        }
+
+        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
+        {
+            gWaterMarkImage->draw();
         }
 
         if (gShowFullScreenImage && gFullScreenImage != nullptr)
