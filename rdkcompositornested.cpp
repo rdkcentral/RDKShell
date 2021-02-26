@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include "linuxkeys.h"
 #include "rdkshell.h"
+#include "logger.h"
 
 namespace RdkShell
 {
@@ -78,7 +79,7 @@ namespace RdkShell
                 {
                     mDisplayName = WstCompositorGetDisplayName(mWstContext);
                 }
-                std::cout << "The display name is: " << mDisplayName << std::endl;
+                Logger::log(LogLevel::Information,  "The display name is: %s", mDisplayName.c_str());
                 
                 if (!error && !WstCompositorStart(mWstContext))
                 {
@@ -87,7 +88,7 @@ namespace RdkShell
 
                 if (!mApplicationName.empty())
                 {
-                    std::cout << "RDKShell is launching " << mApplicationName << std::endl;
+                    Logger::log(LogLevel::Information,  "RDKShell is launching %s", mApplicationName.c_str());
                     launchApplicationInBackground();
                 }
             }
@@ -99,7 +100,7 @@ namespace RdkShell
         if (error)
         {
             const char *detail= WstCompositorGetLastErrorDetail( mWstContext );
-            std::cout << "error setting up the compositor: " << detail << std::endl;
+            Logger::log(LogLevel::Information,  "error setting up the compositor: %s", detail);
             return false;
         }
         return true;

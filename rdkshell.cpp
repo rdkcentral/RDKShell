@@ -194,7 +194,7 @@ namespace RdkShell
 
     void initialize()
     {
-        std::cout << "initializing rdk shell\n";
+        Logger::log(LogLevel::Information, "initializing rdk shell\n");
 
         mapNativeKeyCodes();
         mapVirtualKeyCodes();
@@ -300,13 +300,13 @@ namespace RdkShell
         std::ifstream file720("/tmp/rdkshell720");
         if (file720.good())
         {
-            std::cout << "!!!!! forcing 720 start!\n";
+            Logger::log(LogLevel::Information,  "!!!!! forcing 720 start!");
             RdkShell::EssosInstance::instance()->initialize(false, 1280, 720);
             gForce720 = true;
         }
         else
         {
-            std::cout << "!!!!! forcing 1080 start!\n";
+            Logger::log(LogLevel::Information,  "!!!!! forcing 1080 start!");
             RdkShell::EssosInstance::instance()->initialize(false, 1920, 1080);
         }
         #else
