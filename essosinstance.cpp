@@ -202,8 +202,14 @@ static EssSettingsListener essosSettingsListener =
 namespace RdkShell
 {
     EssosInstance::EssosInstance() : mEssosContext(NULL), mUseWayland(false),
-           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250), mKeyRepeatsEnabled(true)
+           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250)
     {
+        #ifdef RDKSHELL_ENABLE_KEYREPEATS
+        mKeyRepeatsEnabled = true;
+        #else
+        mKeyRepeatsEnabled = false;
+        essosKeyListener.keyRepeat = essosKeyRepeat;
+        #endif
     }
     
     EssosInstance::~EssosInstance()

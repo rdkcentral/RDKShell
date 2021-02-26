@@ -96,7 +96,10 @@ namespace RdkShell
     bool gShowFullScreenImage = false;
     std::string gCurrentFullScreenImage = "";
     uint32_t gPowerKeyCode = 0;
+    uint32_t gFrontPanelButtonCode = 0;
     bool gPowerKeyEnabled = false;
+    bool gPowerKeyReleaseReceived = false;
+    bool gRdkShellPowerKeyReleaseOnlyEnabled = false;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -317,6 +320,28 @@ namespace RdkShell
 
         std::cout << "power key support enabled: " << gPowerKeyEnabled << std::endl;
  
+        char const *rdkshellFrontPanelButton = getenv("RDKSHELL_FRONT_PANEL_BUTTON_CODE");
+
+        if (rdkshellFrontPanelButton)
+        {
+            int keyCode = atoi(rdkshellFrontPanelButton);
+            if (keyCode > 0)
+            {
+                gFrontPanelButtonCode = (uint32_t)keyCode;
+            }
+        }
+
+        std::cout << "the front panel code is set to " <<  gFrontPanelButtonCode << std::endl;
+
+        char const *rdkshellPowerKeyReleaseOnlyEnabled = getenv("RDKSHELL_POWER_RELEASE_ONLY");
+
+        if (rdkshellPowerKeyReleaseOnlyEnabled && (strcmp(rdkshellPowerKeyReleaseOnlyEnabled,"1") == 0))
+        {
+           gRdkShellPowerKeyReleaseOnlyEnabled  = true;
+        }
+
+        std::cout << "rdkshell power key release only enabled " <<  gRdkShellPowerKeyReleaseOnlyEnabled << std::endl;
+
         char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
 
         if (NULL == rdkshellCompositorType)
@@ -344,6 +369,11 @@ namespace RdkShell
     bool CompositorController::moveToFront(const std::string& client)
     {
         std::string clientDisplayName = standardizeName(client);
+        if (client == gTopmostCompositor.name)
+        {
+            std::cout << client << " is already topmost and cannot move to front " << std::endl;
+            return false;
+        }
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
          {
             if (it->name == clientDisplayName)
@@ -564,6 +594,10 @@ namespace RdkShell
                     if ((*interceptInfoIterator).compositorInfo.name == client)
                     {
                          interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
+                    }
+                    else
+                    {
+                        interceptInfoIterator++;
                     }
                 }
             }
@@ -1040,6 +1074,12 @@ namespace RdkShell
         gLastKeyEventTime = currentTime;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
+        if ((keycode != 0) && ((keycode == gPowerKeyCode) || ((gFrontPanelButtonCode != 0) && (keycode == gFrontPanelButtonCode))) && (gPowerKeyReleaseReceived == false))
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "skip power key press");
+            return;
+        }
+
         bool isInterceptAvailable = false;
 
         isInterceptAvailable = interceptKey(keycode, flags, metadata, true);
@@ -1060,6 +1100,13 @@ namespace RdkShell
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
         //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
+        if ((false == gRdkShellPowerKeyReleaseOnlyEnabled) && (keycode != 0) && ((keycode == gPowerKeyCode) || ((gFrontPanelButtonCode != 0) && (keycode == gFrontPanelButtonCode))))
+        {
+            gPowerKeyReleaseReceived = true;
+            CompositorController::onKeyPress(keycode, flags, metadata, physicalKeyPress);
+            gPowerKeyReleaseReceived = false;
+        }
+
         if (true == physicalKeyPress)
         {
             double keyPressTime = RdkShell::seconds() - gLastKeyPressStartTime;
@@ -1177,14 +1224,14 @@ namespace RdkShell
 
     bool CompositorController::draw()
     {
-        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
-        {
-            gWaterMarkImage->draw();
-        }
-
         for (std::vector<CompositorInfo>::reverse_iterator reverseIterator = gCompositorList.rbegin() ; reverseIterator != gCompositorList.rend(); reverseIterator++)
         {
             reverseIterator->compositor->draw();
+        }
+
+        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
+        {
+            gWaterMarkImage->draw();
         }
 
         if (gShowFullScreenImage && gFullScreenImage != nullptr)
@@ -1766,6 +1813,16 @@ namespace RdkShell
         bool ret = false;
         if (topmost)
         {
+            if (client == gTopmostCompositor.name)
+            {
+                std::cout << client << " is already topmost and cannot set topmost again " << std::endl;
+                return false;
+            }
+            if (nullptr != gTopmostCompositor.compositor)
+            {
+                std::cout << gTopmostCompositor.name << " is set as topmost already. please set it to false and make a new call " << std::endl;
+                return false;
+            }
             ret = moveToFront(client);
             if (ret)
             {
@@ -1778,6 +1835,11 @@ namespace RdkShell
             {
                 gTopmostCompositor.name = "";
                 gTopmostCompositor.compositor = nullptr;
+            }
+            else
+            {
+                std::cout << client << " is not topmost and cannot perform topmost to false " << std::endl;
+                return false;
             }
         }
         return true;
