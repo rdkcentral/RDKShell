@@ -18,6 +18,7 @@
 **/
 
 #include "rdkshelljson.h"
+#include "logger.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -29,14 +30,14 @@ bool RdkShellJson::readJsonFile(const char* path, rapidjson::Document& document)
 {
   if (!path || *path == 0)
   {
-    std::cout << "json file path is empty\n";
+    Logger::log(LogLevel::Information,  "json file path is empty");
     return false;
   }
 
   FILE* fp = fopen(path, "rb");
   if (NULL == fp)
   {
-    std::cout << "unable to open json file - " << path << "\n";
+    Logger::log(LogLevel::Information,  "unable to open json file - %s", path );
     return false;
   }
 
@@ -46,7 +47,7 @@ bool RdkShellJson::readJsonFile(const char* path, rapidjson::Document& document)
   int ret = fstat(fd, &fileStatValue);
   if (-1 == ret)
   {
-    std::cout << "unable to read json file state - " << path << "\n";
+    Logger::log(LogLevel::Information,  "unable to read json file state - %s", path);
     fclose(fp);
     return false;
   }
@@ -54,7 +55,7 @@ bool RdkShellJson::readJsonFile(const char* path, rapidjson::Document& document)
 
   if (size == 0)
   {
-    std::cout << "json file is empty - " << path << "\n";
+    Logger::log(LogLevel::Information,  "json file is empty - %s", path);
     fclose(fp);
     return false;
   }
@@ -71,7 +72,7 @@ bool RdkShellJson::readJsonFile(const char* path, rapidjson::Document& document)
   if (!result)
   {
     rapidjson::ParseErrorCode e = document.GetParseError();
-    std::cout << "[JSON parse error : (" << rapidjson::GetParseError_En(e) << ") (" << result.Offset() << ")]\n";
+    Logger::log(LogLevel::Information,  "[JSON parse error : (%s) (%u)]", rapidjson::GetParseError_En(e), result.Offset());
     return false;
   }
   return true;

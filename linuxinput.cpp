@@ -18,6 +18,7 @@
 **/
 
 #include "linuxinput.h"
+#include "logger.h"
 #include "rdkshelljson.h"
 #include "inputdevicetypes.h"
 #include <iostream>
@@ -35,13 +36,13 @@ namespace RdkShell
         const char* inputDeviceConfigurationFile = getenv("RDKSHELL_INPUT_DEVICES_CONFIG");
         if (inputDeviceConfigurationFile)
         {
-            std::cout << "readInputDevicesConfiguration: read configuration from: '" << inputDeviceConfigurationFile << "'"<< std::endl;
+            Logger::log(LogLevel::Information,  "readInputDevicesConfiguration: read configuration from: '%s'", inputDeviceConfigurationFile);
 
             rapidjson::Document document;
             bool ret = RdkShell::RdkShellJson::readJsonFile(inputDeviceConfigurationFile, document);
             if (ret == false)
             {
-                std::cout << "RDKShell input devices configuration read error : [unable to open/read file (" <<  inputDeviceConfigurationFile << ")]\n";
+                Logger::log(LogLevel::Information,  "RDKShell input devices configuration read error : [unable to open/read file %s]", inputDeviceConfigurationFile);
                 return;
             }
 
@@ -70,7 +71,7 @@ namespace RdkShell
                                 }
                                 else
                                 {
-                                    std::cout << "Ignoring inputDevices entry because of format issues of vendor\n";
+                                    Logger::log(LogLevel::Information,  "Ignoring inputDevices entry because of format issues of vendor");
                                     continue;
                                 }
                             }
@@ -90,7 +91,7 @@ namespace RdkShell
                                 }
                                 else
                                 {
-                                    std::cout << "Ignoring inputDevices entry because of format issues of product\n";
+                                    Logger::log(LogLevel::Information,  "Ignoring inputDevices entry because of format issues of product");
                                     continue;
                                 }
                             }
@@ -110,7 +111,7 @@ namespace RdkShell
                                 }
                                 else
                                 {
-                                    std::cout << "Ignoring inputDevices entry because of format issues of devicePathValue\n";
+                                    Logger::log(LogLevel::Information,  "Ignoring inputDevices entry because of format issues of devicePathValue");
                                     continue;
                                 }
                             }
@@ -128,7 +129,7 @@ namespace RdkShell
                             }
                             else
                             {
-                                std::cout << "Ignoring inputDevices entry because of format issues of deviceType\n";
+                                Logger::log(LogLevel::Information,  "Ignoring inputDevices entry because of format issues of deviceType");
                                 continue;
                             }
 
@@ -140,12 +141,12 @@ namespace RdkShell
                             }
                             else
                             {
-                                std::cout << "Ignoring inputDevices entry because of format issues of deviceMode\n";
+                                Logger::log(LogLevel::Information,  "Ignoring inputDevices entry because of format issues of deviceMode");
                                 continue;
                             }
 
 
-                            std::cout << "inputDevice add entry: " <<
+                            std::cout <<  "inputDevice add entry: " <<
                                                        "{ product: 0x" << std::hex << std::setw(4) << std::setfill('0') << inputDeviceEntry.product <<
                                                        ", vendor: 0x"  << std::hex << std::setw(4) << std::setfill('0') << inputDeviceEntry.vendor <<
                                                        ", deviceType: 0x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<uint16_t>(inputDeviceEntry.deviceType) <<
@@ -156,7 +157,7 @@ namespace RdkShell
                         }
                         else
                         {
-                            std::cout << "Ignoring input device entry because of format issues of input device entry\n";
+                            Logger::log(LogLevel::Information,  "Ignoring input device entry because of format issues of input device entry");
                             continue;
                         }
                     }
@@ -164,7 +165,7 @@ namespace RdkShell
             }
             else
             {
-                std::cout << "Ignored file read due to inputDevices entry not present";
+                Logger::log(LogLevel::Information,  "Ignored file read due to inputDevices entry not present");
             }
 
             if (document.HasMember("irInputDeviceTypeMapping"))
@@ -190,7 +191,7 @@ namespace RdkShell
                            }
                            else
                            {
-                               std::cout << "Ignoring irInputDeviceTypeMapping entry because of format issues of filterCode\n";
+                               Logger::log(LogLevel::Information,  "Ignoring irInputDeviceTypeMapping entry because of format issues of filterCode");
                                continue;
                            }
 
@@ -201,7 +202,7 @@ namespace RdkShell
                            }
                            else
                            {
-                               std::cout << "Ignoring irInputDeviceTypeMapping entry because of format issues of deviceType\n";
+                               Logger::log(LogLevel::Information,  "Ignoring irInputDeviceTypeMapping entry because of format issues of deviceType");
                                continue;
                            }
 
@@ -216,17 +217,17 @@ namespace RdkShell
             }
             else
             {
-                std::cout << "irDeviceTypeMapping entry not present";
+                Logger::log(LogLevel::Information,  "irDeviceTypeMapping entry not present");
             }
         }
         else
         {
-            std::cout << "Ignored file read due to input devices environment variable not set\n";
+            Logger::log(LogLevel::Information,  "Ignored file read due to input devices environment variable not set");
         }
 
 #ifndef RDKSHELL_ENABLE_KEY_METADATA_EXTENDED_SUPPORT_FOR_IR
         if (!gIrInputDeviceTypeMapping.empty())
-            std::cout << "RDKShell: warning: no extended support for IR so 'irInputDeviceTypeMapping' in 'RDKSHELL_INPUT_DEVICES_CONFIG' will have no effect" << std::endl;
+            Logger::log(LogLevel::Information,  "RDKShell: warning: no extended support for IR so 'irInputDeviceTypeMapping' in 'RDKSHELL_INPUT_DEVICES_CONFIG' will have no effect");
 #endif 
     }
 
