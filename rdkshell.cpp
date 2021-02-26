@@ -197,6 +197,7 @@ namespace RdkShell
         Logger::log(LogLevel::Information, "initializing rdk shell\n");
 
         mapNativeKeyCodes();
+        mapVirtualKeyCodes();
         populateEasterEggDetails();
         readInputDevicesConfiguration();
         readPermissionsConfiguration();
