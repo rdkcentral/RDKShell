@@ -19,7 +19,7 @@
 
 #include <iostream>
 #include "rdkshell.h"
-
+#include "logger.h"
 
 int main(int argc, char* argv[])
 {
@@ -30,8 +30,8 @@ int main(int argc, char* argv[])
     }
     catch(...)
     {
-        std::cout << "got exception during rdkshell execution\n" << std::endl;
+        RdkShell::Logger::log(RdkShell::LogLevel::Information,  "got exception during rdkshell execution");
     }
-    std::cout << "exiting rdk shell\n";
+    RdkShell::Logger::log(RdkShell::LogLevel::Information,  "exiting rdk shell");
     return 0;
 }

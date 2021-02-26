@@ -79,12 +79,12 @@ namespace RdkShell
         std::ifstream file720(RDKSHELL_720_EASTER_EGG_FILE);
         if (file720.good())
         {
-            std::cout << "removing 720 restriction \n";
+            Logger::log(LogLevel::Information,  "removing 720 restriction");
             remove( RDKSHELL_720_EASTER_EGG_FILE );
         }
         else
         {
-            std::cout << "adding 720 restriction \n";
+            Logger::log(LogLevel::Information,  "adding 720 restriction");
             std::ofstream outputFile(RDKSHELL_720_EASTER_EGG_FILE);
             outputFile.close();
         }
@@ -102,7 +102,7 @@ namespace RdkShell
             eventData[0]["action"] = mActionJson;
             if (mName == "RDKSHELL_FORCE_720")
             {
-                std::cout << "about to toggle force 720 easter egg\n";
+                Logger::log(LogLevel::Information,  "about to toggle force 720 easter egg");
                 toggleForce720();
             }
             else
@@ -142,7 +142,7 @@ namespace RdkShell
             bool ret = RdkShell::RdkShellJson::readJsonFile(easterEggFile, document);
             if (false == ret)
             {
-                std::cout << "RDKShell easter egg file read error : [unable to open/read file (" <<  easterEggFile << ")]\n";
+                Logger::log(LogLevel::Information,  "RDKShell easter egg file read error : [unable to open/read file (%s)]", easterEggFile);
                 return;
             }
       
@@ -163,7 +163,7 @@ namespace RdkShell
                         //check for entry validity
                         if (!(easterEggEntry.IsObject() && easterEggEntry.HasMember("sequence") && easterEggEntry.HasMember("timeout") && easterEggEntry.HasMember("name")))
                         {
-                            std::cout << "one of easter egg entry is of wrong format or not having sequence/timeout/name parameter" << std::endl;
+                            Logger::log(LogLevel::Information,  "one of easter egg entry is of wrong format or not having sequence/timeout/name parameter");
                             continue;
                         }
       
@@ -171,7 +171,7 @@ namespace RdkShell
                         const rapidjson::Value& easterEggSequence = easterEggEntry["sequence"];
                         if (!easterEggSequence.IsArray())
                         {
-                            std::cout << "one of easter egg entry has non-array type sequence" << std::endl;
+                            Logger::log(LogLevel::Information,  "one of easter egg entry has non-array type sequence");
                             continue;
                         }
       
@@ -186,7 +186,7 @@ namespace RdkShell
                             const rapidjson::Value& easterEggKeyDetail = easterEggSequence[j];
                             if (!(easterEggKeyDetail.IsObject() && easterEggKeyDetail.HasMember("keyCode")))
                             {
-                                std::cout << "Ignoring easter egg entry because of format issues of sequence parameter\n";
+                                Logger::log(LogLevel::Information,  "Ignoring easter egg entry because of format issues of sequence parameter");
                                 continue;
                             }
       
@@ -197,7 +197,7 @@ namespace RdkShell
                             }
                             else
                             {
-                                std::cout << "Ignoring easter egg entry because of wrong type of keycode\n";
+                                Logger::log(LogLevel::Information,  "Ignoring easter egg entry because of wrong type of keycode");
                                 continue;
                             }
       
@@ -221,7 +221,7 @@ namespace RdkShell
                         const rapidjson::Value& easterEggNameValue = easterEggEntry["name"];
                         if (!easterEggNameValue.IsString())
                         {
-                            std::cout << "one of easter egg entry has non-string type name" << std::endl;
+                            Logger::log(LogLevel::Information,  "one of easter egg entry has non-string type name");
                             continue;
                         }
                         name = easterEggNameValue.GetString();
@@ -230,7 +230,7 @@ namespace RdkShell
                         const rapidjson::Value& easterEggTimeoutValue = easterEggEntry["timeout"];
                         if (!easterEggTimeoutValue.IsUint())
                         {
-                            std::cout << "one of easter egg entry has non-integer type timeout" << std::endl;
+                            Logger::log(LogLevel::Information,  "one of easter egg entry has non-integer type timeout");
                             continue;
                         }
                         timeout = easterEggTimeoutValue.GetUint();
@@ -241,7 +241,7 @@ namespace RdkShell
                             const rapidjson::Value& easterEggActionValue = easterEggEntry["action"];
                             if (!easterEggActionValue.IsObject())
                             {
-                                std::cout << "one of easter egg entry has non-object type action" << std::endl;
+                                Logger::log(LogLevel::Information,  "one of easter egg entry has non-object type action");
                                 continue;
                             }
                             rapidjson::StringBuffer actionBuffer ;
@@ -256,13 +256,13 @@ namespace RdkShell
                 }
                 else
                 {
-                  std::cout << "Ignored file read due to easterEggs entry not present";
+                  Logger::log(LogLevel::Information,  "Ignored file read due to easterEggs entry not present");
                 }
             }
         }
         else
         {
-          std::cout << "Ignored file read due to easter egg environment variable not set\n";
+          Logger::log(LogLevel::Information,  "Ignored file read due to easter egg environment variable not set");
         }
         std::sort<std::vector<EasterEgg>::iterator>(sEasterEggs.begin(), sEasterEggs.end(), compareKeySize);
     }

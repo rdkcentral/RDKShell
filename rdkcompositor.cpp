@@ -29,6 +29,7 @@
 #include "permissions.h"
 #include "framebuffer.h"
 #include "framebufferrenderer.h"
+#include "logger.h"
 
 extern bool gForce720;
 
@@ -53,7 +54,7 @@ namespace RdkShell
     {
         if (gForce720)
         {
-            std::cout << "forcing 720 for rdkc\n";
+            RdkShell::Logger::log(LogLevel::Information,  "forcing 720 for rdkc");
             mWidth = 1280;
             mHeight = 720;
         }
@@ -127,31 +128,31 @@ namespace RdkShell
         switch ( status )
         {
              case WstClient_started:
-                 std::cout << "client started\n";
+                 RdkShell::Logger::log(LogLevel::Information,  "client started");
                  eventName = RDKSHELL_EVENT_APPLICATION_LAUNCHED;
                  break;
              case WstClient_stoppedNormal:
-                 std::cout << "client stopped normal\n";
+                 RdkShell::Logger::log(LogLevel::Information,  "client stopped normal");
                  eventName = RDKSHELL_EVENT_APPLICATION_TERMINATED;
                  break;
              case WstClient_stoppedAbnormal:
-                 std::cout << "client stopped abnormal\n";
+                 RdkShell::Logger::log(LogLevel::Information,  "client stopped abnormal");
                  eventName = RDKSHELL_EVENT_APPLICATION_TERMINATED;
                  break;
              case WstClient_connected:
-                 std::cout << "client connected\n";
+                 RdkShell::Logger::log(LogLevel::Information,  "client connected");
                  eventName = RDKSHELL_EVENT_APPLICATION_CONNECTED;
                  break;
              case WstClient_disconnected:
-                 std::cout << "client disconnected\n";
+                 RdkShell::Logger::log(LogLevel::Information,  "client disconnected");
                  eventName = RDKSHELL_EVENT_APPLICATION_DISCONNECTED;
                  break;
              case WstClient_firstFrame:
-                 std::cout << "client first frame received\n";
+                 RdkShell::Logger::log(LogLevel::Information,  "client first frame received");
                  eventName = RDKSHELL_EVENT_APPLICATION_FIRST_FRAME;
                  break;
              default:
-                 std::cout << "unknown client status state\n";
+                 RdkShell::Logger::log(LogLevel::Information,  "unknown client status state");
                  eventFound = false;
                  break;
         }
@@ -164,7 +165,7 @@ namespace RdkShell
 
     bool RdkCompositor::loadExtensions(WstCompositor *compositor, const std::string& clientName)
     {
-        std::cout << "loadExtensions clientName: " << clientName << std::endl << std::flush;
+        RdkShell::Logger::log(LogLevel::Information,  "loadExtensions clientName: %s", clientName.c_str());
 
         bool success = true;
         if (compositor)
@@ -174,10 +175,10 @@ namespace RdkShell
             if (enableRdkShellExtendedInput)
             {
                 std::string extensionInputPath = std::string(RDKSHELL_WESTEROS_PLUGIN_DIRECTORY) + "libwesteros_plugin_rdkshell_extended_input.so";
-                std::cout << "attempting to load extension: " << extensionInputPath << std::endl << std::flush;
+                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath.c_str());
                 if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
-                    std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_extended_input.so'" << std::endl;
+                    RdkShell::Logger::log(LogLevel::Information,  "Failed to load plugin: libwesteros_plugin_rdkshell_extended_input.so");
                     success = false;
                 }
             }
@@ -185,16 +186,15 @@ namespace RdkShell
             std::vector<std::string> extensions;
             getAllowedExtensions(clientName, extensions);
 
-            std::cout << "loadExtensions getAllowedExtensions found: " << extensions.size() << " extensions for client: "
-                << clientName << std::endl << std::flush;
+            RdkShell::Logger::log(LogLevel::Information,  "loadExtensions getAllowedExtensions found: %d extensions for client %s ", extensions.size(), clientName.c_str());
 
             for (int i = 0; i < extensions.size(); ++i)
             {
                 const std::string extensionInputPath = RDKSHELL_WESTEROS_PLUGIN_DIRECTORY + extensions[i];
-                std::cout << "attempting to load extension: " << extensionInputPath << std::endl << std::flush;
+                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath.c_str());
                 if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
-                    std::cout << "Faild to load plugin: 'libwesteros_plugin_rdkshell_client_control.so '" << std::endl;
+                    RdkShell::Logger::log(LogLevel::Information,  "Failed to load plugin: libwesteros_plugin_rdkshell_client_control.so");
                     success = false;
                 }
             }
@@ -233,7 +233,7 @@ namespace RdkShell
             mFbo->width() != mVirtualWidth ||
             mFbo->height() != mVirtualHeight)
         {
-            std::cout << "creating FBO resolution: " << mVirtualWidth << " x " << mVirtualHeight << "\n";
+            RdkShell::Logger::log(LogLevel::Information,  "creating FBO resolution: %d x %d", mVirtualWidth, mVirtualHeight);
             mFbo = std::make_shared<FrameBuffer>(mVirtualWidth, mVirtualHeight);
         }
 
@@ -474,7 +474,7 @@ namespace RdkShell
 
     void RdkCompositor::broadcastInputEvent(const RdkShell::InputEvent &inputEvent)
     {
-        std::cout << "sending input metadata for device: " << inputEvent.deviceId << std::endl;
+        RdkShell::Logger::log(LogLevel::Information,  "sending input metadata for device: %d", inputEvent.deviceId);
         std::lock_guard<std::mutex> locker(mInputLock);
         for (const auto &listener : mInputListeners)
         {
@@ -504,11 +504,11 @@ namespace RdkShell
         }
         if (!WstCompositorLaunchClient(mWstContext, applicationName.c_str()))
         {
-            std::cout << "RdkCompositor failed to launch " << applicationName << std::endl;
+            RdkShell::Logger::log(LogLevel::Information,  "RdkCompositor failed to launch %s", applicationName.c_str());
             const char *detail = WstCompositorGetLastErrorDetail( mWstContext );
-            std::cout << "westeros error: " << detail << std::endl;
+            RdkShell::Logger::log(LogLevel::Information,  "westeros error: %s", detail);
         }
-        std::cout << "application close: " << applicationName << std::endl << std::flush;
+        RdkShell::Logger::log(LogLevel::Information,  "application close: %s", applicationName.c_str());
         {
             std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
             mApplicationState = RdkShell::ApplicationState::Running;
@@ -523,9 +523,9 @@ namespace RdkShell
                 mApplicationState != RdkShell::ApplicationState::Stopped &&
                 mApplicationState != RdkShell::ApplicationState::Unknown)
             {
-                std::cout << "about to terminate process id " << mApplicationPid << std::endl;
+                RdkShell::Logger::log(LogLevel::Information,  "about to terminate process id %d", mApplicationPid);
                 kill( mApplicationPid, SIGKILL);
-                std::cout << "process with id " << mApplicationPid << " has been terminated" << std::endl;
+                RdkShell::Logger::log(LogLevel::Information,  "process with id %d has been terminated", mApplicationPid);
                 mApplicationPid = 0;
                 mApplicationState = RdkShell::ApplicationState::Stopped;
             }
@@ -565,7 +565,7 @@ namespace RdkShell
         std::lock_guard<std::recursive_mutex> lock{mApplicationMutex};
         if (mApplicationClosedByCompositor && (mApplicationPid > 0) && (0 == kill(mApplicationPid, 0)))
         {
-            std::cout << "sending SIGKILL to application with pid " <<  mApplicationPid << std::endl;
+            RdkShell::Logger::log(LogLevel::Information,  "sending SIGKILL to application with pid %d", mApplicationPid);
             kill(mApplicationPid, SIGKILL);
             mApplicationClosedByCompositor = false;
         }

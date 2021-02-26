@@ -18,6 +18,7 @@
 **/
 
 #include "logger.h"
+#include "rdkshell.h"
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <string.h>
@@ -82,7 +83,11 @@ namespace RdkShell
       int threadId = syscall(__NR_gettid);
       const char* logLevel = logLevelToString(level);
 
-      printf("[%s] RDKShell Thread-%d: ", logLevel, threadId);
+      #ifdef RDKSHELL_LOGGER_DISABLE_TIMESTAMP
+      printf("[%s] RDKShell Thread-%d : ", logLevel, threadId);
+      #else
+      printf("[%s] RDKShell Thread-%d Time-%lf: ", logLevel, threadId, seconds());
+      #endif
       va_list ptr;
       va_start(ptr, format);
       vprintf(format, ptr);
