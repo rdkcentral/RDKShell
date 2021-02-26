@@ -595,6 +595,10 @@ namespace RdkShell
                     {
                          interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
                     }
+                    else
+                    {
+                        interceptInfoIterator++;
+                    }
                 }
             }
         }
