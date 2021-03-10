@@ -248,7 +248,7 @@ namespace RdkShell
               if (gFocusedCompositor.name != compositorIterator->name)
               {
                   std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-                  std::cout << "rdkshell_focus bubbleKey: the focused client is now " << (*compositorIterator).name << ".  previous: " << previousFocusedClient << std::endl;
+                  Logger::log(LogLevel::Information,  "rdkshell_focus bubbleKey: the focused client is now %s . previous: %s", (*compositorIterator).name.c_str(), previousFocusedClient.c_str());
                   if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
                   {
                       gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
@@ -305,7 +305,7 @@ namespace RdkShell
                 gPowerKeyCode = (uint32_t)keyCode;
             }
         }
-        std::cout << "the power key is set to " <<  gPowerKeyCode << std::endl;
+        Logger::log(LogLevel::Information,  "the power key is set to %d", gPowerKeyCode);
 
         char const *rdkshellPowerKeyEnable = getenv("RDKSHELL_ENABLE_POWER_KEY");
 
@@ -318,7 +318,7 @@ namespace RdkShell
             }
         }
 
-        std::cout << "power key support enabled: " << gPowerKeyEnabled << std::endl;
+        Logger::log(LogLevel::Information,  "power key support enabled: %d", gPowerKeyEnabled);
  
         char const *rdkshellFrontPanelButton = getenv("RDKSHELL_FRONT_PANEL_BUTTON_CODE");
 
@@ -331,7 +331,7 @@ namespace RdkShell
             }
         }
 
-        std::cout << "the front panel code is set to " <<  gFrontPanelButtonCode << std::endl;
+        Logger::log(LogLevel::Information,  "the front panel code is set to %d", gFrontPanelButtonCode);
 
         char const *rdkshellPowerKeyReleaseOnlyEnabled = getenv("RDKSHELL_POWER_RELEASE_ONLY");
 
@@ -340,13 +340,13 @@ namespace RdkShell
            gRdkShellPowerKeyReleaseOnlyEnabled  = true;
         }
 
-        std::cout << "rdkshell power key release only enabled " <<  gRdkShellPowerKeyReleaseOnlyEnabled << std::endl;
+        Logger::log(LogLevel::Information,  "rdkshell power key release only enabled %d", gRdkShellPowerKeyReleaseOnlyEnabled);
 
         char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
 
         if (NULL == rdkshellCompositorType)
         {
-            std::cout << "compositor type is empty, setting to nested by default " << std::endl;
+            Logger::log(LogLevel::Information,  "compositor type is empty, setting to nested by default");
             return;
         }
          
@@ -360,7 +360,7 @@ namespace RdkShell
         }
         else if (strcmp(rdkshellCompositorType, "nested") != 0)
         {
-            std::cout << "invalid compositor type, setting to nested by default " << std::endl;
+            Logger::log(LogLevel::Information,  "invalid compositor type, setting to nested by default ");
         }
 
         sCompositorInitialized = true;
@@ -371,7 +371,7 @@ namespace RdkShell
         std::string clientDisplayName = standardizeName(client);
         if (client == gTopmostCompositor.name)
         {
-            std::cout << client << " is already topmost and cannot move to front " << std::endl;
+            Logger::log(LogLevel::Information,  "%s is already topmost and cannot move to front ", client.c_str());
             return false;
         }
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
@@ -403,7 +403,7 @@ namespace RdkShell
             {
                 if ((nullptr != gTopmostCompositor.compositor) && (gTopmostCompositor.name == clientDisplayName))
                 {
-                    std::cout << "topmost compositor cannot be moved behind " << std::endl;
+                    Logger::log(LogLevel::Information,  "topmost compositor cannot be moved behind ");
                     break;
                 }
                 auto compositorInfo = *it;
@@ -466,7 +466,7 @@ namespace RdkShell
             if (compositor.name == clientDisplayName)
             {
                 std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-                std::cout << "rdkshell_focus setFocus: the focused client is now " << compositor.name << ".  previous: " << previousFocusedClient << std::endl;
+                Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", compositor.name.c_str(), previousFocusedClient.c_str());
                 if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
                 {
                     gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
@@ -528,7 +528,7 @@ namespace RdkShell
                   // this may be changed to next available compositor
                   gFocusedCompositor.name = "";
                   gFocusedCompositor.compositor = nullptr;
-                  std::cout << "rdkshell_focus kill: the focused client has been killed: " << clientDisplayName  << ".  there is no focused client.\n";
+                  Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName.c_str());
                 }
                 if (gTopmostCompositor.name == clientDisplayName)
                 {
@@ -545,7 +545,7 @@ namespace RdkShell
     bool CompositorController::addKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
         std::string clientDisplayName = standardizeName(client);
-        //std::cout << "key intercept added " << keyCode << " flags " << flags << std::endl;
+        //Logger::log(LogLevel::Information,  "key intercept added " << keyCode << " flags " << flags << std::endl;
         for (auto compositor : gCompositorList)
         {
             if (compositor.name == clientDisplayName)
@@ -594,6 +594,10 @@ namespace RdkShell
                     if ((*interceptInfoIterator).compositorInfo.name == client)
                     {
                          interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
+                    }
+                    else
+                    {
+                        interceptInfoIterator++;
                     }
                 }
             }
@@ -678,8 +682,7 @@ namespace RdkShell
             propagate = property.second.toBoolean();
           }
         }
-        std::cout << "key listener added client: " << client.c_str() << " activate: " << activate << " propagate: " << propagate
-                  << " RDKShell keyCode: " << keyCode << " flags: " << flags << std::endl;
+        Logger::log(LogLevel::Information,  "key listener added client: %s activate: %d propagate: %d RDKShell keyCode: %d flags: %d", client.c_str(), activate, propagate, keyCode, flags);
 
         for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
@@ -725,8 +728,7 @@ namespace RdkShell
         uint32_t mappedKeyCode = 0, mappedFlags = 0;
         keyCodeFromWayland(keyCode, flags, mappedKeyCode, mappedFlags);
 
-        std::cout << "Native keyCode: " << keyCode << " flags: " << flags
-                  << " converted to RDKShell keyCode: " << mappedKeyCode << " flags: " << mappedFlags << std::endl;
+        Logger::log(LogLevel::Information,  "Native keyCode: %d flags: %d converted to RDKShell keyCode: %d flags: %d", keyCode, flags, mappedKeyCode, mappedFlags);
 
         return CompositorController::addKeyListener(client, mappedKeyCode, mappedFlags, listenerProperties);
     }
@@ -735,7 +737,7 @@ namespace RdkShell
     {
         std::string clientDisplayName = standardizeName(client);
 
-        std::cout << "key listener removed client: " << client.c_str() << " RDKShell keyCode " << keyCode << " flags " << flags << std::endl;
+        Logger::log(LogLevel::Information,  "key listener removed client: %s RDKShell keyCode %d flags %d", client.c_str(), keyCode, flags);
 
         for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
@@ -776,8 +778,7 @@ namespace RdkShell
         uint32_t mappedKeyCode = 0, mappedFlags = 0;
         keyCodeFromWayland(keyCode, flags, mappedKeyCode, mappedFlags);
 
-        std::cout << "Native keyCode: " << keyCode << " flags: " << flags
-                  << " converted to RDKShell keyCode: " << mappedKeyCode << " flags: " << mappedFlags << std::endl;
+        Logger::log(LogLevel::Information,  "Native keyCode: %d flags: %d converted to RDKShell keyCode: %d flags: %d", keyCode, flags, mappedKeyCode, mappedFlags);
 
         return CompositorController::removeKeyListener(client, mappedKeyCode, mappedFlags);
     }
@@ -817,13 +818,24 @@ namespace RdkShell
         return true;
     }
 
-    bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
+    bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::string virtualKey)
     {
         bool ret = false;
+        uint32_t code = keyCode, modifiers = flags;
+        if (!virtualKey.empty())
+        {
+            bool mappingPresent = keyCodeFromVirtual(virtualKey, code, modifiers);
+            if (!mappingPresent)
+            {
+                std::cout << "virtual key mapping not present for " << virtualKey << std::endl;
+                return false;
+            }
+        }
+
         if (client.empty())
         {
-            CompositorController::onKeyPress(keyCode, flags, 0, false);
-            CompositorController::onKeyRelease(keyCode, flags, 0, false);
+            CompositorController::onKeyPress(code, modifiers, 0, false);
+            CompositorController::onKeyRelease(code, modifiers, 0, false);
             ret = true;
         }
         else
@@ -833,8 +845,8 @@ namespace RdkShell
             {
                 if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
                 {
-                    compositor.compositor->onKeyPress(keyCode, flags, 0);
-                    compositor.compositor->onKeyRelease(keyCode, flags, 0);
+                    compositor.compositor->onKeyPress(code, modifiers, 0);
+                    compositor.compositor->onKeyRelease(code, modifiers, 0);
                     ret = true;
                     break;
                 }
@@ -1061,7 +1073,7 @@ namespace RdkShell
 
     void CompositorController::onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
-        //std::cout << "key press code " << keycode << " flags " << flags << std::endl;
+        //Logger::log(LogLevel::Information,  "key press code " << keycode << " flags " << flags << std::endl;
         double currentTime = RdkShell::seconds();
         if ((true == physicalKeyPress) && (0.0 == gLastKeyPressStartTime))
         {
@@ -1088,14 +1100,14 @@ namespace RdkShell
         else
         {
             std::string focusedClientName = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name : "none";
-            std::cout << "rdkshell_focus key intercepted: " << isInterceptAvailable << " focused client:" << focusedClientName << std::endl;
+            Logger::log(LogLevel::Information,  "rdkshell_focus key intercepted: %d focused client: %s", isInterceptAvailable, focusedClientName.c_str());
         }
 
     }
 
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
     {
-        //std::cout << "key release code " << keycode << " flags " << flags << std::endl;
+        //Logger::log(LogLevel::Information,  "key release code " << keycode << " flags " << flags << std::endl;
         if ((false == gRdkShellPowerKeyReleaseOnlyEnabled) && (keycode != 0) && ((keycode == gPowerKeyCode) || ((gFrontPanelButtonCode != 0) && (keycode == gFrontPanelButtonCode))))
         {
             gPowerKeyReleaseReceived = true;
@@ -1157,7 +1169,7 @@ namespace RdkShell
         {
             if (compositor.name == clientDisplayName)
             {
-                std::cout << "display with name " << client << " already exists\n";
+                Logger::log(LogLevel::Information,  "display with name %s already exists", client.c_str());
                 return false;
             }
         }
@@ -1203,9 +1215,9 @@ namespace RdkShell
           if (gCompositorList.empty())
           {
               gFocusedCompositor = compositorInfo;
-              std::cout << "rdkshell_focus create: setting focus of first application created " << gFocusedCompositor.name << std::endl;
+              Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
           }
-          //std::cout << "display created with name: " << client << std::endl;
+          //Logger::log(LogLevel::Information,  "display created with name: " << client << std::endl;
           if (nullptr != gTopmostCompositor.compositor)
           {
             gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
@@ -1220,14 +1232,14 @@ namespace RdkShell
 
     bool CompositorController::draw()
     {
-        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
-        {
-            gWaterMarkImage->draw();
-        }
-
         for (std::vector<CompositorInfo>::reverse_iterator reverseIterator = gCompositorList.rbegin() ; reverseIterator != gCompositorList.rend(); reverseIterator++)
         {
             reverseIterator->compositor->draw();
+        }
+
+        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
+        {
+            gWaterMarkImage->draw();
         }
 
         if (gShowFullScreenImage && gFullScreenImage != nullptr)
@@ -1469,7 +1481,7 @@ namespace RdkShell
             {
                 if (compositor.name == clientDisplayName)
                 {
-                    std::cout << "application with name " << client << " is already launched\n";
+                    Logger::log(LogLevel::Information,  "application with name %s is already launched", client.c_str());
                     return false;
                 }
             }
@@ -1494,7 +1506,7 @@ namespace RdkShell
                 if (gCompositorList.empty())
                 {
                     gFocusedCompositor = compositorInfo;
-                    std::cout << "rdkshell_focus launch: setting focus of first application created " << gFocusedCompositor.name << std::endl;
+                    Logger::log(LogLevel::Information,  "rdkshell_focus launch: setting focus of first application created %s", gFocusedCompositor.name.c_str());
                 }
                 if (nullptr != gTopmostCompositor.compositor)
                 {
@@ -1509,7 +1521,7 @@ namespace RdkShell
         }
         else
         {
-            std::cout << "unable to launch application.  mime type " << mimeType << " is not supported\n";
+            Logger::log(LogLevel::Information,  "unable to launch application.  mime type %d is not supported", mimeType);
         }
 
         return false;
@@ -1527,16 +1539,16 @@ namespace RdkShell
                     bool result = compositor.compositor->suspendApplication();
                     if (result)
                     {
-                        std::cout << client << " has been suspended\n";
+                        Logger::log(LogLevel::Information,  "%s client has been suspended", client.c_str());
                         compositor.compositor->setVisible(false);
                     }
                     return result;
                 }
-                std::cout << "display with name " << client << " did not have a valid compositor\n";
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
                 return false;
             }
         }
-        std::cout << "display with name " << client << " was not found\n";
+        Logger::log(LogLevel::Information,  "display with name %s was not found", client.c_str());
         return false;
     }
 
@@ -1552,15 +1564,15 @@ namespace RdkShell
                     bool result = compositor.compositor->resumeApplication();
                     if (result)
                     {
-                        std::cout << client << " has been resumed \n";
+                        Logger::log(LogLevel::Information,  "%s client has been resumed", client.c_str());
                         compositor.compositor->setVisible(true);
                     }
                 }
-                std::cout << "display with name " << client << " did not have a valid compositor\n";
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
                 return false;
             }
         }
-        std::cout << "display with name " << client << " was not found\n";
+        Logger::log(LogLevel::Information,  "display with name %s was not found", client);
         return false;
     }
 
@@ -1576,11 +1588,11 @@ namespace RdkShell
                     compositor.compositor->closeApplication();
                     return true;
                 }
-                std::cout << "display with name " << client << " did not have a valid compositor\n";
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client);
                 return false;
             }
         }
-        std::cout << "display with name " << client << " was not found\n";
+        Logger::log(LogLevel::Information,  "display with name %s was not found", client);
         return false;
     }
 
@@ -1811,12 +1823,12 @@ namespace RdkShell
         {
             if (client == gTopmostCompositor.name)
             {
-                std::cout << client << " is already topmost and cannot set topmost again " << std::endl;
+                Logger::log(LogLevel::Information,  "%s is already topmost and cannot set topmost again ", client.c_str());
                 return false;
             }
             if (nullptr != gTopmostCompositor.compositor)
             {
-                std::cout << gTopmostCompositor.name << " is set as topmost already. please set it to false and make a new call " << std::endl;
+                Logger::log(LogLevel::Information,  "%s is set as topmost already. please set it to false and make a new call", gTopmostCompositor.name.c_str());
                 return false;
             }
             ret = moveToFront(client);
@@ -1834,7 +1846,7 @@ namespace RdkShell
             }
             else
             {
-                std::cout << client << " is not topmost and cannot perform topmost to false " << std::endl;
+                Logger::log(LogLevel::Information,  "%s is not topmost and cannot perform topmost to false ", client.c_str());
                 return false;
             }
         }

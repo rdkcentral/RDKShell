@@ -22,6 +22,7 @@
 #include "compositorcontroller.h"
 #include "linuxinput.h"
 #include "inputdevicetypes.h"
+#include "logger.h"
 
 #include <iostream>
 
@@ -202,8 +203,14 @@ static EssSettingsListener essosSettingsListener =
 namespace RdkShell
 {
     EssosInstance::EssosInstance() : mEssosContext(NULL), mUseWayland(false),
-           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250), mKeyRepeatsEnabled(true)
+           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250)
     {
+        #ifdef RDKSHELL_ENABLE_KEYREPEATS
+        mKeyRepeatsEnabled = true;
+        #else
+        mKeyRepeatsEnabled = false;
+        essosKeyListener.keyRepeat = essosKeyRepeat;
+        #endif
     }
     
     EssosInstance::~EssosInstance()
@@ -289,7 +296,7 @@ namespace RdkShell
             }
             if (mOverrideResolution)
             {
-                std::cout << "forcing resolution to: " <<  mWidth << " x " << mHeight << std::endl;
+                RdkShell::Logger::log(LogLevel::Information,  "forcing resolution to: %d x %d" , mWidth ,mHeight);
                 if ( !EssContextSetInitialWindowSize( mEssosContext, mWidth, mHeight) )
                 {
                     essosError = true;
@@ -304,7 +311,7 @@ namespace RdkShell
             if ( essosError )
             {
                 const char *errorDetail = EssContextGetLastErrorDetail(mEssosContext);
-                std::cout << "Essos error during initialization: " << errorDetail << std::endl;
+                RdkShell::Logger::log(LogLevel::Information,  "Essos error during initialization: %s", errorDetail);
             }
         }
     }
@@ -321,7 +328,7 @@ namespace RdkShell
     {
         mKeyInitialDelay = initialDelay;
         mKeyRepeatInterval = repeatInterval;
-        std::cout << "key initial delay: " << mKeyInitialDelay << " repeat interval: " << mKeyRepeatInterval << std::endl;
+        RdkShell::Logger::log(LogLevel::Information,  "key initial delay: %d repeat interval: %d", mKeyInitialDelay ,mKeyRepeatInterval);
     }
 
     void EssosInstance::onKeyPress(uint32_t keyCode, unsigned long flags, uint64_t metadata)
