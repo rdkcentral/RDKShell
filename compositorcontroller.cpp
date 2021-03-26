@@ -1748,6 +1748,12 @@ namespace RdkShell
 
     bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
     {
+        if (!gRdkShellEventListener)
+        {
+            Logger::log(LogLevel::Information,  "event listener is not present and unable to send event ", eventName.c_str());
+            return false;
+        }
+
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
         {
             int32_t freeKb = -1;
