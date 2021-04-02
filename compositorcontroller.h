@@ -70,6 +70,7 @@ namespace RdkShell
             static void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress=true);
             static bool createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth=0, uint32_t displayHeight=0,
                 bool virtualDisplayEnabled=false, uint32_t virtualWidth=0, uint32_t virtualHeight=0);
+            static void queueKeyEvent(bool keyDown, uint32_t keyCode, uint32_t flags, uint64_t metadata, bool physicalKeyPress);
             static bool addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties);
             static bool removeAnimation(const std::string& client);
             static bool addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener);
@@ -94,6 +95,7 @@ namespace RdkShell
             static bool showFullScreenImage(std::string file);
             static bool draw();
             static bool update();
+            static bool processKeyEvents();
             static bool setLogLevel(const std::string level);
             static bool getLogLevel(std::string& level);
             static bool setTopmost(const std::string& client, bool topmost);

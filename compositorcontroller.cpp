@@ -67,6 +67,16 @@ namespace RdkShell
         struct CompositorInfo compositorInfo;
     };
 
+    struct KeyEventInfo
+    {
+        KeyEventInfo() : keyDown(false), keyCode(-1), flags(0), metadata(0), physicalKeyPress(true) {}
+        bool keyDown;
+        uint32_t keyCode;
+        uint32_t flags;
+        uint64_t metadata;
+        bool physicalKeyPress;
+    };
+
     enum RdkShellCompositorType
     {
         NESTED,
@@ -103,6 +113,10 @@ namespace RdkShell
     bool gPowerKeyEnabled = false;
     bool gPowerKeyReleaseReceived = false;
     bool gRdkShellPowerKeyReleaseOnlyEnabled = false;
+    uint32_t lastKeyCode = 0;
+    uint32_t lastKeyFlags = 0;
+
+    std::vector<KeyEventInfo> gKeyEvents;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -1159,6 +1173,26 @@ namespace RdkShell
         }
     }
 
+    void CompositorController::queueKeyEvent(bool keyDown, uint32_t keyCode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
+    {
+        KeyEventInfo keyEvent;
+        keyEvent.keyDown = keyDown;
+        keyEvent.keyCode = keyCode;
+        keyEvent.flags = flags;
+        keyEvent.metadata = metadata;
+        keyEvent.physicalKeyPress = physicalKeyPress;
+        for (std::vector<KeyEventInfo>::iterator it = gKeyEvents.begin() ; it != gKeyEvents.end(); ++it)
+        {
+            KeyEventInfo queuedKey = (*it);
+            if (queuedKey.keyDown && keyDown)
+            {
+                //don't process more than one key down per cycle
+                return;
+            }
+        }
+        gKeyEvents.push_back(keyEvent);
+    }
+
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName,
         uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight)
     {
@@ -1373,6 +1407,7 @@ namespace RdkShell
 
     bool CompositorController::update()
     {
+        processKeyEvents();
         resolveWaitingEasterEggs();
         RdkShell::Animator::instance()->animate();
         if (gEnableInactivityReporting)
@@ -1388,6 +1423,23 @@ namespace RdkShell
             }
         }
         return true;
+    }
+
+    bool CompositorController::processKeyEvents()
+    {
+        for (auto it = gKeyEvents.begin(); it != gKeyEvents.end(); ++it)
+        {
+            if (it->keyDown)
+            {
+                std::cout << "processing key event\n";
+                onKeyPress(it->keyCode, it->flags, it->metadata, it->physicalKeyPress);
+            }
+            else
+            {
+                onKeyRelease(it->keyCode, it->flags, it->metadata, it->physicalKeyPress);
+            }
+        }
+        gKeyEvents.clear();
     }
 
     bool CompositorController::addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener)
