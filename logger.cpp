@@ -83,15 +83,18 @@ namespace RdkShell
       int threadId = syscall(__NR_gettid);
       const char* logLevel = logLevelToString(level);
 
-      #ifdef RDKSHELL_LOGGER_DISABLE_TIMESTAMP
-      printf("[%s] RDKShell Thread-%d : ", logLevel, threadId);
-      #else
-      printf("[%s] RDKShell Thread-%d Time-%lf: ", logLevel, threadId, seconds());
-      #endif
+      char buffer[256];
       va_list ptr;
       va_start(ptr, format);
-      vprintf(format, ptr);
+      vsprintf(buffer, format, ptr);
       va_end(ptr);
-      printf("\n");
+
+      #ifdef RDKSHELL_LOGGER_DISABLE_TIMESTAMP
+      printf("[%s] RDKShell Thread-%d : %s\n", logLevel, threadId, buffer);
+      #else
+      printf("[%s] RDKShell Thread-%d Time-%lf: %s\n", logLevel, threadId, seconds(), buffer);
+      #endif
+
+      fflush(stdout);
     }
 }
