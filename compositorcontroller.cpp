@@ -32,6 +32,7 @@
 #include "rdkshellimage.h"
 #include <iostream>
 #include <map>
+#include <ctime>
 
 #define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
@@ -86,6 +87,8 @@ namespace RdkShell
     double gInactivityIntervalInSeconds = RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS;
     double gLastKeyEventTime = RdkShell::seconds();
     double gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
+    uint32_t gLastKeyCode = 0;
+    uint32_t gLastKeyModifiers = 0;
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
     double gLastKeyPressStartTime = 0.0;
     RdkShellCompositorType gRdkShellCompositorType = NESTED;
@@ -1114,6 +1117,8 @@ namespace RdkShell
         {
             gLastKeyPressStartTime = currentTime;
         }
+        gLastKeyCode = keycode;
+        gLastKeyModifiers = flags;
         gLastKeyEventTime = currentTime;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
@@ -1155,6 +1160,8 @@ namespace RdkShell
             checkEasterEggs(keycode, flags, keyPressTime);
             gLastKeyPressStartTime = 0.0;
         }
+        gLastKeyCode = keycode;
+        gLastKeyModifiers = flags;
         gLastKeyEventTime = RdkShell::seconds();
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
@@ -1759,6 +1766,12 @@ namespace RdkShell
 
     bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
     {
+        if (!gRdkShellEventListener)
+        {
+            Logger::log(LogLevel::Information,  "event listener is not present and unable to send event ", eventName.c_str());
+            return false;
+        }
+
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
         {
             int32_t freeKb = -1;
@@ -1928,5 +1941,15 @@ namespace RdkShell
             return true;
         }
         return false;
+    }
+
+    bool CompositorController::getLastKeyPress(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds)
+    {
+        uint64_t timeSinceLastKeyPress = RdkShell::seconds() - gLastKeyEventTime;
+        time_t currentTimeInSeconds = time(0);
+        timestampInSeconds = (uint64_t)currentTimeInSeconds - (uint64_t)timeSinceLastKeyPress;
+        keyCode = gLastKeyCode;
+        modifiers = gLastKeyModifiers;
+        return true;
     }
 }
