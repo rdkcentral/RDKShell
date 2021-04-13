@@ -73,12 +73,9 @@ namespace RdkShell
         SURFACE
     };
 
-    typedef std::vector<CompositorInfo> CompositorList;
-    typedef CompositorList::iterator CompositorListIterator;
-
-    CompositorList gCompositorList;
-    CompositorList gTopmostCompositorList;
+    std::vector<CompositorInfo> gCompositorList;
     CompositorInfo gFocusedCompositor;
+    CompositorInfo gTopmostCompositor;
     std::vector<std::shared_ptr<RdkCompositor>> gPendingKeyUpListeners;
 
     static std::map<uint32_t, std::vector<KeyInterceptInfo>> gKeyInterceptInfoMap;
@@ -112,81 +109,6 @@ namespace RdkShell
         std::string displayName = clientName;
         std::transform(displayName.begin(), displayName.end(), displayName.begin(), [](unsigned char c){ return std::tolower(c); });
         return displayName;
-    }
-
-    /*
-        getCompositorInfo searches gCompositorList and gTopmostCompositoList for compositor info with
-        client name equal to clientName parameter.
-        Returns true if compositor info was found in any of the lists and false otherwise.
-
-        Iterator for found compositor info is stored in it parameter foundIt.
-
-        If compositorList parameter is not null, it will store the compositor list in which 
-        compositor info was found.
-    */
-    bool getCompositorInfo(const std::string& clientName, CompositorListIterator& foundIt,
-        CompositorList** compositorList = nullptr)
-    {
-        std::string stdClientName = standardizeName(clientName);
-
-        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
-        {
-            if (it->name == stdClientName)
-            {
-                foundIt = it;
-
-                if (compositorList)
-                    *compositorList = &gCompositorList;
-                return true;
-            }
-        }
-
-        for (auto it = gTopmostCompositorList.begin(); it != gTopmostCompositorList.end(); ++it)
-        {
-            if (it->name == stdClientName)
-            {
-                foundIt = it;
-
-                if (compositorList)
-                    *compositorList = &gTopmostCompositorList;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /*
-        getCompositorInfo searches gCompositorList and gTopmostCompositoList for compositor info with
-        RdkCompositor equal to compositor parameter.
-        Returns true if compositor info was found in any of the lists and false otherwise.
-    */
-    bool getCompositorInfo(const RdkCompositor* compositor, CompositorListIterator& foundIt)
-    {
-        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
-        {
-            if (it->compositor.get() == compositor)
-            {
-                foundIt = it;
-                return true;
-            }
-        }
-
-        for (auto it = gTopmostCompositorList.begin(); it != gTopmostCompositorList.end(); ++it)
-        {
-            if (it->compositor.get() == compositor)
-            {
-                foundIt = it;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    size_t getNumCompositorInfo()
-    {
-        return gCompositorList.size() + gTopmostCompositorList.size();
     }
 
     void sendApplicationEvent(std::shared_ptr<RdkShellEventListener>& listener, const std::string& eventName, const std::string& client)
@@ -354,23 +276,17 @@ namespace RdkShell
 
     std::shared_ptr<RdkCompositor> CompositorController::getCompositor(const std::string& displayName)
     {
-        auto lambda = [displayName](CompositorInfo& info)
+        auto it = std::find_if(std::begin(gCompositorList), std::end(gCompositorList),
+                [displayName](CompositorInfo& info)
+                    {
+                        std::string compositorDisplayName;
+                        info.compositor->displayName(compositorDisplayName);
+                        return compositorDisplayName == displayName; 
+                    });
+
+        if (it == std::end(gCompositorList))
         {
-            std::string compositorDisplayName;
-            info.compositor->displayName(compositorDisplayName);
-            return compositorDisplayName == displayName; 
-        };
-
-        auto it = std::find_if(gCompositorList.begin(), gCompositorList.end(), lambda);
-
-        if (it == gCompositorList.end())
-        {
-            it = std::find_if(gTopmostCompositorList.begin(), gTopmostCompositorList.end(), lambda);
-
-            if (it == gTopmostCompositorList.end())
-            {
-                return nullptr;
-            }
+            return nullptr;
         }
 
         return it->compositor;
@@ -455,188 +371,214 @@ namespace RdkShell
 
     bool CompositorController::moveToFront(const std::string& client)
     {
-        CompositorListIterator it;
-        CompositorList* compositorInfoList = nullptr;
-        if (!getCompositorInfo(client, it, &compositorInfoList))
+        std::string clientDisplayName = standardizeName(client);
+        if (client == gTopmostCompositor.name)
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot move to front ", client.c_str());
+            Logger::log(LogLevel::Information,  "%s is already topmost and cannot move to front ", client.c_str());
             return false;
         }
-
-        if (it == compositorInfoList->begin())
-        {
-            Logger::log(LogLevel::Information,  "%s is already in front and cannot move to front ", client.c_str());
-            return false;
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+         {
+            if (it->name == clientDisplayName)
+            {
+                auto compositorInfo = *it;
+                gCompositorList.erase(it);
+                if (nullptr != gTopmostCompositor.compositor)
+                {
+                    gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+                }
+                else
+                {
+                    gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                }
+                return true;
+            }
         }
-
-        auto compositorInfo = *it;
-        compositorInfoList->erase(it);
-        compositorInfoList->insert(compositorInfoList->begin(), compositorInfo);
-
-        return true;
+        return false;
     }
 
     bool CompositorController::moveToBack(const std::string& client)
     {
-        CompositorListIterator it;
-        CompositorList* compositorInfoList = nullptr;
-        if (!getCompositorInfo(client, it, &compositorInfoList))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind ", client.c_str());
-            return false;
+            if (it->name == clientDisplayName)
+            {
+                if ((nullptr != gTopmostCompositor.compositor) && (gTopmostCompositor.name == clientDisplayName))
+                {
+                    Logger::log(LogLevel::Information,  "topmost compositor cannot be moved behind ");
+                    break;
+                }
+                auto compositorInfo = *it;
+                gCompositorList.erase(it);
+                gCompositorList.push_back(compositorInfo);
+                return true;
+            }
         }
-
-        auto compositorInfo = *it;
-        compositorInfoList->erase(it);
-        compositorInfoList->push_back(compositorInfo);
- 
-        return true;
+        return false;
     }
 
     bool CompositorController::moveBehind(const std::string& client, const std::string& target)
     {
-        CompositorListIterator clientIt;
-        CompositorList* clientCompositorList = nullptr;
-        if (!getCompositorInfo(client, clientIt, &clientCompositorList))
+        std::vector<CompositorInfo>::iterator clientIterator = gCompositorList.end();
+        std::vector<CompositorInfo>::iterator targetIterator = gCompositorList.end();
+
+        std::string clientDisplayName = standardizeName(client);
+        std::string targetDisplayName = standardizeName(target);
+
+        CompositorInfo compositorInfo;
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind ", client.c_str());
-            return false;
+            if ((it->name == clientDisplayName) && (gTopmostCompositor.name != clientDisplayName))
+            {
+                clientIterator = it;
+            }
+            if (it->name == targetDisplayName)
+            {
+                targetIterator = it;
+            }
         }
 
-        CompositorListIterator targetIt;
-        CompositorList* targetCompositorList = nullptr;
-        if (!getCompositorInfo(target, targetIt, &targetCompositorList))
+        if ((clientIterator != gCompositorList.end()) && (targetIterator != gCompositorList.end()))
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind ", target.c_str());
-            return false;
+            compositorInfo = *clientIterator;
+            gCompositorList.erase(clientIterator);
+
+            for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+            {
+                if (it->name == targetDisplayName)
+                {
+                    targetIterator = it;
+                    break;
+                }
+            }
+            if (targetIterator != gCompositorList.end())
+            {
+                gCompositorList.insert(targetIterator+1, compositorInfo);
+                return true;
+            }
         }
-
-        if (clientCompositorList != targetCompositorList)
-        {
-            Logger::log(LogLevel::Information,  "%s and %s not on the same compositor stack ", client.c_str(), target.c_str());
-            return false;            
-        }
-
-        auto compositorInfo = *clientIt;
-        targetCompositorList->erase(clientIt);
-
-        if (!getCompositorInfo(target, targetIt))
-        {
-            targetCompositorList->insert(++targetIt, compositorInfo);
-            return true;
-        }
-
         return false;
     }
 
     bool CompositorController::setFocus(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-            Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", it->name.c_str(), previousFocusedClient.c_str());
-            if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
+            if (compositor.name == clientDisplayName)
             {
-                gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
+                std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
+                Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", compositor.name.c_str(), previousFocusedClient.c_str());
+                if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
+                {
+                    gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
+                }
+                gFocusedCompositor = compositor;
+                return true;
             }
-            gFocusedCompositor = *it;
-            return true;
         }
         return false;
     }
 
     bool CompositorController::kill(const std::string& client)
     {
-        CompositorListIterator it;
-        CompositorList* compositorInfoList;
-        if (getCompositorInfo(client, it, &compositorInfoList))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            std::string clientDisplayName = standardizeName(client);
-            RdkShell::Animator::instance()->stopAnimation(clientDisplayName);
-
-            // cleanup key intercepts
-            std::vector<std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator> emptyKeyCodeEntries;
-            std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator entry = gKeyInterceptInfoMap.begin();
-            while(entry != gKeyInterceptInfoMap.end())
+            if (it->name == clientDisplayName)
             {
-                std::vector<KeyInterceptInfo>& interceptMap = entry->second;
-                std::vector<KeyInterceptInfo>::iterator interceptMapEntry=interceptMap.begin();
-                while (interceptMapEntry != interceptMap.end())
+                RdkShell::Animator::instance()->stopAnimation(clientDisplayName);
+
+                // cleanup key intercepts
+		std::vector<std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator> emptyKeyCodeEntries;
+                std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator entry = gKeyInterceptInfoMap.begin();
+                while(entry != gKeyInterceptInfoMap.end())
                 {
-                    if ((*interceptMapEntry).compositorInfo.name == clientDisplayName)
+                    std::vector<KeyInterceptInfo>& interceptMap = entry->second;
+                    std::vector<KeyInterceptInfo>::iterator interceptMapEntry=interceptMap.begin();
+                    while (interceptMapEntry != interceptMap.end())
                     {
-                        interceptMapEntry = interceptMap.erase(interceptMapEntry);
+                        if ((*interceptMapEntry).compositorInfo.name == clientDisplayName)
+                        {
+                          interceptMapEntry = interceptMap.erase(interceptMapEntry);
+                        }
+                        else
+                        {
+                          interceptMapEntry++;
+                        }
+                    }
+                    if (interceptMap.size() == 0)
+                    {
+                       entry = gKeyInterceptInfoMap.erase(entry);
                     }
                     else
                     {
-                        interceptMapEntry++;
+                      entry++;
                     }
                 }
-                if (interceptMap.size() == 0)
-                {
-                    entry = gKeyInterceptInfoMap.erase(entry);
-                }
-                else
-                {
-                    entry++;
-                }
-            }
 
-            // cleanup key listeners
-            for (std::map<uint32_t, std::vector<KeyListenerInfo>>::iterator iter = it->keyListenerInfo.begin(); iter != it->keyListenerInfo.end(); iter++)
-            {
-                iter->second.clear();
+                // cleanup key listeners
+                for (std::map<uint32_t, std::vector<KeyListenerInfo>>::iterator iter = it->keyListenerInfo.begin(); iter != it->keyListenerInfo.end(); iter++)
+                {
+                  iter->second.clear();
+                }
+                it->keyListenerInfo.clear();
+                it->eventListeners.clear();
+                gCompositorList.erase(it);
+                if (gFocusedCompositor.name == clientDisplayName)
+                {
+                  // this may be changed to next available compositor
+                  gFocusedCompositor.name = "";
+                  gFocusedCompositor.compositor = nullptr;
+                  Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName.c_str());
+                }
+                if (gTopmostCompositor.name == clientDisplayName)
+                {
+                  // this may be changed to next available compositor
+                  gTopmostCompositor.name = "";
+                  gTopmostCompositor.compositor = nullptr;
+                }
+                return true;
             }
-            it->keyListenerInfo.clear();
-            it->eventListeners.clear();
-            compositorInfoList->erase(it);
-            if (gFocusedCompositor.name == clientDisplayName)
-            {
-                // this may be changed to next available compositor
-                gFocusedCompositor.name = "";
-                gFocusedCompositor.compositor = nullptr;
-                Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName.c_str());
-            }
-            return true;
         }
         return false;
     }
 
     bool CompositorController::addKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        std::string clientDisplayName = standardizeName(client);
         //Logger::log(LogLevel::Information,  "key intercept added " << keyCode << " flags " << flags << std::endl;
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        for (auto compositor : gCompositorList)
         {
-            struct KeyInterceptInfo info;
-            info.keyCode = keyCode;
-            info.flags = flags;
-            info.compositorInfo = *it;
-            if (gKeyInterceptInfoMap.end() == gKeyInterceptInfoMap.find(keyCode))
+            if (compositor.name == clientDisplayName)
             {
-                gKeyInterceptInfoMap[keyCode] = std::vector<KeyInterceptInfo>();
-                gKeyInterceptInfoMap[keyCode].push_back(info);
-            }
-            else
-            {
-                std::string clientDisplayName = standardizeName(client);
-                bool isEntryAvailable = false;
-                for (int i=0; i<gKeyInterceptInfoMap[keyCode].size(); i++)
+                struct KeyInterceptInfo info;
+                info.keyCode = keyCode;
+                info.flags = flags;
+                info.compositorInfo = compositor;
+                if (gKeyInterceptInfoMap.end() == gKeyInterceptInfoMap.find(keyCode))
                 {
+                  gKeyInterceptInfoMap[keyCode] = std::vector<KeyInterceptInfo>();
+                  gKeyInterceptInfoMap[keyCode].push_back(info);
+                }
+                else
+                {
+                  bool isEntryAvailable = false;
+                  for (int i=0; i<gKeyInterceptInfoMap[keyCode].size(); i++) {
                     struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keyCode][i];
                     if ((info.flags == flags) && (info.compositorInfo.name == clientDisplayName))
                     {
-                        isEntryAvailable = true;
-                        break;
+                      isEntryAvailable = true;
+                      break;
                     }
-                }
-                if (false == isEntryAvailable)
-                {
+                  }
+                  if (false == isEntryAvailable) {
                     gKeyInterceptInfoMap[keyCode].push_back(info);
+                  }
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
@@ -652,7 +594,7 @@ namespace RdkShell
                 std::vector<KeyInterceptInfo>::iterator interceptInfoIterator = interceptInfo.begin();
                 while(interceptInfoIterator != interceptInfo.end())
                 {
-                    if ((*interceptInfoIterator).compositorInfo.name == clientDisplayName)
+                    if ((*interceptInfoIterator).compositorInfo.name == client)
                     {
                          interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
                     }
@@ -694,42 +636,43 @@ namespace RdkShell
         }
 
         std::string clientDisplayName = standardizeName(client);
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        for (auto compositor : gCompositorList)
         {
-            if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keyCode))
+            if (compositor.name == clientDisplayName)
             {
-                bool isEntryAvailable = false;
-                std::vector<KeyInterceptInfo>::iterator entryPos = gKeyInterceptInfoMap[keyCode].end();
-                for (std::vector<KeyInterceptInfo>::iterator it = gKeyInterceptInfoMap[keyCode].begin() ; it != gKeyInterceptInfoMap[keyCode].end(); ++it)
+                if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keyCode))
                 {
+                  bool isEntryAvailable = false;
+                  std::vector<KeyInterceptInfo>::iterator entryPos = gKeyInterceptInfoMap[keyCode].end();
+                  for (std::vector<KeyInterceptInfo>::iterator it = gKeyInterceptInfoMap[keyCode].begin() ; it != gKeyInterceptInfoMap[keyCode].end(); ++it)
+                  {
                     if (((*it).flags == flags) && ((*it).compositorInfo.name == clientDisplayName))
                     {
-                        entryPos = it;
-                        isEntryAvailable = true;
-                        break;
+                      entryPos = it;
+                      isEntryAvailable = true;
+                      break;
                     }
-                }
-                if (true == isEntryAvailable)
-                {
+                  }
+                  if (true == isEntryAvailable) {
                     if (((*entryPos).compositorInfo.compositor) && ((*entryPos).compositorInfo.compositor->isKeyPressed()))
                     {
                         gPendingKeyUpListeners.push_back((*entryPos).compositorInfo.compositor);
                     }
                     gKeyInterceptInfoMap[keyCode].erase(entryPos);
-                    if (gKeyInterceptInfoMap[keyCode].size() == 0)
-                    {
-                        gKeyInterceptInfoMap.erase(keyCode);
+                    if (gKeyInterceptInfoMap[keyCode].size() == 0) {
+                      gKeyInterceptInfoMap.erase(keyCode);
                     }
+                  }
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
 
     bool CompositorController::addKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties)
     {
+        std::string clientDisplayName = standardizeName(client);
         bool activate = false, propagate = true;
         for ( const auto &property : listenerProperties)
         {
@@ -744,41 +687,41 @@ namespace RdkShell
         }
         Logger::log(LogLevel::Information,  "key listener added client: %s activate: %d propagate: %d RDKShell keyCode: %d flags: %d", client.c_str(), activate, propagate, keyCode, flags);
 
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            struct KeyListenerInfo info;
-            info.keyCode = keyCode;
-            info.flags = flags;
-            info.activate = activate;
-            info.propagate = propagate;
+            if (it->name == clientDisplayName)
+            {
+                struct KeyListenerInfo info;
+                info.keyCode = keyCode;
+                info.flags = flags;
+                info.activate = activate;
+                info.propagate = propagate;
 
-            if (it->keyListenerInfo.end() == it->keyListenerInfo.find(keyCode))
-            {
-                it->keyListenerInfo[keyCode] = std::vector<KeyListenerInfo>();
-                it->keyListenerInfo[keyCode].push_back(info);
-            }
-            else
-            {
-                std::vector<KeyListenerInfo>& keyListenerEntry = it->keyListenerInfo[keyCode];
-                bool isEntryAvailable = false;
-                for (int i = 0; i < keyListenerEntry.size(); i++)
+                if (it->keyListenerInfo.end() == it->keyListenerInfo.find(keyCode))
                 {
+                  it->keyListenerInfo[keyCode] = std::vector<KeyListenerInfo>();
+                  it->keyListenerInfo[keyCode].push_back(info);
+                }
+                else
+                {
+                  std::vector<KeyListenerInfo>& keyListenerEntry = it->keyListenerInfo[keyCode];
+                  bool isEntryAvailable = false;
+                  for (int i=0; i<keyListenerEntry.size(); i++) {
                     struct KeyListenerInfo& listenerInfo = keyListenerEntry[i];
                     if (listenerInfo.flags == flags)
                     {
-                        listenerInfo.activate = activate;
-                        listenerInfo.propagate = propagate;
-                        isEntryAvailable = true;
-                        break;
+                      listenerInfo.activate = activate;
+                      listenerInfo.propagate = propagate;
+                      isEntryAvailable = true;
+                      break;
                     }
-                }
-                if (false == isEntryAvailable)
-                {
+                  }
+                  if (false == isEntryAvailable) {
                     keyListenerEntry.push_back(info);
+                  }
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
@@ -795,38 +738,40 @@ namespace RdkShell
 
     bool CompositorController::removeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        std::string clientDisplayName = standardizeName(client);
+
         Logger::log(LogLevel::Information,  "key listener removed client: %s RDKShell keyCode %d flags %d", client.c_str(), keyCode, flags);
 
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        for (std::vector<CompositorInfo>::iterator it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            if (it->keyListenerInfo.end() != it->keyListenerInfo.find(keyCode))
+            if (it->name == clientDisplayName)
             {
-                bool isEntryAvailable = false;
-                std::vector<KeyListenerInfo>::iterator entryPos = it->keyListenerInfo[keyCode].end();
-                for (std::vector<KeyListenerInfo>::iterator iter = it->keyListenerInfo[keyCode].begin() ; iter != it->keyListenerInfo[keyCode].end(); ++iter)
+                if (it->keyListenerInfo.end() != it->keyListenerInfo.find(keyCode))
                 {
+                  bool isEntryAvailable = false;
+                  std::vector<KeyListenerInfo>::iterator entryPos = it->keyListenerInfo[keyCode].end();
+                  for (std::vector<KeyListenerInfo>::iterator iter = it->keyListenerInfo[keyCode].begin() ; iter != it->keyListenerInfo[keyCode].end(); ++iter)
+                  {
                     if ((*iter).flags == flags)
                     {
-                        entryPos = iter;
-                        isEntryAvailable = true;
-                        break;
+                      entryPos = iter;
+                      isEntryAvailable = true;
+                      break;
                     }
-                }
-                if (true == isEntryAvailable)
-                {
+                  }
+                  if (true == isEntryAvailable) {
                     if ((it->compositor) && (it->compositor->isKeyPressed()))
                     {
                         gPendingKeyUpListeners.push_back(it->compositor);
                     }
                     it->keyListenerInfo[keyCode].erase(entryPos);
-                    if (it->keyListenerInfo[keyCode].size() == 0)
-                    {
-                        it->keyListenerInfo.erase(keyCode);
+                    if (it->keyListenerInfo[keyCode].size() == 0) {
+                      it->keyListenerInfo.erase(keyCode);
                     }
+                  }
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
@@ -843,12 +788,12 @@ namespace RdkShell
 
     bool CompositorController::addKeyMetadataListener(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            if (it->compositor != nullptr)
+            if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
             {
-                it->compositor->setKeyMetadataEnabled(true);
+                compositor.compositor->setKeyMetadataEnabled(true);
                 return true;
             }
         }
@@ -857,12 +802,12 @@ namespace RdkShell
 
     bool CompositorController::removeKeyMetadataListener(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            if (it->compositor != nullptr)
+            if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
             {
-                it->compositor->setKeyMetadataEnabled(false);
+                compositor.compositor->setKeyMetadataEnabled(false);
                 return true;
             }
         }
@@ -898,14 +843,15 @@ namespace RdkShell
         }
         else
         {
-            CompositorListIterator it;
-            if (getCompositorInfo(client, it))
+            std::string clientDisplayName = standardizeName(client);
+            for (auto compositor : gCompositorList)
             {
-                if (it->compositor != nullptr)
+                if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
                 {
-                    it->compositor->onKeyPress(code, modifiers, 0);
-                    it->compositor->onKeyRelease(code, modifiers, 0);
+                    compositor.compositor->onKeyPress(code, modifiers, 0);
+                    compositor.compositor->onKeyRelease(code, modifiers, 0);
                     ret = true;
+                    break;
                 }
             }
         }
@@ -928,13 +874,7 @@ namespace RdkShell
     {
         clients.clear();
 
-        for (const auto &client : gTopmostCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
-
-        for ( const auto &client : gCompositorList)
+        for ( const auto &client : gCompositorList )
         {
             std::string clientName = client.name;
             clients.push_back(clientName);
@@ -942,17 +882,11 @@ namespace RdkShell
         return true;
     }
 
-    bool CompositorController::getZOrder(std::vector<std::string>& clients)
+    bool CompositorController::getZOrder(std::vector<std::string>&clients)
     {
         clients.clear();
 
-        for (const auto &client : gTopmostCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
-
-        for (const auto &client : gCompositorList)
+        for ( const auto &client : gCompositorList )
         {
             std::string clientName = client.name;
             clients.push_back(clientName);
@@ -962,82 +896,100 @@ namespace RdkShell
 
     bool CompositorController::getBounds(const std::string& client, uint32_t &x, uint32_t &y, uint32_t &width, uint32_t &height)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            int32_t xPos = 0;
-            int32_t yPos = 0;
-            it->compositor->position(xPos, yPos);
-            it->compositor->size(width, height);
-            x = (uint32_t)xPos;
-            y = (uint32_t)yPos;
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                int32_t xPos = 0;
+                int32_t yPos = 0;
+                compositor.compositor->position(xPos, yPos);
+                compositor.compositor->size(width, height);
+                x = (uint32_t)xPos;
+                y = (uint32_t)yPos;
+                return true;
+            }
         }
         return false;
     }
     bool CompositorController::setBounds(const std::string& client, const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            it->compositor->setPosition(x,y);
-            it->compositor->setSize(width, height);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setPosition(x,y);
+                compositor.compositor->setSize(width, height);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::getVisibility(const std::string& client, bool& visible)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            it->compositor->visible(visible);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->visible(visible);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::setVisibility(const std::string& client, const bool visible)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            it->compositor->setVisible(visible);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setVisible(visible);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::getOpacity(const std::string& client, unsigned int& opacity)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            double o = 1.0;
-            it->compositor->opacity(o);
-            if (o <= 0.0)
+            if (compositor.name == clientDisplayName)
             {
-                o = 0.0;
+                double o = 1.0;
+                compositor.compositor->opacity(o);
+                if (o <= 0.0)
+                {
+                    o = 0.0;
+                }
+                opacity = (unsigned int)(o * 100);
+                if (opacity > 100)
+                {
+                     opacity = 100;
+                }
+                return true;
             }
-            opacity = (unsigned int)(o * 100);
-            if (opacity > 100)
-            {
-                    opacity = 100;
-            }
-            return true;
         }
         return false;
     }
 
     bool CompositorController::setOpacity(const std::string& client, const unsigned int opacity)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            double o = (double)opacity / 100.0;
-            it->compositor->setOpacity(o);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                double o = (double)opacity / 100.0;
+                compositor.compositor->setOpacity(o);
+                return true;
+            }
         }
         return true;
     }
@@ -1045,65 +997,78 @@ namespace RdkShell
 
     bool CompositorController::getScale(const std::string& client, double &scaleX, double &scaleY)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            it->compositor->scale(scaleX, scaleY);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->scale(scaleX, scaleY);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::setScale(const std::string& client, double scaleX, double scaleY)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            it->compositor->setScale(scaleX, scaleY);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setScale(scaleX, scaleY);
+                return true;
+            }
         }
         return true;
     }
 
     bool CompositorController::getHolePunch(const std::string& client, bool& holePunch)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            it->compositor->holePunch(holePunch);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->holePunch(holePunch);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::setHolePunch(const std::string& client, const bool holePunch)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            it->compositor->setHolePunch(holePunch);
-            RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", client.c_str(), holePunch ? "true" : "false");
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setHolePunch(holePunch);
+                RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", clientDisplayName.c_str(), holePunch ? "true" : "false");
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            if (it->compositor != nullptr)
+            if (compositor.name == clientDisplayName && compositor.compositor != nullptr)
             {
                 uint32_t currentWidth = 0;
                 uint32_t currentHeight = 0;
-                it->compositor->size(currentWidth, currentHeight);
+                compositor.compositor->size(currentWidth, currentHeight);
 
                 double scaleX = (double)width / (double)currentWidth;
                 double scaleY = (double)height / (double)currentHeight;
 
-                it->compositor->setPosition(x, y);
-                it->compositor->setScale(scaleX, scaleY);
+                compositor.compositor->setPosition(x, y);
+                compositor.compositor->setScale(scaleX, scaleY);
+                return true;
             }
         }
         return true;
@@ -1142,6 +1107,7 @@ namespace RdkShell
             std::string focusedClientName = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name : "none";
             Logger::log(LogLevel::Information,  "rdkshell_focus key intercepted: %d focused client: %s", isInterceptAvailable, focusedClientName.c_str());
         }
+
     }
 
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
@@ -1194,13 +1160,11 @@ namespace RdkShell
     }
 
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName,
-        uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight,
-        bool topmost, bool focus)
+        uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight)
     {
         Logger::log(LogLevel::Information,
-            "rdkshell createDisplay client: %s, displayName: %s, res: %d x %d, virtualDisplayEnabled: %d, virtualRes: %d x %d, topmost: %d, focus: %d\n",
-            client.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplayEnabled, virtualWidth, virtualHeight,
-            topmost, focus);
+            "rdkshell createDisplay client: %s, displayName: %s, res: %d x %d, virtualDisplayEnabled: %d, virtualRes: %d x %d\n",
+            client.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplayEnabled, virtualWidth, virtualHeight);
 
         std::string clientDisplayName = standardizeName(client);
         std::string compositorDisplayName = displayName;
@@ -1208,12 +1172,13 @@ namespace RdkShell
         {
             compositorDisplayName = clientDisplayName;
         }
-
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        for (auto compositor : gCompositorList)
         {
-            Logger::log(LogLevel::Information,  "display with name %s already exists", client.c_str());
-            return false;
+            if (compositor.name == clientDisplayName)
+            {
+                Logger::log(LogLevel::Information,  "display with name %s already exists", client.c_str());
+                return false;
+            }
         }
         CompositorInfo compositorInfo;
         compositorInfo.name = clientDisplayName;
@@ -1254,32 +1219,27 @@ namespace RdkShell
 
         if (ret)
         {
-            if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus))
-            {
-                gFocusedCompositor = compositorInfo;
-                Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
-            }
-
-            if (topmost)
-            {
-                gTopmostCompositorList.insert(gTopmostCompositorList.begin(), compositorInfo);
-            }
-            else
-            {
-                gCompositorList.insert(gCompositorList.begin(), compositorInfo);
-            }
+          if (gCompositorList.empty())
+          {
+              gFocusedCompositor = compositorInfo;
+              Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
+          }
+          //Logger::log(LogLevel::Information,  "display created with name: " << client << std::endl;
+          if (nullptr != gTopmostCompositor.compositor)
+          {
+            gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
+          }
+          else
+          {
+            gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+          }
         }
         return ret;
     }
 
     bool CompositorController::draw()
     {
-        for (auto reverseIterator = gCompositorList.rbegin(); reverseIterator != gCompositorList.rend(); reverseIterator++)
-        {
-            reverseIterator->compositor->draw();
-        }
-
-        for (auto reverseIterator = gTopmostCompositorList.rbegin(); reverseIterator != gTopmostCompositorList.rend(); reverseIterator++)
+        for (std::vector<CompositorInfo>::reverse_iterator reverseIterator = gCompositorList.rbegin() ; reverseIterator != gCompositorList.rend(); reverseIterator++)
         {
             reverseIterator->compositor->draw();
         }
@@ -1321,82 +1281,86 @@ namespace RdkShell
     {
         bool ret = false;
         RdkShell::Animation animation;
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            int32_t x = 0;
-            int32_t y = 0;
-            uint32_t width = 0;
-            uint32_t height = 0;
-            double scaleX = 1.0;
-            double scaleY = 1.0;
-            double opacity = 1.0;
-            double delay = 0.0;
-            std::string tween = "linear";
-            if (it->compositor != nullptr)
+            if (compositor.name == clientDisplayName)
             {
-                //retrieve the initial values in case they are not specified in the property set
-                it->compositor->position(x, y);
-                it->compositor->size(width, height);
-                it->compositor->scale(scaleX, scaleY);
-                it->compositor->opacity(opacity);
-            }
+                int32_t x = 0;
+                int32_t y = 0;
+                uint32_t width = 0;
+                uint32_t height = 0;
+                double scaleX = 1.0;
+                double scaleY = 1.0;
+                double opacity = 1.0;
+                double delay = 0.0;
+                std::string tween = "linear";
+                if (compositor.compositor != nullptr)
+                {
+                    //retrieve the initial values in case they are not specified in the property set
+                    compositor.compositor->position(x, y);
+                    compositor.compositor->size(width, height);
+                    compositor.compositor->scale(scaleX, scaleY);
+                    compositor.compositor->opacity(opacity);
+                }
 
-            for (const auto &property : animationProperties)
-            {
-                if (property.first == "x")
+                for ( const auto &property : animationProperties )
                 {
-                    x = property.second.toInteger32();
+                    if (property.first == "x")
+                    {
+                        x = property.second.toInteger32();
+                    }
+                    else if (property.first == "y")
+                    {
+                        y = property.second.toInteger32();
+                    }
+                    else if (property.first == "w")
+                    {
+                        width = property.second.toUnsignedInteger32();
+                    }
+                    else if (property.first == "h")
+                    {
+                        height = property.second.toUnsignedInteger32();
+                    }
+                    else if (property.first == "sx")
+                    {
+                        scaleX = property.second.toDouble();
+                    }
+                    else if (property.first == "sy")
+                    {
+                        scaleY = property.second.toDouble();
+                    }
+                    else if (property.first == "a")
+                    {
+                        double opacityPercent = property.second.toDouble();
+                        opacity = opacityPercent / 100.0;
+                    }
+                    else if (property.first == "tween")
+                    {
+                        tween = property.second.toString();
+                    }
+                    else if (property.first == "delay")
+                    {
+                        delay = property.second.toDouble();
+                    }
                 }
-                else if (property.first == "y")
-                {
-                    y = property.second.toInteger32();
-                }
-                else if (property.first == "w")
-                {
-                    width = property.second.toUnsignedInteger32();
-                }
-                else if (property.first == "h")
-                {
-                    height = property.second.toUnsignedInteger32();
-                }
-                else if (property.first == "sx")
-                {
-                    scaleX = property.second.toDouble();
-                }
-                else if (property.first == "sy")
-                {
-                    scaleY = property.second.toDouble();
-                }
-                else if (property.first == "a")
-                {
-                    double opacityPercent = property.second.toDouble();
-                    opacity = opacityPercent / 100.0;
-                }
-                else if (property.first == "tween")
-                {
-                    tween = property.second.toString();
-                }
-                else if (property.first == "delay")
-                {
-                    delay = property.second.toDouble();
-                }
-            }
 
-            animation.compositor = it->compositor;
-            animation.endX = x;
-            animation.endY = y;
-            animation.endWidth = width;
-            animation.endHeight = height;
-            animation.endScaleX = scaleX;
-            animation.endScaleY = scaleY;
-            animation.endOpacity = opacity;
-            animation.duration = duration;
-            animation.name = client;
-            animation.tween = tween;
-            animation.delay = delay;
-            RdkShell::Animator::instance()->addAnimation(animation);
-            ret = true;
+                animation.compositor = compositor.compositor;
+                animation.endX = x;
+                animation.endY = y;
+                animation.endWidth = width;
+                animation.endHeight = height;
+                animation.endScaleX = scaleX;
+                animation.endScaleY = scaleY;
+                animation.endOpacity = opacity;
+                animation.duration = duration;
+                animation.name = client;
+                animation.tween = tween;
+                animation.delay = delay;
+                RdkShell::Animator::instance()->addAnimation(animation);
+                ret = true;
+		break;
+            }
         }
         return ret;
     }
@@ -1428,31 +1392,39 @@ namespace RdkShell
 
     bool CompositorController::addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            it->eventListeners.push_back(listener);
+           if (it->name == clientDisplayName)
+           {
+              it->eventListeners.push_back(listener);
+              break;
+           }
         }
         return true;
     }
 
     bool CompositorController::removeListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
-            std::vector<std::shared_ptr<RdkShellEventListener>>::iterator entryToRemove = it->eventListeners.end();
-            for (std::vector<std::shared_ptr<RdkShellEventListener>>::iterator iter = it->eventListeners.begin() ; iter != it->eventListeners.end(); ++iter)
+            if (it->name == clientDisplayName)
             {
-                if ((*iter) == listener)
+                std::vector<std::shared_ptr<RdkShellEventListener>>::iterator entryToRemove = it->eventListeners.end();
+                for (std::vector<std::shared_ptr<RdkShellEventListener>>::iterator iter = it->eventListeners.begin() ; iter != it->eventListeners.end(); ++iter)
                 {
+                  if ((*iter) == listener)
+                  {
                     entryToRemove = iter;
                     break;
+                  }
                 }
-            }
-            if (entryToRemove != it->eventListeners.end())
-            {
-                it->eventListeners.erase(entryToRemove);
+                if (entryToRemove != it->eventListeners.end())
+                {
+                  it->eventListeners.erase(entryToRemove);
+                }
+                break;
             }
         }
         return true;
@@ -1462,18 +1434,20 @@ namespace RdkShell
     {
         bool killClient = false;
         std::string clientToKill("");
-
-        CompositorListIterator it;
-        if (getCompositorInfo(eventCompositor, it))
-        {
-            for (int i=0; i< it->eventListeners.size(); i++)
+        for (auto compositor : gCompositorList)
+         {
+            if (compositor.compositor.get() == eventCompositor)
             {
-                sendApplicationEvent(it->eventListeners[i], eventName, it->name);
-            }
-            if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
-            {
-                clientToKill = it->name;
-                killClient = true;
+                for (int i=0; i<compositor.eventListeners.size(); i++)
+                {
+                    sendApplicationEvent(compositor.eventListeners[i], eventName, compositor.name);
+                }
+                if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
+                {
+                    clientToKill = compositor.name;
+                    killClient = true;
+                }
+                break;
             }
         }
         if (true == killClient)
@@ -1505,18 +1479,19 @@ namespace RdkShell
         return (inactiveTimeInSeconds / 60.0);
     }
 
-    bool CompositorController::launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType,
-        bool topmost, bool focus)
+    bool CompositorController::launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType)
     {
         if (mimeType == RDKSHELL_APPLICATION_MIME_TYPE_NATIVE)
         {
-            CompositorListIterator it;
-            if (getCompositorInfo(client, it))
-            {
-                Logger::log(LogLevel::Information,  "application with name %s is already launched", client.c_str());
-                return false;
-            }
             std::string clientDisplayName = standardizeName(client);
+            for (auto compositor : gCompositorList)
+            {
+                if (compositor.name == clientDisplayName)
+                {
+                    Logger::log(LogLevel::Information,  "application with name %s is already launched", client.c_str());
+                    return false;
+                }
+            }
             CompositorInfo compositorInfo;
             compositorInfo.name = clientDisplayName;
             if (gRdkShellCompositorType == SURFACE)
@@ -1535,19 +1510,18 @@ namespace RdkShell
             bool ret = compositorInfo.compositor->createDisplay(clientDisplayName, "", width, height, false, 0, 0);
             if (ret)
             {
-                if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus))
+                if (gCompositorList.empty())
                 {
                     gFocusedCompositor = compositorInfo;
-                    Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
+                    Logger::log(LogLevel::Information,  "rdkshell_focus launch: setting focus of first application created %s", gFocusedCompositor.name.c_str());
                 }
-
-                if (topmost)
+                if (nullptr != gTopmostCompositor.compositor)
                 {
-                    gTopmostCompositorList.insert(gTopmostCompositorList.begin(), compositorInfo);
+                  gCompositorList.insert(gCompositorList.begin()+1, compositorInfo);
                 }
                 else
                 {
-                    gCompositorList.insert(gCompositorList.begin(), compositorInfo);
+                  gCompositorList.insert(gCompositorList.begin(), compositorInfo);
                 }
             }
             return true;
@@ -1562,21 +1536,24 @@ namespace RdkShell
 
     bool CompositorController::suspendApplication(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            if (it->compositor != nullptr)
+            if (compositor.name == clientDisplayName)
             {
-                bool result = it->compositor->suspendApplication();
-                if (result)
+                if (compositor.compositor != nullptr)
                 {
-                    Logger::log(LogLevel::Information,  "%s client has been suspended", client.c_str());
-                    it->compositor->setVisible(false);
+                    bool result = compositor.compositor->suspendApplication();
+                    if (result)
+                    {
+                        Logger::log(LogLevel::Information,  "%s client has been suspended", client.c_str());
+                        compositor.compositor->setVisible(false);
+                    }
+                    return result;
                 }
-                return result;
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
+                return false;
             }
-            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
-            return false;
         }
         Logger::log(LogLevel::Information,  "display with name %s was not found", client.c_str());
         return false;
@@ -1584,20 +1561,23 @@ namespace RdkShell
 
     bool CompositorController::resumeApplication(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            if (it->compositor != nullptr)
+            if (compositor.name == clientDisplayName)
             {
-                bool result = it->compositor->resumeApplication();
-                if (result)
+                if (compositor.compositor != nullptr)
                 {
-                    Logger::log(LogLevel::Information,  "%s client has been resumed", client.c_str());
-                    it->compositor->setVisible(true);
+                    bool result = compositor.compositor->resumeApplication();
+                    if (result)
+                    {
+                        Logger::log(LogLevel::Information,  "%s client has been resumed", client.c_str());
+                        compositor.compositor->setVisible(true);
+                    }
                 }
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
+                return false;
             }
-            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
-            return false;
         }
         Logger::log(LogLevel::Information,  "display with name %s was not found", client);
         return false;
@@ -1605,16 +1585,19 @@ namespace RdkShell
 
     bool CompositorController::closeApplication(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto compositor : gCompositorList)
         {
-            if (it->compositor != nullptr)
+            if (compositor.name == clientDisplayName)
             {
-                it->compositor->closeApplication();
-                return true;
+                if (compositor.compositor != nullptr)
+                {
+                    compositor.compositor->closeApplication();
+                    return true;
+                }
+                Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client);
+                return false;
             }
-            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client);
-            return false;
         }
         Logger::log(LogLevel::Information,  "display with name %s was not found", client);
         return false;
@@ -1623,22 +1606,28 @@ namespace RdkShell
     bool CompositorController::getMimeType(const std::string& client, std::string& mimeType)
     {
         mimeType = "";
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (const auto& compositor : gCompositorList)
         {
-            mimeType = it->mimeType;
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                mimeType = compositor.mimeType;
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::setMimeType(const std::string& client, const std::string& mimeType)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
         {
-            it->mimeType = mimeType;
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.mimeType = mimeType;
+                return true;
+            }
         }
         return false;
     }
@@ -1840,60 +1829,49 @@ namespace RdkShell
         return true;
     }
 
-    bool CompositorController::setTopmost(const std::string& client, bool topmost, bool focus)
+    bool CompositorController::setTopmost(const std::string& client, bool topmost)
     {
-        Logger::log(LogLevel::Information,  "setTopmost client: %s, topmost: %d, focus: %d", client.c_str(), topmost, focus);
         bool ret = false;
-
-        CompositorListIterator it;
-        CompositorList* compositorInfoList = nullptr;
-        if (!getCompositorInfo(client, it, &compositorInfoList))
-        {
-            Logger::log(LogLevel::Error,  "%s no such client ", client.c_str());
-            return false;
-        }
-
-        CompositorList* targetList;
         if (topmost)
         {
-            if (compositorInfoList == &gTopmostCompositorList)
+            if (client == gTopmostCompositor.name)
             {
                 Logger::log(LogLevel::Information,  "%s is already topmost and cannot set topmost again ", client.c_str());
                 return false;
             }
-
-            targetList = &gTopmostCompositorList;
+            if (nullptr != gTopmostCompositor.compositor)
+            {
+                Logger::log(LogLevel::Information,  "%s is set as topmost already. please set it to false and make a new call", gTopmostCompositor.name.c_str());
+                return false;
+            }
+            ret = moveToFront(client);
+            if (ret)
+            {
+                gTopmostCompositor = gCompositorList.front();
+            }
         }
         else
         {
-            if (compositorInfoList == &gCompositorList)
+            if (gTopmostCompositor.name == client)
             {
-                Logger::log(LogLevel::Information,  "%s is already non topmost and cannot set non topmost again ", client.c_str());
+                gTopmostCompositor.name = "";
+                gTopmostCompositor.compositor = nullptr;
+            }
+            else
+            {
+                Logger::log(LogLevel::Information,  "%s is not topmost and cannot perform topmost to false ", client.c_str());
                 return false;
             }
-
-            targetList = &gCompositorList;
         }
-
-        auto compositorInfo = *it;
-        compositorInfoList->erase(it);
-        targetList->insert(targetList->begin(), compositorInfo);
-        
-        if (topmost && focus)
-        {
-            setFocus(client);
-        }
-
         return true;
     }
 
     bool CompositorController::getTopmost(std::string& client)
     {
         bool ret = false;
-
-        if (!gTopmostCompositorList.empty())
+        if (nullptr != gTopmostCompositor.compositor)
         {
-            client = gTopmostCompositorList.front().name;
+            client = gTopmostCompositor.name;
             ret = true;
         }
         return ret;
@@ -1901,44 +1879,56 @@ namespace RdkShell
 
     bool CompositorController::getVirtualResolution(const std::string& client, uint32_t &virtualWidth, uint32_t &virtualHeight)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
         {
-            it->compositor->getVirtualResolution(virtualWidth, virtualHeight);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->getVirtualResolution(virtualWidth, virtualHeight);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::setVirtualResolution(const std::string& client, const uint32_t virtualWidth, const uint32_t virtualHeight)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
         {
-            it->compositor->setVirtualResolution(virtualWidth, virtualHeight);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->setVirtualResolution(virtualWidth, virtualHeight);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::enableVirtualDisplay(const std::string& client, const bool enable)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
         {
-            it->compositor->enableVirtualDisplay(enable);
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                compositor.compositor->enableVirtualDisplay(enable);
+                return true;
+            }
         }
         return false;
     }
 
     bool CompositorController::getVirtualDisplayEnabled(const std::string& client, bool &enabled)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        std::string clientDisplayName = standardizeName(client);
+        for (auto&& compositor : gCompositorList)
         {
-            enabled = it->compositor->getVirtualDisplayEnabled();
-            return true;
+            if (compositor.name == clientDisplayName)
+            {
+                enabled = compositor.compositor->getVirtualDisplayEnabled();
+                return true;
+            }
         }
         return false;
     }
