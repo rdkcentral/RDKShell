@@ -1,5 +1,6 @@
 ## RDKShell
 
+# TEST DO NOT MERGE, DUMMY CHANGE FOR TESTING BCMREF CI
 RDKShell is a native component that provides application management, composition, and advanced key handling.
 
 
