@@ -69,7 +69,7 @@ namespace RdkShell
             static void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress=true);
             static void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress=true);
             static bool createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth=0, uint32_t displayHeight=0,
-                bool virtualDisplayEnabled=false, uint32_t virtualWidth=0, uint32_t virtualHeight=0);
+                bool virtualDisplayEnabled=false, uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false);
             static bool addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties);
             static bool removeAnimation(const std::string& client);
             static bool addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener);
@@ -80,7 +80,7 @@ namespace RdkShell
             static double getInactivityTimeInMinutes();
             static void setEventListener(std::shared_ptr<RdkShellEventListener> listener);
             static std::shared_ptr<RdkCompositor> getCompositor(const std::string& displayName);
-            static bool launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType);
+            static bool launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType, bool topmost = false, bool focus = false);
             static bool suspendApplication(const std::string& client);
             static bool resumeApplication(const std::string& client);
             static bool closeApplication(const std::string& client);
@@ -96,7 +96,7 @@ namespace RdkShell
             static bool update();
             static bool setLogLevel(const std::string level);
             static bool getLogLevel(std::string& level);
-            static bool setTopmost(const std::string& client, bool topmost);
+            static bool setTopmost(const std::string& client, bool topmost, bool focus);
             static bool getTopmost(std::string& client);
             static bool sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data);
             static bool isSurfaceModeEnabled();
