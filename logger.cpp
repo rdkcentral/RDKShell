@@ -48,6 +48,7 @@ namespace RdkShell
     }
 
     LogLevel Logger::sLogLevel = Information;
+    bool Logger::sFlushingEnabled = false;
 
     void Logger::setLogLevel(const char* loglevel)
     {
@@ -73,6 +74,16 @@ namespace RdkShell
       level = logLevelToString(sLogLevel);
     }
 
+    void Logger::enableFlushing(bool enable)
+    {
+      sFlushingEnabled = enable;
+    }
+
+    bool Logger::isFlushingEnabled()
+    {
+      return sFlushingEnabled;
+    }
+
     void Logger::log(LogLevel level, const char* format, ...)
     {
       if (level < sLogLevel)
@@ -82,9 +93,9 @@ namespace RdkShell
 
       int threadId = syscall(__NR_gettid);
       const char* logLevel = logLevelToString(level);
-
       char buffer[256];
       va_list ptr;
+
       va_start(ptr, format);
       vsprintf(buffer, format, ptr);
       va_end(ptr);
@@ -95,6 +106,9 @@ namespace RdkShell
       printf("[%s] RDKShell Thread-%d Time-%lf: %s\n", logLevel, threadId, seconds(), buffer);
       #endif
 
-      fflush(stdout);
+      if (sFlushingEnabled)
+      {
+        fflush(stdout);
+      }
     }
 }
