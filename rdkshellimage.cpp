@@ -292,7 +292,6 @@ namespace RdkShell
             Logger::log(LogLevel::Error, "unable to open %s", fileName.c_str());
             return false;
         }
-        fflush(stdout);
         struct jpeg_decompress_struct cinfo;
         jpegErrorManagerStruct jpegError;
         cinfo.err = jpeg_std_error(&jpegError.pub);
@@ -317,7 +316,6 @@ namespace RdkShell
         image = (unsigned char *) malloc(width * height * depth);
         JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo, JPOOL_IMAGE, rowStride, 1);
         int64_t nextImageIndex = 0;
-        fflush(stdout);
         while( cinfo.output_scanline < cinfo.output_height )
         {
             jpeg_read_scanlines( &cinfo, buffer, 1 );
@@ -326,11 +324,9 @@ namespace RdkShell
                 image[nextImageIndex++] = buffer[0][i];
             }
         }
-        fflush(stdout);
         fclose(file);
         jpeg_finish_decompress(&cinfo);
         jpeg_destroy_decompress(&cinfo);
-        fflush(stdout);
         return true;
     }
 
@@ -344,7 +340,6 @@ namespace RdkShell
             Logger::log(LogLevel::Error, "unable to open %s", fileName.c_str());
             return false;
         }
-        fflush(stdout);
 
         unsigned char pngHeader[8];
         memset(pngHeader, 0, sizeof(pngHeader));
@@ -494,7 +489,6 @@ namespace RdkShell
         fread(&compressionMethod, 4, 1, file);
 
         Logger::log(LogLevel::Debug, "Bitmap infoformation: filename[%s] width[%d] height[%d] bitsperpixel[%d] compressionmethod [%d]", fileName.c_str(), width, height, bitsPerPixel, compressionMethod);
-        fflush(stdout);
 
         if ((width == 0) || (height == 0))
         {
