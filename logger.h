@@ -34,12 +34,15 @@ namespace RdkShell
     class Logger
     {
         public:
-          static void log(LogLevel level, const char* format, ...);
-          static void setLogLevel(const char* loglevel);
-          static void logLevel(std::string& level);
+            static void log(LogLevel level, const char* format, ...);
+            static void setLogLevel(const char* loglevel);
+            static void logLevel(std::string& level);
+            static void enableFlushing(bool enable);
+            static bool isFlushingEnabled();
 
         private:
             static LogLevel sLogLevel;
+            static bool sFlushingEnabled;
     };
 }
 
