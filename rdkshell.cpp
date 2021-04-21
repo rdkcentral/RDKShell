@@ -320,6 +320,18 @@ namespace RdkShell
         {
             std::ifstream splashScreenFile(RDKSHELL_SPLASH_SCREEN_FILE_CHECK);
             bool showSplashScreen =  !splashScreenFile.good();
+
+            char const *splashScreenDisableFile = getenv("RDKSHELL_DISABLE_SPLASH_SCREEN_FILE");
+            if (splashScreenDisableFile)
+            {
+                std::ifstream splashScreenDisableFileHandle(splashScreenDisableFile);
+                if (splashScreenDisableFileHandle.good())
+                {
+                    Logger::log(Warn, "not showing splash screen as disable splash screen file is present");
+                    showSplashScreen = false;
+                    std::ofstream output(RDKSHELL_SPLASH_SCREEN_FILE_CHECK);
+                }
+            }
             if (showSplashScreen)
             {
                 uint32_t splashTime = 0;
