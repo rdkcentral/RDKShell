@@ -520,7 +520,7 @@ namespace RdkShell
         auto compositorInfo = *clientIt;
         targetCompositorList->erase(clientIt);
 
-        if (!getCompositorInfo(target, targetIt))
+        if (getCompositorInfo(target, targetIt))
         {
             targetCompositorList->insert(++targetIt, compositorInfo);
             return true;
