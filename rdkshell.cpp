@@ -330,6 +330,12 @@ namespace RdkShell
                     Logger::log(Warn, "not showing splash screen as disable splash screen file is present");
                     showSplashScreen = false;
                     std::ofstream output(RDKSHELL_SPLASH_SCREEN_FILE_CHECK);
+                    splashScreenDisableFileHandle.close();
+                    int32_t ret = std::remove(splashScreenDisableFile);
+                    if (0 != ret)
+                    {
+                        Logger::log(Warn, "splash screen disable file remove failed");
+                    }
                 }
             }
             if (showSplashScreen)
