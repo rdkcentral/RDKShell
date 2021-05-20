@@ -127,6 +127,11 @@ namespace RdkShell
         return mKeyDetails.size();
     }
 
+    std::string EasterEgg::name()
+    {
+        return mName;
+    }
+
     bool compareKeySize (EasterEgg& first, EasterEgg& second)
     {
       return first.numberOfKeys() >= second.numberOfKeys()?true:false;
@@ -267,6 +272,32 @@ namespace RdkShell
         std::sort<std::vector<EasterEgg>::iterator>(sEasterEggs.begin(), sEasterEggs.end(), compareKeySize);
     }
     
+    void addEasterEgg(std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson)
+    {
+        EasterEgg easterEggObject(details, name, timeout, actionJson);
+        sEasterEggs.push_back(easterEggObject);
+        std::sort<std::vector<EasterEgg>::iterator>(sEasterEggs.begin(), sEasterEggs.end(), compareKeySize);
+    }
+
+    void removeEasterEgg(std::string name)
+    {
+        std::vector<EasterEgg>::iterator removeIter = sEasterEggs.end();
+        for (std::vector<EasterEgg>::iterator iter = sEasterEggs.begin(); iter != sEasterEggs.end(); iter++)
+        {
+            if (name.compare(iter->name()) == 0)
+            {
+                removeIter = iter;
+                break; 
+            }
+        }
+ 
+        if (removeIter != sEasterEggs.end())
+        {
+            sEasterEggs.erase(removeIter);
+        }
+        std::sort<std::vector<EasterEgg>::iterator>(sEasterEggs.begin(), sEasterEggs.end(), compareKeySize);
+    }
+
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double keyPressTime)
     {
         if ((keyCode == RDKSHELL_KEY_CTRL) || (keyCode == RDKSHELL_KEY_ALT) || (keyCode == RDKSHELL_KEY_SHIFT))
