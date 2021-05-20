@@ -841,6 +841,29 @@ namespace RdkShell
         return CompositorController::removeKeyListener(client, mappedKeyCode, mappedFlags);
     }
 
+    bool CompositorController::removeAllKeyIntercepts()
+    {
+        for (auto it = gKeyInterceptInfoMap.begin(); it != gKeyInterceptInfoMap.end(); ++it)
+        {
+            it->second.clear();
+        }
+        gKeyInterceptInfoMap.clear();
+        return true;
+    }
+
+    bool CompositorController::removeAllKeyListeners()
+    {
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+        {
+            for (auto keyListener = it->keyListenerInfo.begin(); keyListener != it->keyListenerInfo.end(); ++keyListener)
+            {
+                keyListener->second.clear();
+            }
+            it->keyListenerInfo.clear();
+        }
+        return true;
+    }
+
     bool CompositorController::addKeyMetadataListener(const std::string& client)
     {
         CompositorListIterator it;

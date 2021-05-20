@@ -46,6 +46,8 @@ namespace RdkShell
             static bool addKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties);
             static bool addNativeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties);
             static bool removeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
+            static bool removeAllKeyListeners();
+            static bool removeAllKeyIntercepts();
             static bool removeNativeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
             static bool addKeyMetadataListener(const std::string& client);
             static bool removeKeyMetadataListener(const std::string& client);
