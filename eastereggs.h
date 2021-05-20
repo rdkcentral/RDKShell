@@ -27,6 +27,8 @@ namespace RdkShell
 {
     struct RdkShellEasterEggKeyDetails
     {
+        RdkShellEasterEggKeyDetails() {}
+        RdkShellEasterEggKeyDetails(uint32_t code, uint32_t modifiers, uint32_t holdTime): keyCode(code), keyModifiers(modifiers), keyHoldTime(holdTime) {}
         uint32_t keyCode;
         uint32_t keyModifiers;
         uint32_t keyHoldTime;
@@ -40,6 +42,7 @@ namespace RdkShell
              bool invokeEvent();
              void reset();
              size_t numberOfKeys();
+             std::string name();
         private:
             void toggleForce720();
             std::vector<RdkShellEasterEggKeyDetails> mKeyDetails;
@@ -54,6 +57,8 @@ namespace RdkShell
     void populateEasterEggDetails();
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double time);
     void resolveWaitingEasterEggs();
+    void addEasterEgg(std::vector<RdkShellEasterEggKeyDetails>& details, std::string name, uint32_t timeout, std::string actionJson);
+    void removeEasterEgg(std::string name);
 }
 
 #endif //RDKSHELL_EASTER_EGG_H
