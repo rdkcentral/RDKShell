@@ -46,6 +46,7 @@ namespace RdkShell
           virtual void onAnimation(std::vector<std::map<std::string, RdkShellData>>& animationData) {}
           virtual void onEasterEgg(const std::string& name, const std::string& actionJson) {}
           virtual void onPowerKey() {}
+          virtual void onKeyEvent(const uint32_t keyCode, const uint32_t flags, const bool keyDown) {}
     };
 
     const std::string RDKSHELL_EVENT_APPLICATION_LAUNCHED = "onApplicationLaunched";
@@ -64,4 +65,5 @@ namespace RdkShell
     const std::string RDKSHELL_EVENT_ANIMATION = "onAnimation";
     const std::string RDKSHELL_EVENT_EASTER_EGG = "onEasterEgg";
     const std::string RDKSHELL_EVENT_POWER_KEY = "onPowerKey";
+    const std::string RDKSHELL_EVENT_KEY = "onKeyEvent";
 }

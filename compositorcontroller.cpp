@@ -1142,6 +1142,11 @@ namespace RdkShell
             std::string focusedClientName = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name : "none";
             Logger::log(LogLevel::Information,  "rdkshell_focus key intercepted: %d focused client: %s", isInterceptAvailable, focusedClientName.c_str());
         }
+        if (gRdkShellEventListener && physicalKeyPress)
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "sending the keyevent for key press");
+            gRdkShellEventListener->onKeyEvent(keycode, flags, true);
+        }
     }
 
     void CompositorController::onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress)
@@ -1181,6 +1186,12 @@ namespace RdkShell
             compositor->onKeyRelease(keycode, flags, metadata);
         }
         gPendingKeyUpListeners.clear();
+
+        if (gRdkShellEventListener && physicalKeyPress)
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Debug, "sending the keyevent for key release");
+            gRdkShellEventListener->onKeyEvent(keycode, flags, false);
+        }
 
         if (keycode != 0 && gPowerKeyEnabled && keycode == gPowerKeyCode)
         {
