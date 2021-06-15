@@ -79,6 +79,7 @@ namespace RdkShell
             static bool onEvent(RdkCompositor* eventCompositor, const std::string& eventName);
             static void enableInactivityReporting(const bool enable);
             static void setInactivityInterval(const double minutes);
+            static void resetInactivityTime();
             static double getInactivityTimeInMinutes();
             static void setEventListener(std::shared_ptr<RdkShellEventListener> listener);
             static std::shared_ptr<RdkCompositor> getCompositor(const std::string& displayName);
