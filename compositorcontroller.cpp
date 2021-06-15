@@ -1533,6 +1533,11 @@ namespace RdkShell
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
     }
 
+    void CompositorController::resetInactivityTime()
+    {
+        gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
+    }
+
     double CompositorController::getInactivityTimeInMinutes()
     {
         double inactiveTimeInSeconds = RdkShell::seconds() - gLastKeyEventTime;
