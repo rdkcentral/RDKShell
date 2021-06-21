@@ -203,7 +203,7 @@ static EssSettingsListener essosSettingsListener =
 namespace RdkShell
 {
     EssosInstance::EssosInstance() : mEssosContext(NULL), mUseWayland(false),
-           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250)
+           mWidth(0), mHeight(0), mOverrideResolution(false), mKeyInitialDelay(500), mKeyRepeatInterval(250), mKeyInputsIgnored(false)
     {
         #ifdef RDKSHELL_ENABLE_KEYREPEATS
         mKeyRepeatsEnabled = true;
@@ -333,11 +333,21 @@ namespace RdkShell
 
     void EssosInstance::onKeyPress(uint32_t keyCode, unsigned long flags, uint64_t metadata)
     {
+        if (mKeyInputsIgnored)
+        {
+            RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for press keycode: %d ", keyCode);
+	    return;
+        }		
         CompositorController::onKeyPress(keyCode, flags, metadata);
     }
 
     void EssosInstance::onKeyRelease(uint32_t keyCode, unsigned long flags, uint64_t metadata)
     {
+        if (mKeyInputsIgnored)
+        {
+            RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for release keycode: %d ", keyCode);
+	    return;
+        }
         CompositorController::onKeyRelease(keyCode, flags, metadata);
     }
 
@@ -400,5 +410,10 @@ namespace RdkShell
             EssContextUpdateDisplay(mEssosContext);
             EssContextRunEventLoopOnce(mEssosContext);
         }
+    }
+
+    void EssosInstance::ignoreKeyInputs(bool ignore)
+    {
+        mKeyInputsIgnored = ignore;
     }
 }

@@ -110,6 +110,7 @@ namespace RdkShell
             static bool enableVirtualDisplay(const std::string& client, const bool enable);
             static bool getVirtualDisplayEnabled(const std::string& client, bool &enabled);
             static bool getLastKeyPress(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds);
+            static bool ignoreKeyInputs(bool ignore);
     };
 }
 
