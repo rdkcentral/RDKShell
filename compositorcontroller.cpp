@@ -452,7 +452,7 @@ namespace RdkShell
         }
 
         char const *rdkshellKeyIgnore = getenv("RDKSHELL_ENABLE_KEY_IGNORE");
-        Logger::log(LogLevel::Information,  "key ignore feature is [%d]", (NULL==rdkshellKeyIgnore));
+        Logger::log(LogLevel::Information,  "key ignore feature enabled status [%d]", (NULL==rdkshellKeyIgnore));
         if (NULL != rdkshellKeyIgnore)
 	{
             int keyIgnoreValue = atoi(rdkshellKeyIgnore);
