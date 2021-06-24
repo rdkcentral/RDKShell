@@ -61,6 +61,15 @@ namespace RdkShell
         "  gl_FragColor = texture2D(s_texture, v_uv); \n"
         "}\n";
     
+    struct DataBufferState
+    {
+        DataBufferState(char* dataBuffer, int size): buffer(dataBuffer), bytesLeft(size)
+        {
+        }
+        char* buffer;
+        int bytesLeft;
+    };
+
     Image::Image() : mFileName(), mProgram(0), mVertexShader(0), mFragmentShader(0),
         mResolutionLocation(0), mPositionLocation(0), mUvLocation(0), mTextureLocation(0), mTexture(0)
     {
@@ -73,6 +82,12 @@ namespace RdkShell
     {
         initialize();
         loadLocalFile(fileName);
+    }
+
+    Image::Image(const char* imageData, int32_t width, int32_t height) : mWidth(width), mHeight(height)
+    {
+        initialize();
+        loadImageData(imageData, mWidth*mHeight);
     }
 
     Image::~Image()
@@ -280,6 +295,37 @@ namespace RdkShell
         mY = y;
         mWidth = width;
         mHeight = height;
+    }
+
+    bool Image::loadImageData(const char* imageData, int32_t imageSize)
+    {
+        bool success = false;
+        if (mTexture != 0)
+        {
+            glDeleteTextures(1, &mTexture);
+            mTexture = 0;
+        }
+
+        unsigned char *image = nullptr;
+        int32_t width = 0;
+        int32_t height = 0;
+        bool isPngImage = true;
+        success = loadPngFromData(imageData, imageSize, image, width, height); 
+        if (success)
+        {
+            glGenTextures(1, &mTexture);
+            glBindTexture(GL_TEXTURE_2D, mTexture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glTexImage2D(GL_TEXTURE_2D, 0, (isPngImage)?GL_RGBA:GL_RGB,
+                        width, height, 0, (isPngImage)?GL_RGBA:GL_RGB,
+                        GL_UNSIGNED_BYTE, image);
+        }
+        free(image);
+        return success;
     }
 
     bool Image::loadJpeg(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height)
@@ -552,5 +598,133 @@ namespace RdkShell
         fclose(file);
         Logger::log(LogLevel::Debug, "completed reading bitmap file [%s]", fileName.c_str());
         return true;
+    }
+
+    void imageReadData(png_structp pngPointer, png_bytep data, size_t length)
+    {
+        DataBufferState* bufferState = static_cast<DataBufferState*> (png_get_io_ptr(pngPointer));
+        if (length > bufferState->bytesLeft)
+        {
+            png_error(pngPointer, "read error");
+        }
+        memcpy(data, bufferState->buffer, length);
+        bufferState->bytesLeft -= length;
+        bufferState->buffer += length;
+    }
+
+    bool Image::loadPngFromData(const char* imageData, int32_t imageSize, unsigned char *&image, int32_t &width, int32_t &height)
+    {
+        int depth;
+        if (NULL == imageData)
+        {
+            Logger::log(LogLevel::Error, "unable to access image data");
+            return false;
+        }
+
+        unsigned char pngHeader[8];
+        memset(pngHeader, 0, sizeof(pngHeader));
+        memcpy(&pngHeader, imageData, 8);
+        if (png_sig_cmp(pngHeader, 0, 8))
+        {
+            Logger::log(LogLevel::Error, "image data is not of png content");
+            return false;
+        }
+
+        png_structp pngPointer;
+        png_infop infoPointer;
+
+        pngPointer = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        if (NULL == pngPointer)
+        {
+            Logger::log(LogLevel::Error, "unable to create png structure ");
+            return false;
+        }
+
+        infoPointer = png_create_info_struct(pngPointer);
+        if (NULL == infoPointer)
+        {
+            Logger::log(LogLevel::Error, "unable to create info structure");
+            png_destroy_read_struct(&pngPointer, NULL, NULL);
+            return false;
+        }
+
+        bool ret = false;
+        DataBufferState* bufferState = new DataBufferState((char*) imageData+8, imageSize-8);
+        if (!setjmp(png_jmpbuf(pngPointer)))
+        {
+            png_set_read_fn(pngPointer, bufferState, imageReadData);
+            png_set_sig_bytes(pngPointer, 8);
+ 
+            png_read_info(pngPointer, infoPointer);
+
+            width = png_get_image_width(pngPointer, infoPointer);
+            height = png_get_image_height(pngPointer, infoPointer);
+            png_byte colorType = png_get_color_type(pngPointer, infoPointer);
+            png_byte bitDepth = png_get_bit_depth(pngPointer, infoPointer);
+             
+            if (bitDepth == 16)
+            {
+                png_set_strip_16(pngPointer);
+            }
+             
+            if (colorType == PNG_COLOR_TYPE_PALETTE)
+            {
+                png_set_palette_to_rgb(pngPointer);
+            }
+
+            if (colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
+            {
+                png_set_gray_to_rgb(pngPointer);
+            }
+
+            if (png_get_valid(pngPointer, infoPointer, PNG_INFO_tRNS))
+            {
+                png_set_tRNS_to_alpha(pngPointer);
+            }
+            
+            png_set_add_alpha(pngPointer, 0xff, PNG_FILLER_AFTER);
+            
+            png_read_update_info(pngPointer, infoPointer);
+
+            if (!setjmp(png_jmpbuf(pngPointer)))
+            {
+                uint32_t rowBytes = png_get_rowbytes(pngPointer,infoPointer);
+                png_bytep* rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
+                if (NULL != rowPointers)
+                {
+                    image = (unsigned char*) malloc(rowBytes * height);
+                    if (NULL != image)
+                    {
+                        for (int row=0; row<height; row++)
+                        {
+                            rowPointers[row] = (png_byte*)((png_byte*)image + (row*rowBytes));
+                        }
+                        
+                        png_read_image(pngPointer, rowPointers);
+
+                        png_read_end(pngPointer, NULL);
+
+                        free(rowPointers);
+                        rowPointers = NULL;
+                        ret = true;
+                    }
+                }
+                else
+                {
+                    Logger::log(LogLevel::Error, "unable to create memory for image data");
+                }
+            }
+            else
+            {
+                Logger::log(LogLevel::Error, "unable to read png info");
+            }
+        }
+        else
+        {
+            Logger::log(LogLevel::Error, "unable to initialize png");
+        }
+        png_destroy_read_struct(&pngPointer, &infoPointer, NULL);
+        delete bufferState;
+        return ret;
     }
 }

@@ -111,6 +111,7 @@ namespace RdkShell
             static bool getVirtualDisplayEnabled(const std::string& client, bool &enabled);
             static bool getLastKeyPress(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds);
             static bool ignoreKeyInputs(bool ignore);
+            static bool updateWatermarkImage(uint32_t imageId, int32_t key, int32_t imageSize);
     };
 }
 
