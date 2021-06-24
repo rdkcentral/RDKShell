@@ -33,6 +33,9 @@
 #include <iostream>
 #include <map>
 #include <ctime>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
@@ -1989,6 +1992,27 @@ namespace RdkShell
         timestampInSeconds = (uint64_t)currentTimeInSeconds - (uint64_t)timeSinceLastKeyPress;
         keyCode = gLastKeyCode;
         modifiers = gLastKeyModifiers;
+        return true;
+    }
+
+    bool CompositorController::updateWatermarkImage(uint32_t imageId, int32_t key, int32_t imageSize)
+    {
+        key_t sharedMemoryKey = key;
+        int shmid;
+        char *imageData;
+        if ((shmid = shmget(sharedMemoryKey, imageSize, 0644 | IPC_CREAT)) == -1)
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Error, "error accessing image data segment");
+            return false;
+        }
+        imageData = (char*) shmat(shmid, NULL, 0);
+        gWaterMarkImage = std::make_shared<RdkShell::Image>();
+        gWaterMarkImage->loadImageData(imageData, imageSize);
+        if (shmdt(imageData) == -1)
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Error, "error detaching image data segment");
+            return false;
+        }
         return true;
     }
 }

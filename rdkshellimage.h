@@ -29,19 +29,21 @@ namespace RdkShell
         public:
             Image();
             Image(const std::string& fileName, int32_t x, int32_t y, int32_t width, int32_t height);
+            Image(const char* imageData, int32_t width, int32_t height);
             ~Image();
             void draw();
             void fileName(std::string& fileName);
             bool loadLocalFile(const std::string& fileName);
             void bounds(int32_t& x, int32_t& y, int32_t& width, int32_t& height);
             void setBounds(int32_t x, int32_t y, int32_t width, int32_t height);
-
+            bool loadImageData(const char* imageData, int32_t imageSize);
         private:
             bool createProgram(const GLchar* vertexShaderString, const GLchar* fragmentShaderString);
             void initialize();
             bool loadJpeg(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadBmp(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
+            bool loadPngFromData(const char* imageData, int32_t imageSize, unsigned char *&image, int32_t &width, int32_t &height);
             std::string mFileName;
             int32_t mX;
             int32_t mY;
