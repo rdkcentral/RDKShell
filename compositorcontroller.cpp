@@ -1538,6 +1538,7 @@ namespace RdkShell
 
     void CompositorController::resetInactivityTime()
     {
+        gLastKeyEventTime = RdkShell::seconds();
         gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
     }
 
