@@ -109,6 +109,7 @@ namespace RdkShell
     bool gPowerKeyEnabled = false;
     bool gPowerKeyReleaseReceived = false;
     bool gRdkShellPowerKeyReleaseOnlyEnabled = false;
+    bool gIgnoreKeyInputEnabled = false;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -453,6 +454,18 @@ namespace RdkShell
             Logger::log(LogLevel::Information,  "invalid compositor type, setting to nested by default ");
         }
 
+        char const *rdkshellKeyIgnore = getenv("RDKSHELL_ENABLE_KEY_IGNORE");
+        Logger::log(LogLevel::Information,  "key ignore feature enabled status [%d]", (NULL==rdkshellKeyIgnore));
+        if (NULL != rdkshellKeyIgnore)
+	{
+            int keyIgnoreValue = atoi(rdkshellKeyIgnore);
+            Logger::log(LogLevel::Information,  "key ignore feature [%d]", keyIgnoreValue);
+            if (keyIgnoreValue > 0)
+            {
+                gIgnoreKeyInputEnabled = true;
+                Logger::log(LogLevel::Information,  "key ignore feature is enabled");
+            }
+	}
         sCompositorInitialized = true;
     }
 
@@ -1993,6 +2006,22 @@ namespace RdkShell
         keyCode = gLastKeyCode;
         modifiers = gLastKeyModifiers;
         return true;
+    }
+
+
+    bool CompositorController::ignoreKeyInputs(bool ignore)
+    {
+        bool ret = false;
+        if (gIgnoreKeyInputEnabled)
+        {
+            RdkShell::EssosInstance::instance()->ignoreKeyInputs(ignore);
+            ret = true;
+        }
+        else
+        {
+            Logger::log(LogLevel::Information,  "key inputs ignore feature is not enabled");
+        }
+        return ret;
     }
 
     bool CompositorController::updateWatermarkImage(uint32_t imageId, int32_t key, int32_t imageSize)
