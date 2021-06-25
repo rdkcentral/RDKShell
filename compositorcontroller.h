@@ -112,6 +112,10 @@ namespace RdkShell
             static bool getLastKeyPress(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds);
             static bool ignoreKeyInputs(bool ignore);
             static bool updateWatermarkImage(uint32_t imageId, int32_t key, int32_t imageSize);
+            static bool createWatermarkImage(uint32_t imageId, uint32_t zorder=0);
+            static bool deleteWatermarkImage(uint32_t imageId);
+            static bool adjustWatermarkImage(uint32_t imageId, uint32_t zorder);
+            static bool alwaysShowWatermarkImageOnTop(bool show=false);
     };
 }
 

@@ -207,7 +207,29 @@ namespace RdkShell
         return success;
     }
 
-    void RdkCompositor::draw()
+    void RdkCompositor::prepareHolePunchRects(std::vector<WstRect> rects, RdkShellRect& rect)
+    {
+        uint32_t x=20000, y=20000, w=0, h=0;
+        for (int i=0; i<rects.size(); i++)
+        {
+            WstRect& wstRect = rects[i];
+            x = (wstRect.x < x)?wstRect.x:x;
+            y = (wstRect.y < y)?wstRect.y:y;
+            int xBoundary = wstRect.x + wstRect.width;
+            int yBoundary = wstRect.y + wstRect.height;
+            int tempWidth = xBoundary-x;
+            int tempHeight = yBoundary-y;
+            w = (tempWidth>w)?tempWidth:w;
+            h = (tempHeight>h)?tempHeight:h;
+        }
+        rect.x = x;
+        rect.y = y;
+        rect.width = w;
+        rect.height = h;
+        RdkShell::Logger::log(LogLevel::Debug,  "hole punch rectangle: x %d y %d w %d h %d", x, y, w, h);
+    }
+
+    void RdkCompositor::draw(bool &needsHolePunch, RdkShellRect& rect)
     {
         #ifndef RDKSHELL_ENABLE_HIDDEN_SUPPORT
         if (!mVisible)
@@ -218,15 +240,15 @@ namespace RdkShell
 
         if (mVirtualDisplayEnabled)
         {
-            drawFbo();
+            drawFbo(needsHolePunch, rect);
         }
         else
         {
-            drawDirect();
+            drawDirect(needsHolePunch, rect);
         }
     }
 
-    void RdkCompositor::drawFbo()
+    void RdkCompositor::drawFbo(bool &needsHolePunch, RdkShellRect& rect)
     {
         // create the FBO if it's not created yet or its size was changed
         if (!mFbo ||
@@ -253,7 +275,6 @@ namespace RdkShell
         glViewport(0, 0, mVirtualWidth, mVirtualHeight);
 
         int hints = WstHints_none;//WstHints_fboTarget;
-        bool needsHolePunch = false;
         std::vector<WstRect> rects;
         float opacity = 1.f;
         float matrix[16] = {
@@ -266,6 +287,11 @@ namespace RdkShell
         WstCompositorComposeEmbedded(mWstContext, 0, 0, mVirtualWidth, mVirtualHeight,
             matrix, opacity, hints, &needsHolePunch, rects);
 
+        if (needsHolePunch)
+        {
+            prepareHolePunchRects(rects, rect);
+        }
+
         glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
         mFbo->unbind();
 
@@ -276,7 +302,7 @@ namespace RdkShell
             mPositionX, mPositionY, mWidth, mHeight);
     }
 
-    void RdkCompositor::drawDirect()
+    void RdkCompositor::drawDirect(bool &needsHolePunch, RdkShellRect& rect)
     {
         int hints = WstHints_none;
         hints |= WstHints_applyTransform;
@@ -298,7 +324,6 @@ namespace RdkShell
             hints |= WstHints_hidden;
         }
         #endif //RDKSHELL_ENABLE_HIDDEN_SUPPORT
-        bool needsHolePunch = false;
         std::vector<WstRect> rects;
 
         unsigned int width, height;
@@ -310,6 +335,10 @@ namespace RdkShell
 
         WstCompositorComposeEmbedded( mWstContext, 0, 0, mWidth, mHeight,
             mMatrix, mOpacity, hints, &needsHolePunch, rects );
+        if (needsHolePunch)
+        {
+            prepareHolePunchRects(rects, rect);
+        }
     }
 
     void RdkCompositor::processKeyEvent(bool keyPressed, uint32_t keycode, uint32_t flags, uint64_t metadata)

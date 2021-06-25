@@ -21,6 +21,7 @@
 
 #include <string>
 #include <GLES2/gl2.h>
+#include "rdkshellrect.h"
 
 namespace RdkShell
 {
@@ -32,6 +33,7 @@ namespace RdkShell
             Image(const char* imageData, int32_t width, int32_t height);
             ~Image();
             void draw();
+            void draw(RdkShellRect rect);
             void fileName(std::string& fileName);
             bool loadLocalFile(const std::string& fileName);
             void bounds(int32_t& x, int32_t& y, int32_t& width, int32_t& height);
