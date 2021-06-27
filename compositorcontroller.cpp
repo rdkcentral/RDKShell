@@ -30,6 +30,7 @@
 #include "rdkcompositorsurface.h"
 #include "string.h"
 #include "rdkshellimage.h"
+#include "rdkshellrect.h"
 #include <iostream>
 #include <map>
 #include <ctime>
@@ -40,6 +41,7 @@
 #define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
 #define RDKSHELL_WILDCARD_KEY_CODE 255
+#define RDKSHELL_WATERMARK_ID 65536
 
 namespace RdkShell
 {
@@ -76,6 +78,14 @@ namespace RdkShell
         SURFACE
     };
 
+    struct WatermarkImage
+    {
+        WatermarkImage(uint32_t imageId, uint32_t imageZOrder): id(imageId), zorder(imageZOrder), image(nullptr) {}
+        uint32_t id;
+        uint32_t zorder;
+        std::shared_ptr<RdkShell::Image> image;
+    };
+
     typedef std::vector<CompositorInfo> CompositorList;
     typedef CompositorList::iterator CompositorListIterator;
 
@@ -99,8 +109,10 @@ namespace RdkShell
     bool gShowSplashImage = false;
     uint32_t gSplashDisplayTimeInSeconds = 0;
     double gSplashStartTime = 0;
-    std::shared_ptr<RdkShell::Image> gWaterMarkImage = nullptr;
-    bool gShowWaterMarkImage = false;
+    std::shared_ptr<RdkShell::Image> gRdkShellWatermarkImage = nullptr;
+    std::vector<WatermarkImage> gWatermarkImages;
+    bool gShowWatermarkImage = false;
+    bool gAlwaysShowWatermarkImageOnTop = false;
     std::shared_ptr<RdkShell::Image> gFullScreenImage = nullptr;
     bool gShowFullScreenImage = false;
     std::string gCurrentFullScreenImage = "";
@@ -1322,21 +1334,58 @@ namespace RdkShell
         return ret;
     }
 
+    static void drawWatermarkImages(RdkShellRect rect, bool drawWithRect=true)
+    {
+        if (!gShowWatermarkImage)
+        {
+            return;
+        }
+        std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
+        for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
+        {
+            if (iter->image != nullptr)
+            {		    
+                if (drawWithRect)
+                {
+                    iter->image->draw(rect);
+                }
+                else
+                {
+                    iter->image->draw();
+                }
+	    }
+        }
+    }
+
     bool CompositorController::draw()
     {
         for (auto reverseIterator = gCompositorList.rbegin(); reverseIterator != gCompositorList.rend(); reverseIterator++)
         {
-            reverseIterator->compositor->draw();
+            bool needsHolePunch = false;
+            RdkShellRect rect;
+            reverseIterator->compositor->draw(needsHolePunch, rect);
+            if (needsHolePunch && !gAlwaysShowWatermarkImageOnTop)
+            {
+                drawWatermarkImages(rect, true);
+            }
         }
 
         for (auto reverseIterator = gTopmostCompositorList.rbegin(); reverseIterator != gTopmostCompositorList.rend(); reverseIterator++)
         {
-            reverseIterator->compositor->draw();
+            bool needsHolePunch = false;
+            RdkShellRect rect;
+            reverseIterator->compositor->draw(needsHolePunch, rect);
         }
 
-        if (gShowWaterMarkImage && gWaterMarkImage != nullptr)
+        if (gAlwaysShowWatermarkImageOnTop)
         {
-            gWaterMarkImage->draw();
+            RdkShellRect rect;
+            drawWatermarkImages(rect, false);
+        }
+
+        if (gShowWatermarkImage && gRdkShellWatermarkImage != nullptr)
+        {
+            gRdkShellWatermarkImage->draw();
         }
 
         if (gShowFullScreenImage && gFullScreenImage != nullptr)
@@ -1701,35 +1750,38 @@ namespace RdkShell
 
     bool CompositorController::hideWatermark()
     {
-        gShowWaterMarkImage = false;
-        gWaterMarkImage = nullptr;
+        gShowWatermarkImage = false;
+        std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
+        for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
+        {
+            iter->image = nullptr;
+        }
+        gRdkShellWatermarkImage = nullptr;
         return true;
     }
 
     bool CompositorController::showWatermark()
     {
         RdkShell::Logger::log(RdkShell::LogLevel::Information, "attempting to display watermark");
-        if (nullptr == gWaterMarkImage)
+        if (nullptr == gRdkShellWatermarkImage)
         {
             const char* waterMarkFile = getenv("RDKSHELL_WATERMARK_IMAGE_PNG");
             if (waterMarkFile)
             {
-                gWaterMarkImage = std::make_shared<RdkShell::Image>();
-                bool imageLoaded = gWaterMarkImage->loadLocalFile(waterMarkFile);
+                gRdkShellWatermarkImage = std::make_shared<RdkShell::Image>();
+                bool imageLoaded = gRdkShellWatermarkImage->loadLocalFile(waterMarkFile);
                 if (!imageLoaded)
                 {
                     RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading watermark image: %s", waterMarkFile);
-                    gWaterMarkImage = nullptr;
-                    return false;
+                    gRdkShellWatermarkImage = nullptr;
                 }
             }
             else
             {
                 RdkShell::Logger::log(RdkShell::LogLevel::Warn, "no watermark image specified");
-                return false;
             }
         }
-        gShowWaterMarkImage = true;
+        gShowWatermarkImage = true;
         return true;
     }
 
@@ -2027,6 +2079,7 @@ namespace RdkShell
 
     bool CompositorController::updateWatermarkImage(uint32_t imageId, int32_t key, int32_t imageSize)
     {
+        bool ret = true;
         key_t sharedMemoryKey = key;
         int shmid;
         char *imageData;
@@ -2036,13 +2089,123 @@ namespace RdkShell
             return false;
         }
         imageData = (char*) shmat(shmid, NULL, 0);
-        gWaterMarkImage = std::make_shared<RdkShell::Image>();
-        gWaterMarkImage->loadImageData(imageData, imageSize);
+        std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
+        for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
+        {
+            if (iter->id == imageId)
+            {
+                if (iter->image == nullptr)
+                {
+                    iter->image = std::make_shared<RdkShell::Image>();
+                }
+                iter->image->loadImageData(imageData, imageSize);
+                break;
+            }
+        }
+        if (iter == gWatermarkImages.end())
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Error, "watermark with image id %d not created already", imageId);
+            ret = false;
+        }
         if (shmdt(imageData) == -1)
         {
             RdkShell::Logger::log(RdkShell::LogLevel::Error, "error detaching image data segment");
             return false;
         }
+        return ret;
+    }
+
+    static bool insertWatermarkImage(WatermarkImage& image)
+    {
+        if (gWatermarkImages.size() == 0)
+	{
+            gWatermarkImages.insert(gWatermarkImages.begin(), image); 
+            return true;
+	}	
+        std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
+        for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
+        {
+            if (iter->zorder > image.zorder)
+            {
+                break;
+            }
+        }
+        if (iter == gWatermarkImages.end()) 
+        {
+            gWatermarkImages.push_back(image);
+        }
+        else
+	{	
+            gWatermarkImages.insert(iter, image);
+        }
+        return true;
+    }
+
+    bool CompositorController::createWatermarkImage(uint32_t imageId, uint32_t zorder)
+    {
+        std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
+        for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
+        {
+            if (iter->id == imageId)
+            {
+                RdkShell::Logger::log(RdkShell::LogLevel::Error, "watermark with image id %d created already", imageId);
+                return false;
+            }
+        }
+        WatermarkImage image(imageId, zorder);
+        bool ret = insertWatermarkImage(image);
+        RdkShell::Logger::log(RdkShell::LogLevel::Debug, "watermark with image id %d created", imageId);
+        return ret;
+    }
+
+    bool CompositorController::deleteWatermarkImage(uint32_t imageId)
+    {
+        bool ret =false;
+        std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
+        for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
+        {
+            if (iter->id == imageId)
+            {
+                break;
+            }
+        }
+        if (iter != gWatermarkImages.end())
+        {
+            iter->image == nullptr;
+            gWatermarkImages.erase(iter);
+            ret = true;
+        }
+        else
+        {
+            RdkShell::Logger::log(RdkShell::LogLevel::Error, "watermark with image id %d is not present", imageId);
+        }
+        return ret;
+    }
+
+    bool CompositorController::adjustWatermarkImage(uint32_t imageId, uint32_t zorder)
+    {
+        std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
+        for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
+        {
+            if (iter->id == imageId)
+            {
+                break;
+            }
+        }
+        if (iter == gWatermarkImages.end())
+        {
+            return false;
+        }
+        WatermarkImage image(imageId, zorder);
+        image.image = iter->image;
+        gWatermarkImages.erase(iter);
+        insertWatermarkImage(image);
+        return true;
+    }
+
+    bool CompositorController::alwaysShowWatermarkImageOnTop(bool show)
+    {
+        gAlwaysShowWatermarkImageOnTop = show;
         return true;
     }
 }

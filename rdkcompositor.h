@@ -28,6 +28,7 @@
 #include "westeros-compositor.h"
 #include "inputevent.h"
 #include "application.h"
+#include "rdkshellrect.h"
 
 namespace RdkShell
 {
@@ -42,7 +43,7 @@ namespace RdkShell
             virtual ~RdkCompositor();
             virtual bool createDisplay(const std::string& displayName, const std::string& clientName,
                 uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight) = 0;
-            void draw();
+            void draw(bool &needsHolePunch, RdkShellRect& rect);
             void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata);
             void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata);
             void setPosition(int32_t x, int32_t y);
@@ -74,6 +75,9 @@ namespace RdkShell
             void enableVirtualDisplay(bool enable);
             bool getVirtualDisplayEnabled();
 
+        private:
+            void prepareHolePunchRects(std::vector<WstRect> wstrects, RdkShellRect& rect);
+
         protected:
             static void invalidate(WstCompositor *context, void *userData);
             static void clientStatus(WstCompositor *context, int status, int pid, int detail, void *userData);
@@ -84,8 +88,8 @@ namespace RdkShell
             void launchApplicationInBackground();
             void shutdownApplication();
             static bool loadExtensions(WstCompositor *compositor, const std::string& clientName);
-            void drawDirect();
-            void drawFbo();
+            void drawDirect(bool &needsHolePunch, RdkShellRect& rect);
+            void drawFbo(bool &needsHolePunch, RdkShellRect& rect);
             
             std::string mDisplayName;
             WstCompositor *mWstContext;

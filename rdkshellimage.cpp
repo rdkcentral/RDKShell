@@ -224,6 +224,14 @@ namespace RdkShell
         glUseProgram(0);
     }
 
+    void Image::draw(RdkShellRect rect)
+    {
+        glScissor(rect.x, rect.y, rect.width, rect.height);
+        glEnable(GL_SCISSOR_TEST);
+        draw();
+        glDisable(GL_SCISSOR_TEST);
+    }
+
     void Image::fileName(std::string& fileName)
     {
         fileName = mFileName;
