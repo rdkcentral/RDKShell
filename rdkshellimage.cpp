@@ -224,10 +224,10 @@ namespace RdkShell
         glUseProgram(0);
     }
 
-    void Image::draw(RdkShellRect rect)
+    void Image::draw(RdkShellRect rect, uint32_t screenHeight)
     {
-        glScissor(rect.x, rect.y, rect.width, rect.height);
         glEnable(GL_SCISSOR_TEST);
+        glScissor(rect.x, screenHeight-rect.height-rect.y, rect.width, rect.height);
         draw();
         glDisable(GL_SCISSOR_TEST);
     }

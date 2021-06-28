@@ -1340,6 +1340,8 @@ namespace RdkShell
         {
             return;
         }
+        uint32_t width, height;
+        RdkShell::EssosInstance::instance()->resolution(width, height);
         std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
         for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
         {
@@ -1347,7 +1349,7 @@ namespace RdkShell
             {		    
                 if (drawWithRect)
                 {
-                    iter->image->draw(rect);
+                    iter->image->draw(rect, height);
                 }
                 else
                 {

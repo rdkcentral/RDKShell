@@ -33,7 +33,7 @@ namespace RdkShell
             Image(const char* imageData, int32_t width, int32_t height);
             ~Image();
             void draw();
-            void draw(RdkShellRect rect);
+            void draw(RdkShellRect rect, uint32_t screenHeight);
             void fileName(std::string& fileName);
             bool loadLocalFile(const std::string& fileName);
             void bounds(int32_t& x, int32_t& y, int32_t& width, int32_t& height);
