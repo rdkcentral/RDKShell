@@ -20,6 +20,7 @@
 #include "rdkshellimage.h"
 
 #include "logger.h"
+#include "essosinstance.h"
 #include "compositorcontroller.h"
 #include <jpeglib.h>
 #include <png.h>
@@ -226,8 +227,10 @@ namespace RdkShell
 
     void Image::draw(RdkShellRect rect)
     {
-        glScissor(rect.x, rect.y, rect.width, rect.height);
+        uint32_t screenWidth, screenHeight;
+        RdkShell::EssosInstance::instance()->resolution(screenWidth, screenHeight);
         glEnable(GL_SCISSOR_TEST);
+        glScissor(rect.x, screenHeight-rect.height-rect.y, rect.width, rect.height);
         draw();
         glDisable(GL_SCISSOR_TEST);
     }
