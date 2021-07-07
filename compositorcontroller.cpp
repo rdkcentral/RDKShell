@@ -557,6 +557,16 @@ namespace RdkShell
         return false;
     }
 
+    bool CompositorController::getFocused(std::string& client)
+    {
+        client = "";
+        if (gFocusedCompositor.compositor)
+        {
+            client = gFocusedCompositor.name;
+        }
+        return true;
+    }
+
     bool CompositorController::setFocus(const std::string& client)
     {
         CompositorListIterator it;

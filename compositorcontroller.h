@@ -40,6 +40,7 @@ namespace RdkShell
             static bool moveToBack(const std::string& client);
             static bool moveBehind(const std::string& client, const std::string& target);
             static bool setFocus(const std::string& client);
+            static bool getFocused(std::string& client);
             static bool kill(const std::string& client);
             static bool addKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
             static bool removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
