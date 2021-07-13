@@ -445,31 +445,10 @@ namespace RdkShell
 
         Logger::log(LogLevel::Information,  "rdkshell power key release only enabled %d", gRdkShellPowerKeyReleaseOnlyEnabled);
 
-        char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
-
-        if (NULL == rdkshellCompositorType)
-        {
-            Logger::log(LogLevel::Information,  "compositor type is empty, setting to nested by default");
-            return;
-        }
-         
-        if (strcmp(rdkshellCompositorType, "surface") == 0)
-        {
-            gRdkShellCompositorType = SURFACE;
-            uint32_t width = 0;
-            uint32_t height = 0;
-            RdkShell::EssosInstance::instance()->resolution(width, height);
-            RdkCompositorSurface::createMainCompositor("rdkshell_display", width, height);
-        }
-        else if (strcmp(rdkshellCompositorType, "nested") != 0)
-        {
-            Logger::log(LogLevel::Information,  "invalid compositor type, setting to nested by default ");
-        }
-
         char const *rdkshellKeyIgnore = getenv("RDKSHELL_ENABLE_KEY_IGNORE");
         Logger::log(LogLevel::Information,  "key ignore feature enabled status [%d]", (NULL==rdkshellKeyIgnore));
         if (NULL != rdkshellKeyIgnore)
-	{
+        {
             int keyIgnoreValue = atoi(rdkshellKeyIgnore);
             Logger::log(LogLevel::Information,  "key ignore feature [%d]", keyIgnoreValue);
             if (keyIgnoreValue > 0)
@@ -477,7 +456,29 @@ namespace RdkShell
                 gIgnoreKeyInputEnabled = true;
                 Logger::log(LogLevel::Information,  "key ignore feature is enabled");
             }
-	}
+        }
+
+        char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
+
+        if (NULL == rdkshellCompositorType)
+        {
+            Logger::log(LogLevel::Information,  "compositor type is empty, setting to nested by default");
+        }
+        else
+        {
+            if (strcmp(rdkshellCompositorType, "surface") == 0)
+            {
+                gRdkShellCompositorType = SURFACE;
+                uint32_t width = 0;
+                uint32_t height = 0;
+                RdkShell::EssosInstance::instance()->resolution(width, height);
+                RdkCompositorSurface::createMainCompositor("rdkshell_display", width, height);
+            }
+            else if (strcmp(rdkshellCompositorType, "nested") != 0)
+            {
+                Logger::log(LogLevel::Information,  "invalid compositor type, setting to nested by default ");
+            }
+        }
         sCompositorInitialized = true;
     }
 
