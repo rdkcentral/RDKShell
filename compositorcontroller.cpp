@@ -2219,4 +2219,14 @@ namespace RdkShell
         gAlwaysShowWatermarkImageOnTop = show;
         return true;
     }
+
+    bool CompositorController::screenShot(uint8_t* &data, uint32_t &size)
+    {
+        uint32_t width, height;
+        RdkShell::EssosInstance::instance()->resolution(width, height);
+        size = 4 * width * height;
+        data = (uint8_t *)malloc(size);
+        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        return true;
+    }
 }
