@@ -81,8 +81,10 @@ namespace RdkShell
         protected:
             static void invalidate(WstCompositor *context, void *userData);
             static void clientStatus(WstCompositor *context, int status, int pid, int detail, void *userData);
+            static void dispatch( WstCompositor *wctx, void *userData );
             void onInvalidate();
             void onClientStatus(int status, int pid, int detail);
+            void onSizeChangeComplete();
             void processKeyEvent(bool keyPressed, uint32_t keycode, uint32_t flags, uint64_t metadata);
             void broadcastInputEvent(const RdkShell::InputEvent &inputEvent);
             void launchApplicationInBackground();
@@ -120,6 +122,7 @@ namespace RdkShell
             uint32_t mVirtualWidth;
             uint32_t mVirtualHeight;
             std::shared_ptr<FrameBuffer> mFbo;
+            bool mSizeChangeRequestPresent;
     };
 }
 

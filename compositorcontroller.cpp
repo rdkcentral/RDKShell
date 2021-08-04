@@ -235,6 +235,10 @@ namespace RdkShell
          {
                  listener->onApplicationResumed(client);
          }
+         else if(eventName.compare(RDKSHELL_EVENT_SIZE_CHANGE_COMPLETE) == 0)
+         {
+                 listener->onSizeChangeComplete(client);
+         }
     }
     
     bool interceptKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)

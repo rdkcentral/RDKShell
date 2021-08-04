@@ -50,7 +50,7 @@ namespace RdkShell
         mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false),
-        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0)
+        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false)
     {
         if (gForce720)
         {
@@ -76,6 +76,7 @@ namespace RdkShell
         {
             WstCompositorSetInvalidateCallback(mWstContext, NULL, NULL);
             WstCompositorSetClientStatusCallback(mWstContext, NULL, NULL);
+            WstCompositorSetDispatchCallback( mWstContext, NULL, NULL);
             closeApplication();
             WstCompositorDestroy(mWstContext);
             //shutdownApplication();
@@ -102,6 +103,15 @@ namespace RdkShell
         {
             rdkCompositor->onClientStatus(status, pid, detail);
         }
+    }
+
+    void RdkCompositor::dispatch( WstCompositor *wctx, void *userData )
+    {
+         RdkCompositor *rdkCompositor= (RdkCompositor*)userData;
+         if (rdkCompositor != NULL)
+         {
+             rdkCompositor->onSizeChangeComplete();
+         }
     }
 
     void RdkCompositor::onInvalidate()
@@ -160,6 +170,15 @@ namespace RdkShell
         if (eventFound)
         {
             CompositorController::onEvent(this, eventName);
+        }
+    }
+
+    void RdkCompositor::onSizeChangeComplete()
+    {
+        if (mSizeChangeRequestPresent)
+        {		
+            mSizeChangeRequestPresent = false;
+            CompositorController::onEvent(this, RDKSHELL_EVENT_SIZE_CHANGE_COMPLETE);
         }
     }
 
@@ -435,6 +454,7 @@ namespace RdkShell
         }
         if ( (mWstContext != NULL) && !mVirtualDisplayEnabled && ((mWidth != width) || (mHeight != height)) )
         {
+            mSizeChangeRequestPresent = true;
             WstCompositorSetOutputSize(mWstContext, width, height);
         }
         mWidth = width;
