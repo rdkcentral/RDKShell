@@ -180,6 +180,11 @@ namespace RdkShell
                 error = true;
             }
 
+            if (!error && !WstCompositorSetDispatchCallback( mWstContext, dispatch, this))
+            {
+                error = true;
+            }
+
             if (!error)
             {
                 if (!mApplicationName.empty())
