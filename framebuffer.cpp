@@ -66,12 +66,12 @@ namespace RdkShell
         glDeleteTextures(1, &mTextureId);
     }
 
-    bool FrameBuffer::bind()
+    void FrameBuffer::bind()
     {
         glBindFramebuffer(GL_FRAMEBUFFER, mFboId);
     }
 
-    bool FrameBuffer::unbind()
+    void FrameBuffer::unbind()
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
