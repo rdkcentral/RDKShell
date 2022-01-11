@@ -34,8 +34,8 @@ namespace RdkShell
 
         GLuint texture() const { return mTextureId; }
 
-        bool bind();
-        bool unbind();
+        void bind();
+        void unbind();
 
     private:
         int mWidth;
