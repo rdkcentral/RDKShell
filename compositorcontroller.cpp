@@ -149,7 +149,10 @@ namespace RdkShell
         size_t found = stdClientName.find(str1);
         if (found != std::string::npos)
         {
-          stdClientName.erase(0,4);
+          if((stdClientName.compare(0, 4, str1)) == 0)
+          {
+            stdClientName.erase(0,4);
+	  }
         }
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
