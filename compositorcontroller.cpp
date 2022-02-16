@@ -145,7 +145,15 @@ namespace RdkShell
         CompositorList** compositorList = nullptr)
     {
         std::string stdClientName = standardizeName(clientName);
-
+	std::string str1="wst-";
+        size_t found = stdClientName.find(str1);
+        if (found != std::string::npos)
+        {
+          if((stdClientName.compare(0, 4, str1)) == 0)
+          {
+            stdClientName.erase(0,4);
+	  }
+        }
         for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
         {
             if (it->name == stdClientName)
