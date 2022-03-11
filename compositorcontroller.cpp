@@ -56,12 +56,13 @@ namespace RdkShell
 
     struct CompositorInfo
     {
-        CompositorInfo() : name(), compositor(nullptr), eventListeners(), mimeType() {}
+        CompositorInfo() : name(), compositor(nullptr), eventListeners(), mimeType() , autoDestory(false) {}
         std::string name;
         std::shared_ptr<RdkCompositor> compositor;
         std::map<uint32_t, std::vector<KeyListenerInfo>> keyListenerInfo;
         std::vector<std::shared_ptr<RdkShellEventListener>> eventListeners;
         std::string mimeType;
+	bool autoDestory;
     };
 
     struct KeyInterceptInfo
@@ -1603,18 +1604,18 @@ namespace RdkShell
             }
 	    if((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0))
             {
-               it->compositor->mSurfaceCount++; 
+		    it->compositor->updateSurfaceCount(true);
             }
 	    else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
             {
-		it->compositor->mSurfaceCount--;
-		if(it->compositor->mSurfaceCount == 0)
+		it->compositor->updateSurfaceCount(false);
+		bool gSurfaceCount = it->compositor->getSurfaceCount();
+		if((gSurfaceCount == 0) && (it->autoDestory == true))
                 {
                   clientToKill = it->name;
                   killClient = true;
 	        }
             }
-	    else {}
         }
         if (true == killClient)
         {
@@ -1652,7 +1653,7 @@ namespace RdkShell
     }
 
     bool CompositorController::launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType,
-        bool topmost, bool focus)
+        bool topmost, bool focus, bool autodestory)
     {
         if (mimeType == RDKSHELL_APPLICATION_MIME_TYPE_NATIVE)
         {
@@ -1665,6 +1666,7 @@ namespace RdkShell
             std::string clientDisplayName = standardizeName(client);
             CompositorInfo compositorInfo;
             compositorInfo.name = clientDisplayName;
+	    compositorInfo.autoDestory = autodestory;
             if (gRdkShellCompositorType == SURFACE)
             {
                 compositorInfo.compositor = std::make_shared<RdkCompositorSurface>();

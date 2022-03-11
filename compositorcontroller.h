@@ -84,7 +84,7 @@ namespace RdkShell
             static double getInactivityTimeInMinutes();
             static void setEventListener(std::shared_ptr<RdkShellEventListener> listener);
             static std::shared_ptr<RdkCompositor> getCompositor(const std::string& displayName);
-            static bool launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType, bool topmost = false, bool focus = false);
+            static bool launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType, bool topmost = false, bool focus = false,bool autodestory = false);
             static bool suspendApplication(const std::string& client);
             static bool resumeApplication(const std::string& client);
             static bool closeApplication(const std::string& client);
