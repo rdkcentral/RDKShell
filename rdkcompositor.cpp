@@ -50,7 +50,7 @@ namespace RdkShell
         mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false),
-        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false)
+        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false) , mSurfaceCount(0) 
     {
         if (gForce720)
         {
@@ -653,4 +653,20 @@ namespace RdkShell
         return mVirtualDisplayEnabled;
     }
 
+    void RdkCompositor::updateSurfaceCount (bool status)
+     {
+        if(status == true)
+        {
+	  mSurfaceCount++;
+	}
+	else if ((status == false) && ( mSurfaceCount > 0))
+	{
+          mSurfaceCount--;
+        } 
+     }
+
+     uint32_t RdkCompositor::getSurfaceCount (void)
+     {
+        return mSurfaceCount;
+     }
 }

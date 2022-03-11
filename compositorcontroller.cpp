@@ -1601,10 +1601,19 @@ namespace RdkShell
             {
                 sendApplicationEvent(it->eventListeners[i], eventName, it->name);
             }
-            if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
+	    if((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0))
             {
-                clientToKill = it->name;
-                killClient = true;
+		    it->compositor->updateSurfaceCount(true);
+            }
+	    else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
+            {
+		it->compositor->updateSurfaceCount(false);
+		bool SurfaceCount = it->compositor->getSurfaceCount();
+		if(SurfaceCount == 0)
+                {
+                  clientToKill = it->name;
+                  killClient = true;
+	        }
             }
         }
         if (true == killClient)
