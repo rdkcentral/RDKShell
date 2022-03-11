@@ -1608,8 +1608,8 @@ namespace RdkShell
 	    else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
             {
 		it->compositor->updateSurfaceCount(false);
-		bool gSurfaceCount = it->compositor->getSurfaceCount();
-		if(gSurfaceCount == 0)
+		bool SurfaceCount = it->compositor->getSurfaceCount();
+		if(SurfaceCount == 0)
                 {
                   clientToKill = it->name;
                   killClient = true;
