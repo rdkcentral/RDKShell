@@ -74,6 +74,7 @@ namespace RdkShell
             void setVirtualResolution(uint32_t virtualWidth, uint32_t virtualHeight);
             void enableVirtualDisplay(bool enable);
             bool getVirtualDisplayEnabled();
+	    uint32_t mSurfaceCount=0;
 
         private:
             void prepareHolePunchRects(std::vector<WstRect> wstrects, RdkShellRect& rect);
