@@ -56,13 +56,12 @@ namespace RdkShell
 
     struct CompositorInfo
     {
-        CompositorInfo() : name(), compositor(nullptr), eventListeners(), mimeType() , autoDestory(false) {}
+        CompositorInfo() : name(), compositor(nullptr), eventListeners(), mimeType() {}
         std::string name;
         std::shared_ptr<RdkCompositor> compositor;
         std::map<uint32_t, std::vector<KeyListenerInfo>> keyListenerInfo;
         std::vector<std::shared_ptr<RdkShellEventListener>> eventListeners;
         std::string mimeType;
-	bool autoDestory;
     };
 
     struct KeyInterceptInfo
@@ -1610,7 +1609,7 @@ namespace RdkShell
             {
 		it->compositor->updateSurfaceCount(false);
 		bool gSurfaceCount = it->compositor->getSurfaceCount();
-		if((gSurfaceCount == 0) && (it->autoDestory == true))
+		if(gSurfaceCount == 0)
                 {
                   clientToKill = it->name;
                   killClient = true;
@@ -1653,7 +1652,7 @@ namespace RdkShell
     }
 
     bool CompositorController::launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType,
-        bool topmost, bool focus, bool autodestory)
+        bool topmost, bool focus)
     {
         if (mimeType == RDKSHELL_APPLICATION_MIME_TYPE_NATIVE)
         {
@@ -1666,7 +1665,6 @@ namespace RdkShell
             std::string clientDisplayName = standardizeName(client);
             CompositorInfo compositorInfo;
             compositorInfo.name = clientDisplayName;
-	    compositorInfo.autoDestory = autodestory;
             if (gRdkShellCompositorType == SURFACE)
             {
                 compositorInfo.compositor = std::make_shared<RdkCompositorSurface>();
