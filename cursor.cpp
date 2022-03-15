@@ -27,11 +27,11 @@
 namespace RdkShell
 {
     const int DEFAULT_CURSOR_SIZE = 64;
-    const double DEFAULT_IDLE_TIME = 3.0;
+    const double DEFAULT_INACTIVITY_DURATION = 5.0;
 
     Cursor::Cursor(const std::string& fileName)
         : mIsLoaded(false), mX(0), mY(0), mWidth(DEFAULT_CURSOR_SIZE), mHeight(DEFAULT_CURSOR_SIZE)
-        , mIdleTime(DEFAULT_IDLE_TIME), mOffsetX(0), mOffsetY(0), mLastUpdateTime(0.0)
+        , mInactivityDuration(DEFAULT_INACTIVITY_DURATION), mOffsetX(0), mOffsetY(0), mLastUpdateTime(0.0)
     {
         load(fileName);
     }
@@ -57,14 +57,14 @@ namespace RdkShell
         return mIsLoaded;
     }
 
-    void Cursor::setIdleTime(double idleTime)
+    void Cursor::setInactivityDuration(double duration)
     {
-        mIdleTime = idleTime;
+        mInactivityDuration = duration;
     }
 
-    double Cursor::getIdleTime()
+    double Cursor::getInactivityDuration()
     {
-        return mIdleTime;
+        return mInactivityDuration;
     }
 
     void Cursor::setSize(int width, int height)
@@ -109,7 +109,7 @@ namespace RdkShell
         if (!mIsLoaded)
             return;
 
-        if (RdkShell::seconds() - mLastUpdateTime < mIdleTime)
+        if (RdkShell::seconds() - mLastUpdateTime < mInactivityDuration)
         {
             mCursorImage->setBounds(mX - mOffsetX, mY - mHeight + mOffsetY, mWidth, mHeight);
             mCursorImage->draw(true);

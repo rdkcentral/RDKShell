@@ -35,14 +35,11 @@ namespace RdkShell
         void setPosition(int x, int y);
         bool load(const std::string& fileName);
 
-        
-        void setIdleTime(double idleTime);
-        double getIdleTime();
-
+        void setInactivityDuration(double inactivityDuration);
+        double getInactivityDuration();
 
         void setSize(int width, int height);
         void getSize(int& width, int& height);
-
 
         void setOffset(int x, int y);
         void getOffset(int& x,  int& y);
@@ -53,12 +50,11 @@ namespace RdkShell
         int mY;
         int mWidth;
         int mHeight;
-        int mOffsetX;
+        int mOffsetX; // specifies position on the cursor image that is the tip of the cursor
         int mOffsetY;
-        bool mIsLoaded;
-
-        double mIdleTime;
+        double mInactivityDuration; // duration of inactivity after which cursor will be hidden
         double mLastUpdateTime;
 
+        bool mIsLoaded;
     };
 }
