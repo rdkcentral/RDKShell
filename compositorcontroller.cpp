@@ -1591,9 +1591,6 @@ namespace RdkShell
 
     bool CompositorController::onEvent(RdkCompositor* eventCompositor, const std::string& eventName)
     {
-        bool killClient = false;
-        std::string clientToKill("");
-
         CompositorListIterator it;
         if (getCompositorInfo(eventCompositor, it))
         {
@@ -1601,19 +1598,20 @@ namespace RdkShell
             {
                 sendApplicationEvent(it->eventListeners[i], eventName, it->name);
             }
-	    if((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0))
+
+	          if((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0))
             {
-		    it->compositor->updateSurfaceCount(true);
+		            it->compositor->updateSurfaceCount(true);
             }
-	    else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
+	          else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
             {
-		it->compositor->updateSurfaceCount(false);
-		bool SurfaceCount = it->compositor->getSurfaceCount();
-		if(SurfaceCount == 0)
+		            it->compositor->updateSurfaceCount(false);
+		            bool SurfaceCount = it->compositor->getSurfaceCount();
+		            if(SurfaceCount == 0)
                 {
                   clientToKill = it->name;
                   killClient = true;
-	        }
+	              }
             }
         }
         if (true == killClient)
