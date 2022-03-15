@@ -183,7 +183,7 @@ namespace RdkShell
         }
     }
 
-    void Image::draw()
+    void Image::draw(bool useBounds)
     {
         if (mTexture == 0)
         {
@@ -198,12 +198,31 @@ namespace RdkShell
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-        static const float vertices[4][2] =
+        float left = -1.0f;
+        float right = 1.0f;
+        float top = -1.0f;
+        float bottom = 1.0f;
+
+        if (useBounds)
         {
-            {-1, -1},
-            {1, -1},
-            {-1, 1},
-            {1, 1}
+            uint32_t screenWidth = 0;
+            uint32_t screenHeight = 0;
+            RdkShell::EssosInstance::instance()->resolution(screenWidth, screenHeight);
+
+            auto screenToClipSpace = [](float x, float screenSize) { return 2.0f * x / screenSize - 1.0f; };
+
+            left = screenToClipSpace(mX, screenWidth);
+            top = screenToClipSpace(mY, screenHeight);
+            right = screenToClipSpace(mX + mWidth, screenWidth);
+            bottom = screenToClipSpace(mY + mHeight, screenHeight);
+        }
+
+        const float vertices[4][2] =
+        {
+            {left, top},
+            {right, top},
+            {left, bottom},
+            {right, bottom}
         };
 
         static const float uvCoordinates[4][2] =

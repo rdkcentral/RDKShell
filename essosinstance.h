@@ -34,6 +34,9 @@ namespace RdkShell
             void configureKeyInput(uint32_t initialDelay, uint32_t repeatInterval);
             void onKeyPress(uint32_t keyCode, unsigned long flags, uint64_t metadata);
             void onKeyRelease(uint32_t keyCode, unsigned long flags, uint64_t metadata);
+            void onPointerMotion(uint32_t x, uint32_t y);
+            void onPointerButtonPress(uint32_t keyCode, uint32_t x, uint32_t y);
+            void onPointerButtonRelease(uint32_t keyCode, uint32_t x, uint32_t y);
             void onDisplaySizeChanged(uint32_t width, uint32_t height);
             void update();
             void resolution(uint32_t &width, uint32_t &height);
