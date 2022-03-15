@@ -73,11 +73,13 @@ namespace RdkShell
             void getVirtualResolution(uint32_t &virtualWidth, uint32_t &virtualHeight);
             void setVirtualResolution(uint32_t virtualWidth, uint32_t virtualHeight);
             void enableVirtualDisplay(bool enable);
-            bool getVirtualDisplayEnabled();
+	    bool getVirtualDisplayEnabled();
+	    void updateSurfaceCount(bool status);
+	    uint32_t getSurfaceCount(void); 
 
         private:
             void prepareHolePunchRects(std::vector<WstRect> wstrects, RdkShellRect& rect);
-
+            uint32_t mSurfaceCount;
         protected:
             static void invalidate(WstCompositor *context, void *userData);
             static void clientStatus(WstCompositor *context, int status, int pid, int detail, void *userData);
