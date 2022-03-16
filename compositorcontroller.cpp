@@ -495,7 +495,6 @@ namespace RdkShell
         else
         {
             gCursor = std::make_shared<Cursor>(std::string(cursorImageName));
-            gCursor->setOffset(32, 32);
         }
 
         sCompositorInitialized = true;
