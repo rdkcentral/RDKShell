@@ -62,6 +62,7 @@ namespace RdkShell
         std::map<uint32_t, std::vector<KeyListenerInfo>> keyListenerInfo;
         std::vector<std::shared_ptr<RdkShellEventListener>> eventListeners;
         std::string mimeType;
+	bool autoDestory;
     };
 
     struct KeyInterceptInfo
@@ -1275,7 +1276,7 @@ namespace RdkShell
 
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName,
         uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight,
-        bool topmost, bool focus)
+        bool topmost, bool focus , bool autodestroy)
     {
         Logger::log(LogLevel::Information,
             "rdkshell createDisplay client: %s, displayName: %s, res: %d x %d, virtualDisplayEnabled: %d, virtualRes: %d x %d, topmost: %d, focus: %d\n",
@@ -1297,6 +1298,7 @@ namespace RdkShell
         }
         CompositorInfo compositorInfo;
         compositorInfo.name = clientDisplayName;
+	compositorInfo.autoDestory = autodestory;
         if (gRdkShellCompositorType == SURFACE)
         {
             compositorInfo.compositor = std::make_shared<RdkCompositorSurface>();
@@ -1609,7 +1611,7 @@ namespace RdkShell
             {
 		it->compositor->updateSurfaceCount(false);
 		bool SurfaceCount = it->compositor->getSurfaceCount();
-		if(SurfaceCount == 0)
+		if((SurfaceCount == 0) && (it->autoDestory == true ))
                 {
                   clientToKill = it->name;
                   killClient = true;
