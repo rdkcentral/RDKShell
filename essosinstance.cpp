@@ -411,6 +411,13 @@ namespace RdkShell
             EssContextRunEventLoopOnce(mEssosContext);
         }
     }
+    void EssosInstance::updateEvent()
+    {
+        if (mEssosContext)
+        {
+            EssContextRunEventLoopOnce(mEssosContext);
+        }
+    }
 
     void EssosInstance::ignoreKeyInputs(bool ignore)
     {

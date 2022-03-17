@@ -50,7 +50,7 @@ namespace RdkShell
         mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false),
-        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false) , mSurfaceCount(0) 
+        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false) , mSurfaceCount(0), mDirty(false) 
     {
         if (gForce720)
         {
@@ -161,6 +161,11 @@ namespace RdkShell
                  RdkShell::Logger::log(LogLevel::Information,  "client first frame received");
                  eventName = RDKSHELL_EVENT_APPLICATION_FIRST_FRAME;
                  break;
+            case WstClient_dirty:
+                 RdkShell::Logger::log(LogLevel::Debug,  "client dirty received");
+                 mDirty = true;
+                 eventFound = false;
+                 break;
              default:
                  RdkShell::Logger::log(LogLevel::Information,  "unknown client status state");
                  eventFound = false;
@@ -253,9 +258,17 @@ namespace RdkShell
         #ifndef RDKSHELL_ENABLE_HIDDEN_SUPPORT
         if (!mVisible)
         {
+	    mDirty = false; // mDirty may set after setVisiblity
             return;
         }
         #endif //!RDKSHELL_ENABLE_HIDDEN_SUPPORT
+
+        if (!mDirty)
+        {
+            RdkShell::Logger::log(LogLevel::Debug,  "draw is called even though it is not dirty!");
+        }
+
+        mDirty = false;
 
         if (mVirtualDisplayEnabled)
         {
@@ -652,6 +665,16 @@ namespace RdkShell
     {
         return mVirtualDisplayEnabled;
     }
+    bool RdkCompositor::getDirty()
+    {
+        return mDirty;
+    }
+
+    void RdkCompositor::setDirty(bool dirty)
+    {
+        mDirty = dirty;
+    }
+
 
     void RdkCompositor::updateSurfaceCount (bool status)
      {

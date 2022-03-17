@@ -368,18 +368,27 @@ namespace RdkShell
         gRdkShellIsRunning = true;
         while( gRdkShellIsRunning )
         {
-            update();
-            uint32_t width = 0;
-            uint32_t height = 0;
-            RdkShell::EssosInstance::instance()->resolution(width, height);
-            glViewport( 0, 0, width, height );
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
 
             const double maxSleepTime = (1000 / gCurrentFramerate) * 1000;
             double startFrameTime = microseconds();
-            RdkShell::CompositorController::draw();
-            RdkShell::EssosInstance::instance()->update();
+            if( RdkShell::CompositorController::getDirty() )
+            {
+                update();
+                uint32_t width = 0;
+                uint32_t height = 0;
+                RdkShell::EssosInstance::instance()->resolution(width, height);
+                glViewport( 0, 0, width, height );
+                glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                glClear(GL_COLOR_BUFFER_BIT);
+
+                RdkShell::CompositorController::draw();
+                RdkShell::EssosInstance::instance()->update();
+            }
+            else
+            {
+                RdkShell::EssosInstance::instance()->updateEvent();
+            }
+
 
             #ifdef RDKSHELL_ENABLE_WEBSOCKET_IPC
             if (gWebsocketIpcEnabled)
@@ -399,15 +408,23 @@ namespace RdkShell
 
     void draw()
     {
-        RdkShell::EssosInstance::instance()->update();
-        uint32_t width = 0;
-        uint32_t height = 0;
-        RdkShell::EssosInstance::instance()->resolution(width, height);
-        glViewport( 0, 0, width, height );
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        if( RdkShell::CompositorController::getDirty() )
+        {
+            uint32_t width = 0;
+            uint32_t height = 0;
+            RdkShell::EssosInstance::instance()->resolution(width, height);
+            glViewport( 0, 0, width, height );
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
 
-        RdkShell::CompositorController::draw();
+            RdkShell::CompositorController::draw();
+            RdkShell::EssosInstance::instance()->update();
+        }
+        else
+        {
+            RdkShell::EssosInstance::instance()->updateEvent();
+        }
+
     }
 
     void update()

@@ -74,6 +74,8 @@ namespace RdkShell
             void setVirtualResolution(uint32_t virtualWidth, uint32_t virtualHeight);
             void enableVirtualDisplay(bool enable);
 	    bool getVirtualDisplayEnabled();
+	    bool getDirty();
+	    void setDirty(bool dirty);
 	    void updateSurfaceCount(bool status);
 	    uint32_t getSurfaceCount(void); 
 
@@ -125,6 +127,7 @@ namespace RdkShell
             uint32_t mVirtualHeight;
             std::shared_ptr<FrameBuffer> mFbo;
             bool mSizeChangeRequestPresent;
+            bool mDirty;
     };
 }
 

@@ -1073,6 +1073,7 @@ namespace RdkShell
         if (getCompositorInfo(client, it))
         {
             it->compositor->setVisible(visible);
+	    it->compositor->setDirty(true);
             return true;
         }
         return false;
@@ -2089,6 +2090,36 @@ namespace RdkShell
             enabled = it->compositor->getVirtualDisplayEnabled();
             return true;
         }
+        return false;
+    }
+
+    bool CompositorController::getDirty(void)
+    {
+        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+        {
+            if (it->compositor->getDirty())
+            {
+                return true;
+            }
+        }
+
+        for (auto it = gTopmostCompositorList.begin(); it != gTopmostCompositorList.end(); ++it)
+        {
+            if (it->compositor->getDirty())
+            {
+                return true;
+            }
+        }
+
+        if ((gShowWatermarkImage && gWatermarkImages.size() > 0) ||
+            (gShowWatermarkImage && gRdkShellWatermarkImage != nullptr) ||
+            (gShowFullScreenImage && gFullScreenImage != nullptr) ||
+            (gShowSplashImage && gSplashImage != nullptr))
+        {
+           return true;
+        }
+
+
         return false;
     }
 

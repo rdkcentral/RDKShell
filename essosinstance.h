@@ -36,6 +36,7 @@ namespace RdkShell
             void onKeyRelease(uint32_t keyCode, unsigned long flags, uint64_t metadata);
             void onDisplaySizeChanged(uint32_t width, uint32_t height);
             void update();
+            void updateEvent();
             void resolution(uint32_t &width, uint32_t &height);
             void setResolution(uint32_t width, uint32_t height);
             void setKeyRepeats(bool enable);
