@@ -72,7 +72,7 @@ namespace RdkShell
             static void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress=true);
             static void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress=true);
             static bool createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth=0, uint32_t displayHeight=0,
-                bool virtualDisplayEnabled=false, uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false);
+                bool virtualDisplayEnabled=false, uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false , bool autodestroy = false);
             static bool addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties);
             static bool removeAnimation(const std::string& client);
             static bool addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener);
