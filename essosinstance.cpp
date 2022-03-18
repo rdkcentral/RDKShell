@@ -192,19 +192,16 @@ static EssKeyListener essosKeyListener=
 
 static void essosPointerMotion(void *userData, int x, int y)
 {
-    RdkShell::Logger::log(RdkShell::LogLevel::Information,  "%s, x: %d, y: %d", __func__, x, y);
     RdkShell::EssosInstance::instance()->onPointerMotion(x, y);
 }
 
 static void essosPointerButtonPressed(void *userData, int buttonId, int x, int y)
 {
-    RdkShell::Logger::log(RdkShell::LogLevel::Information,  "%s, buttonId: %d, x: %d, y: %d", __func__, buttonId, x, y);
     RdkShell::EssosInstance::instance()->onPointerButtonPress(buttonId, x, y);
 }
 
 static void essosPointerButtonReleased(void *userData, int buttonId, int x, int y)
 {
-    RdkShell::Logger::log(RdkShell::LogLevel::Information,  "%s, buttonId: %d, x: %d, y: %d", __func__, buttonId, x, y);
     RdkShell::EssosInstance::instance()->onPointerButtonRelease(buttonId, x, y);
 }
 

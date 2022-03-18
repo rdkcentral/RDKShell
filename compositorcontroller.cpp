@@ -1288,7 +1288,7 @@ namespace RdkShell
 
     void CompositorController::onPointerMotion(uint32_t x, uint32_t y)
     {
-        RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s, x: %d, y: %d", __func__, x, y);
+        RdkShell::Logger::log(RdkShell::LogLevel::Debug, "%s, x: %d, y: %d", __func__, x, y);
 
         if (gCursor)
         {
@@ -2321,5 +2321,57 @@ namespace RdkShell
         data = (uint8_t *)malloc(size);
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
         return true;
+    }
+
+    bool CompositorController::showCursor()
+    {
+        if (gCursor)
+        {
+            gCursor->show();
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool CompositorController::hideCursor()
+    {
+        if (gCursor)
+        {
+            gCursor->hide();
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool CompositorController::setCursorSize(uint32_t width, uint32_t height)
+    {
+        if (gCursor)
+        {
+            gCursor->setSize(width, height);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool CompositorController::getCursorSize(uint32_t& width, uint32_t& height)
+    {
+        if (gCursor)
+        {
+            gCursor->getSize(width, height);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 }

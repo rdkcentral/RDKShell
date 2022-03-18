@@ -32,29 +32,33 @@ namespace RdkShell
         Cursor(const std::string& fileName);
 
         void draw();
-        void setPosition(int x, int y);
+        void setPosition(int32_t x, int32_t y);
         bool load(const std::string& fileName);
 
         void setInactivityDuration(double inactivityDuration);
         double getInactivityDuration();
 
-        void setSize(int width, int height);
-        void getSize(int& width, int& height);
+        void setSize(uint32_t width, uint32_t height);
+        void getSize(uint32_t& width, uint32_t& height);
 
-        void setOffset(int x, int y);
-        void getOffset(int& x,  int& y);
+        void setOffset(int32_t x, int32_t y);
+        void getOffset(int32_t& x,  int32_t& y);
+
+        void show();
+        void hide();
 
     private:
         std::unique_ptr<RdkShell::Image> mCursorImage = nullptr;
-        int mX;
-        int mY;
-        int mWidth;
-        int mHeight;
-        int mOffsetX; // specifies position on the cursor image that is the tip of the cursor
-        int mOffsetY;
+        int32_t mX;
+        int32_t mY;
+        uint32_t mWidth; // display size of the cursor image, initial values are taken from cursor image
+        uint32_t mHeight;
+        int32_t mOffsetX; // specifies position on the cursor image that is the tip of the cursor
+        int32_t mOffsetY;
         double mInactivityDuration; // duration of inactivity after which cursor will be hidden
         double mLastUpdateTime;
 
+        bool mIsVisible;
         bool mIsLoaded;
     };
 }

@@ -121,6 +121,10 @@ namespace RdkShell
             static bool adjustWatermarkImage(uint32_t imageId, uint32_t zorder);
             static bool alwaysShowWatermarkImageOnTop(bool show=false);
             static bool screenShot(uint8_t* &data, uint32_t &size);
+            static bool showCursor();
+            static bool hideCursor();
+            static bool setCursorSize(uint32_t width, uint32_t height);
+            static bool getCursorSize(uint32_t& width, uint32_t& height);
     };
 }
 

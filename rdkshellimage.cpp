@@ -259,7 +259,7 @@ namespace RdkShell
         fileName = mFileName;
     }
 
-    bool Image::loadLocalFile(const std::string& fileName)
+    bool Image::loadLocalFile(const std::string& fileName, uint32_t* imageWidth, uint32_t* imageHeight)
     {
         bool success = false;
         if (mFileName != fileName)
@@ -292,6 +292,11 @@ namespace RdkShell
             }
             if (success)
             {
+                if (imageWidth)
+                    *imageWidth = width;
+                if (imageHeight)
+                    *imageHeight = height;
+
                 glGenTextures(1, &mTexture);
                 glBindTexture(GL_TEXTURE_2D, mTexture);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

@@ -407,22 +407,16 @@ namespace RdkShell
 
     void RdkCompositor::onPointerMotion(uint32_t x, uint32_t y)
     {
-        RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s, x: %d, y: %d", __func__, x, y);
-
         WstCompositorPointerMoveEvent(mWstContext, x, y);
     }
 
     void RdkCompositor::onPointerButtonPress(uint32_t keyCode, uint32_t x, uint32_t y)
     {
-        RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s, keycode: %d, x: %d, y: %d", __func__, keyCode, x, y);
-
         WstCompositorPointerButtonEvent(mWstContext, keyCode, WstKeyboard_keyState_depressed);
     }
 
     void RdkCompositor::onPointerButtonRelease(uint32_t keyCode, uint32_t x, uint32_t y)
     {
-        RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s, keycode: %d, x: %d, y: %d", __func__, keyCode, x, y);
-
         WstCompositorPointerButtonEvent(mWstContext, keyCode, WstKeyboard_keyState_released);
     }
 

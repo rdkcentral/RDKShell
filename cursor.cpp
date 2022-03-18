@@ -26,12 +26,17 @@
 
 namespace RdkShell
 {
-    const int DEFAULT_CURSOR_SIZE = 64;
+    const uint32_t DEFAULT_CURSOR_SIZE = 64;
     const double DEFAULT_INACTIVITY_DURATION = 5.0;
 
     Cursor::Cursor(const std::string& fileName)
-        : mIsLoaded(false), mX(0), mY(0), mWidth(DEFAULT_CURSOR_SIZE), mHeight(DEFAULT_CURSOR_SIZE)
-        , mInactivityDuration(DEFAULT_INACTIVITY_DURATION), mOffsetX(0), mOffsetY(0), mLastUpdateTime(0.0)
+        : mIsLoaded(false)
+        , mX(0), mY(0)
+        , mWidth(DEFAULT_CURSOR_SIZE), mHeight(DEFAULT_CURSOR_SIZE)
+        , mInactivityDuration(DEFAULT_INACTIVITY_DURATION)
+        , mOffsetX(0), mOffsetY(0)
+        , mLastUpdateTime(0.0)
+        , mIsVisible(true)
     {
         load(fileName);
     }
@@ -46,7 +51,7 @@ namespace RdkShell
         }
 
         mCursorImage = std::make_unique<RdkShell::Image>();
-        mIsLoaded = mCursorImage->loadLocalFile(cursorImageName);
+        mIsLoaded = mCursorImage->loadLocalFile(cursorImageName, &mWidth, &mHeight);
         if (!mIsLoaded)
         {
             RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading cursor image: '%s'", cursorImageName.c_str());
@@ -67,33 +72,33 @@ namespace RdkShell
         return mInactivityDuration;
     }
 
-    void Cursor::setSize(int width, int height)
+    void Cursor::setSize(uint32_t width, uint32_t height)
     {
         mWidth = width;
         mHeight = height;
     }
 
-    void Cursor::getSize(int& width, int& height)
+    void Cursor::getSize(uint32_t& width, uint32_t& height)
     {
         width = mWidth;
         height = mHeight;
     }
 
-    void Cursor::setOffset(int x, int y)
+    void Cursor::setOffset(int32_t x, int32_t y)
     {
         mOffsetX = x;
         mOffsetY = y;
     }
 
-    void Cursor::getOffset(int& x,  int& y)
+    void Cursor::getOffset(int32_t& x,  int32_t& y)
     {
         x = mOffsetX;
         y = mOffsetY;
     }
 
-    void Cursor::setPosition(int x, int y)
+    void Cursor::setPosition(int32_t x, int32_t y)
     {
-        Logger::log(LogLevel::Information,  "Cursor::setPosition(%d, %d), mIsLoaded: %d, cursor: %p", x, y, mIsLoaded, this);
+        Logger::log(LogLevel::Debug,  "Cursor::setPosition(%d, %d), mIsLoaded: %d, cursor: %p", x, y, mIsLoaded, this);
      
         uint32_t screenWidth = 0;
         uint32_t screenHeight = 0;
@@ -106,7 +111,7 @@ namespace RdkShell
 
     void Cursor::draw()
     {
-        if (!mIsLoaded)
+        if (!mIsLoaded || !mIsVisible)
             return;
 
         if (RdkShell::seconds() - mLastUpdateTime < mInactivityDuration)
@@ -114,6 +119,16 @@ namespace RdkShell
             mCursorImage->setBounds(mX - mOffsetX, mY - mHeight + mOffsetY, mWidth, mHeight);
             mCursorImage->draw(true);
         }
+    }
+
+    void Cursor::show()
+    {
+        mIsVisible = true;
+    }
+
+    void Cursor::hide()
+    {
+        mIsVisible = false;
     }
 
 }
