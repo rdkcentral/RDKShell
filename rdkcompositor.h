@@ -73,9 +73,11 @@ namespace RdkShell
             void getVirtualResolution(uint32_t &virtualWidth, uint32_t &virtualHeight);
             void setVirtualResolution(uint32_t virtualWidth, uint32_t virtualHeight);
             void enableVirtualDisplay(bool enable);
-	    bool getVirtualDisplayEnabled();
-	    void updateSurfaceCount(bool status);
-	    uint32_t getSurfaceCount(void); 
+            bool getVirtualDisplayEnabled();
+            void updateSurfaceCount(bool status);
+            uint32_t getSurfaceCount(void);
+            void enableInputEvents(bool enable);
+            bool getInputEventsEnabled() const;
 
         private:
             void prepareHolePunchRects(std::vector<WstRect> wstrects, RdkShellRect& rect);
@@ -125,6 +127,7 @@ namespace RdkShell
             uint32_t mVirtualHeight;
             std::shared_ptr<FrameBuffer> mFbo;
             bool mSizeChangeRequestPresent;
+            bool mInputEventsEnabled;
     };
 }
 

@@ -118,6 +118,7 @@ namespace RdkShell
             static bool adjustWatermarkImage(uint32_t imageId, uint32_t zorder);
             static bool alwaysShowWatermarkImageOnTop(bool show=false);
             static bool screenShot(uint8_t* &data, uint32_t &size);
+            static bool enableInputEvents(const std::string& client, bool enable);
     };
 }
 
