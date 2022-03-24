@@ -36,7 +36,7 @@ namespace RdkShell
         , mInactivityDuration(DEFAULT_INACTIVITY_DURATION)
         , mOffsetX(0), mOffsetY(0)
         , mLastUpdateTime(0.0)
-        , mIsVisible(true)
+        , mIsVisible(false)
     {
         load(fileName);
     }
