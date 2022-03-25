@@ -31,6 +31,7 @@
 #include "string.h"
 #include "rdkshellimage.h"
 #include "rdkshellrect.h"
+#include "cursor.h"
 #include <iostream>
 #include <map>
 #include <ctime>
@@ -123,6 +124,7 @@ namespace RdkShell
     bool gPowerKeyReleaseReceived = false;
     bool gRdkShellPowerKeyReleaseOnlyEnabled = false;
     bool gIgnoreKeyInputEnabled = false;
+    std::shared_ptr<Cursor> gCursor = nullptr;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -484,6 +486,17 @@ namespace RdkShell
                 Logger::log(LogLevel::Information,  "invalid compositor type, setting to nested by default ");
             }
         }
+
+        const char* cursorImageName = getenv("RDKSHELL_CURSOR_IMAGE");
+        if (cursorImageName == nullptr)
+        {
+            Logger::log(LogLevel::Information,  "cursor image not set");
+        }
+        else
+        {
+            gCursor = std::make_shared<Cursor>(std::string(cursorImageName));
+        }
+
         sCompositorInitialized = true;
     }
 
@@ -1273,6 +1286,51 @@ namespace RdkShell
         }
     }
 
+    void CompositorController::onPointerMotion(uint32_t x, uint32_t y)
+    {
+        RdkShell::Logger::log(RdkShell::LogLevel::Debug, "%s, x: %d, y: %d", __func__, x, y);
+
+        if (gCursor)
+        {
+            gCursor->setPosition(x, y);
+        }
+
+        if (gFocusedCompositor.compositor)
+        {
+            gFocusedCompositor.compositor->onPointerMotion(x, y);
+        }
+    }
+
+    void CompositorController::onPointerButtonPress(uint32_t keyCode, uint32_t x, uint32_t y)
+    {
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s, keycode: %d, x: %d, y: %d", __func__, keyCode, x, y);
+
+        if (gCursor)
+        {
+            gCursor->setPosition(x, y);
+        }
+
+        if (gFocusedCompositor.compositor)
+        {
+            gFocusedCompositor.compositor->onPointerButtonPress(keyCode, x, y);
+        }
+    }
+
+    void CompositorController::onPointerButtonRelease(uint32_t keyCode, uint32_t x, uint32_t y)
+    {
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s, keycode: %d, x: %d, y: %d", __func__, keyCode, x, y);
+
+        if (gCursor)
+        {
+            gCursor->setPosition(x, y);
+        }
+
+        if (gFocusedCompositor.compositor)
+        {
+            gFocusedCompositor.compositor->onPointerButtonRelease(keyCode, x, y);
+        }
+    }
+
     bool CompositorController::createDisplay(const std::string& client, const std::string& displayName,
         uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight,
         bool topmost, bool focus)
@@ -1423,6 +1481,11 @@ namespace RdkShell
         if (gShowFullScreenImage && gFullScreenImage != nullptr)
         {
             gFullScreenImage->draw();
+        }
+
+        if (gCursor)
+        {
+            gCursor->draw();
         }
 
         if (gShowSplashImage && gSplashImage != nullptr)
@@ -2258,5 +2321,57 @@ namespace RdkShell
         data = (uint8_t *)malloc(size);
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
         return true;
+    }
+
+    bool CompositorController::showCursor()
+    {
+        if (gCursor)
+        {
+            gCursor->show();
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool CompositorController::hideCursor()
+    {
+        if (gCursor)
+        {
+            gCursor->hide();
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool CompositorController::setCursorSize(uint32_t width, uint32_t height)
+    {
+        if (gCursor)
+        {
+            gCursor->setSize(width, height);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool CompositorController::getCursorSize(uint32_t& width, uint32_t& height)
+    {
+        if (gCursor)
+        {
+            gCursor->getSize(width, height);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 }

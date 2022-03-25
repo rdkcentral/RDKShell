@@ -71,6 +71,9 @@ namespace RdkShell
             static bool scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height);
             static void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress=true);
             static void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata, bool physicalKeyPress=true);
+            static void onPointerMotion(uint32_t x, uint32_t y);
+            static void onPointerButtonPress(uint32_t keyCode, uint32_t x, uint32_t y);
+            static void onPointerButtonRelease(uint32_t keyCode, uint32_t x, uint32_t y);
             static bool createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth=0, uint32_t displayHeight=0,
                 bool virtualDisplayEnabled=false, uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false);
             static bool addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties);
@@ -118,6 +121,10 @@ namespace RdkShell
             static bool adjustWatermarkImage(uint32_t imageId, uint32_t zorder);
             static bool alwaysShowWatermarkImageOnTop(bool show=false);
             static bool screenShot(uint8_t* &data, uint32_t &size);
+            static bool showCursor();
+            static bool hideCursor();
+            static bool setCursorSize(uint32_t width, uint32_t height);
+            static bool getCursorSize(uint32_t& width, uint32_t& height);
     };
 }
 

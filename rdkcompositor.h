@@ -46,6 +46,9 @@ namespace RdkShell
             void draw(bool &needsHolePunch, RdkShellRect& rect);
             void onKeyPress(uint32_t keycode, uint32_t flags, uint64_t metadata);
             void onKeyRelease(uint32_t keycode, uint32_t flags, uint64_t metadata);
+            void onPointerMotion(uint32_t x, uint32_t y);
+            void onPointerButtonPress(uint32_t keyCode, uint32_t x, uint32_t y);
+            void onPointerButtonRelease(uint32_t keyCode, uint32_t x, uint32_t y);
             void setPosition(int32_t x, int32_t y);
             void position(int32_t &x, int32_t &y);
             void setSize(uint32_t width, uint32_t height);
