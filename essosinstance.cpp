@@ -190,6 +190,28 @@ static EssKeyListener essosKeyListener=
     essosKeyReleased
 };
 
+static void essosPointerMotion(void *userData, int x, int y)
+{
+    RdkShell::EssosInstance::instance()->onPointerMotion(x, y);
+}
+
+static void essosPointerButtonPressed(void *userData, int buttonId, int x, int y)
+{
+    RdkShell::EssosInstance::instance()->onPointerButtonPress(buttonId, x, y);
+}
+
+static void essosPointerButtonReleased(void *userData, int buttonId, int x, int y)
+{
+    RdkShell::EssosInstance::instance()->onPointerButtonRelease(buttonId, x, y);
+}
+
+static EssPointerListener pointerListener =
+{
+   essosPointerMotion,
+   essosPointerButtonPressed,
+   essosPointerButtonReleased
+};
+
 static void essosDisplaySize( void *userData, int width, int height )
 {
     RdkShell::EssosInstance::instance()->onDisplaySizeChanged((uint32_t)width, (uint32_t)height);
@@ -268,6 +290,10 @@ namespace RdkShell
                 essosError = true;
             }
 #endif //RDKSHELL_ENABLE_KEY_METADATA
+            if (!EssContextSetPointerListener(mEssosContext, 0, &pointerListener))
+            {
+                essosError = true;
+            }
             if ( !EssContextSetKeyRepeatInitialDelay(mEssosContext, (int)mKeyInitialDelay))
             {
                 essosError = true;
@@ -336,7 +362,7 @@ namespace RdkShell
         if (mKeyInputsIgnored)
         {
             RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for press keycode: %d ", keyCode);
-	    return;
+            return;
         }		
         CompositorController::onKeyPress(keyCode, flags, metadata);
     }
@@ -346,9 +372,36 @@ namespace RdkShell
         if (mKeyInputsIgnored)
         {
             RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for release keycode: %d ", keyCode);
-	    return;
+            return;
         }
         CompositorController::onKeyRelease(keyCode, flags, metadata);
+    }
+
+    void EssosInstance::onPointerMotion(uint32_t x, uint32_t y)
+    {
+        if (mKeyInputsIgnored)
+            return;
+        CompositorController::onPointerMotion(x, y);
+    }
+
+    void EssosInstance::onPointerButtonPress(uint32_t keyCode, uint32_t x, uint32_t y)
+    {
+        if (mKeyInputsIgnored)
+        {
+            RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for pointer button press keycode: %d ", keyCode);
+	        return;
+        }
+        CompositorController::onPointerButtonPress(keyCode, x, y);
+    }
+
+    void EssosInstance::onPointerButtonRelease(uint32_t keyCode, uint32_t x, uint32_t y)
+    {
+        if (mKeyInputsIgnored)
+        {
+            RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for pointer button release keycode: %d ", keyCode);
+	        return;
+        }
+        CompositorController::onPointerButtonRelease(keyCode, x, y);
     }
 
     void EssosInstance::onDisplaySizeChanged(uint32_t width, uint32_t height)
