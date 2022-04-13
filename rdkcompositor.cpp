@@ -365,7 +365,7 @@ namespace RdkShell
     {
         if (!mInputEventsEnabled)
         {
-            RdkShell::Logger::log(LogLevel::Information,  "MHMH processKeyEvent input event blocked disp:%s, keyCode: %d",
+            RdkShell::Logger::log(LogLevel::Information, "processKeyEvent input event blocked disp:%s, keyCode: %d",
                 mDisplayName, keycode);
             return;
         }
@@ -695,7 +695,7 @@ namespace RdkShell
 
     void RdkCompositor::enableInputEvents(bool enable)
     {
-        RdkShell::Logger::log(LogLevel::Information,  "MHMH enableInputEvents disp:%s, oldVal: %d, newVal: %d",
+        RdkShell::Logger::log(LogLevel::Information, "enableInputEvents disp:%s, oldVal: %d, newVal: %d",
             mDisplayName, mInputEventsEnabled, enable);
         mInputEventsEnabled = enable;
     }
