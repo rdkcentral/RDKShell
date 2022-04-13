@@ -132,6 +132,21 @@ namespace RdkShell
         return mName;
     }
 
+    uint32_t EasterEgg::timeout()
+    {
+        return mTimeout;
+    }
+
+    std::string EasterEgg::actionJson()
+    {
+        return mActionJson;
+    }
+
+    std::vector<RdkShellEasterEggKeyDetails> EasterEgg::keyDetails()
+    {
+        return mKeyDetails;
+    }
+
     bool compareKeySize (EasterEgg& first, EasterEgg& second)
     {
       return first.numberOfKeys() >= second.numberOfKeys()?true:false;
@@ -296,6 +311,20 @@ namespace RdkShell
             sEasterEggs.erase(removeIter);
         }
         std::sort<std::vector<EasterEgg>::iterator>(sEasterEggs.begin(), sEasterEggs.end(), compareKeySize);
+    }
+
+    void getEasterEggs(std::vector<RdkShellEasterEggDetails>& easterEggs)
+    {
+        for(int i=0; i<sEasterEggs.size(); i++)
+        {
+            EasterEgg& easterEgg = sEasterEggs[i];
+            RdkShellEasterEggDetails easterEggOutput;
+            easterEggOutput.id = easterEgg.name();
+            easterEggOutput.duration = easterEgg.timeout();
+            easterEggOutput.api = easterEgg.actionJson();
+            easterEggOutput.keySequence = easterEgg.keyDetails();
+            easterEggs.push_back(easterEggOutput);
+        }
     }
 
     void checkEasterEggs(uint32_t keyCode, uint32_t flags, double keyPressTime)
