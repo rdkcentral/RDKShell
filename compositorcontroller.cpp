@@ -534,6 +534,12 @@ namespace RdkShell
             return false;
         }
 
+	if (it == (compositorInfoList->end() - 1))
+        {
+            Logger::log(LogLevel::Information,  "%s is already at back and cannot move to back ", client.c_str());
+            return false;
+        }
+
         auto compositorInfo = *it;
         compositorInfoList->erase(it);
         compositorInfoList->push_back(compositorInfo);
