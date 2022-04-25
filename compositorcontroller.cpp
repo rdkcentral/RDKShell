@@ -116,7 +116,7 @@ namespace RdkShell
     uint64_t gLastKeyMetadata = 0;
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
     double gLastKeyPressStartTime = 0.0;
-    double gLastKeyRepeateTime = 0.0;
+    double gLastKeyRepeatTime = 0.0;
     RdkShellCompositorType gRdkShellCompositorType = NESTED;
     std::shared_ptr<RdkShell::Image> gSplashImage = nullptr;
     bool gShowSplashImage = false;
@@ -394,20 +394,20 @@ namespace RdkShell
             if (gLastKeyPressStartTime > 0.0)
             {
                 double currentTime = RdkShell::seconds();
-                if (gLastKeyRepeateTime == 0.0)
+                if (gLastKeyRepeatTime == 0.0)
                 {
                     if ((currentTime - gLastKeyPressStartTime) * 1000.0 > gKeyRepeatConfig.initialDelay)
                     {
                         CompositorController::onKeyPress(gLastKeyCode, gLastKeyModifiers, gLastKeyMetadata);
-                        gLastKeyRepeateTime = currentTime;
+                        gLastKeyRepeatTime = currentTime;
                     }
                 }
                 else
                 {
-                    if ((currentTime - gLastKeyRepeateTime) * 1000.0 > gKeyRepeatConfig.repeatInterval)
+                    if ((currentTime - gLastKeyRepeatTime) * 1000.0 > gKeyRepeatConfig.repeatInterval)
                     {
                         CompositorController::onKeyPress(gLastKeyCode, gLastKeyModifiers, gLastKeyMetadata);
-                        gLastKeyRepeateTime = currentTime;
+                        gLastKeyRepeatTime = currentTime;
                     }
                 }
 
@@ -1244,7 +1244,7 @@ namespace RdkShell
         gLastKeyMetadata = metadata;
         gLastKeyEventTime = currentTime;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
-        gLastKeyRepeateTime = 0.0;
+        gLastKeyRepeatTime = 0.0;
 
         if ((keycode != 0) && ((keycode == gPowerKeyCode) || ((gFrontPanelButtonCode != 0) && (keycode == gFrontPanelButtonCode))) && (gPowerKeyReleaseReceived == false))
         {
