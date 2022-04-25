@@ -22,6 +22,7 @@
 #include <string>
 #include <GLES2/gl2.h>
 #include "rdkshellrect.h"
+#include "apngutils.h"
 
 namespace RdkShell
 {
@@ -45,7 +46,9 @@ namespace RdkShell
             bool loadJpeg(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadBmp(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
+            bool loadAPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadPngFromData(const char* imageData, int32_t imageSize, unsigned char *&image, int32_t &width, int32_t &height);
+            void BlendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
             std::string mFileName;
             int32_t mX;
             int32_t mY;
@@ -59,5 +62,6 @@ namespace RdkShell
             GLint mUvLocation; 
             GLint mTextureLocation;
             GLuint mTexture;
+            APNGData mApngData;
     };
 }
