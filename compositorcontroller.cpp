@@ -88,6 +88,14 @@ namespace RdkShell
         std::shared_ptr<RdkShell::Image> image;
     };
 
+    struct KeyRepeatConfig
+    {
+        KeyRepeatConfig() : enabled(false), initialDelay(500), repeatInterval(250) {}
+        int initialDelay;
+        int repeatInterval;
+        bool enabled;
+    };
+
     typedef std::vector<CompositorInfo> CompositorList;
     typedef CompositorList::iterator CompositorListIterator;
 
@@ -105,8 +113,10 @@ namespace RdkShell
     double gNextInactiveEventTime = RdkShell::seconds() + gInactivityIntervalInSeconds;
     uint32_t gLastKeyCode = 0;
     uint32_t gLastKeyModifiers = 0;
+    uint64_t gLastKeyMetadata = 0;
     std::shared_ptr<RdkShellEventListener> gRdkShellEventListener;
     double gLastKeyPressStartTime = 0.0;
+    double gLastKeyRepeatTime = 0.0;
     RdkShellCompositorType gRdkShellCompositorType = NESTED;
     std::shared_ptr<RdkShell::Image> gSplashImage = nullptr;
     bool gShowSplashImage = false;
@@ -126,6 +136,7 @@ namespace RdkShell
     bool gRdkShellPowerKeyReleaseOnlyEnabled = false;
     bool gIgnoreKeyInputEnabled = false;
     std::shared_ptr<Cursor> gCursor = nullptr;
+    KeyRepeatConfig gKeyRepeatConfig;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -373,6 +384,34 @@ namespace RdkShell
             break;
           }
           compositorIterator++;
+        }
+    }
+
+    void updateKeyRepeat()
+    {
+        if (gKeyRepeatConfig.enabled)
+        {
+            if (gLastKeyPressStartTime > 0.0)
+            {
+                double currentTime = RdkShell::seconds();
+                if (gLastKeyRepeatTime == 0.0)
+                {
+                    if ((currentTime - gLastKeyPressStartTime) * 1000.0 > gKeyRepeatConfig.initialDelay)
+                    {
+                        CompositorController::onKeyPress(gLastKeyCode, gLastKeyModifiers, gLastKeyMetadata);
+                        gLastKeyRepeatTime = currentTime;
+                    }
+                }
+                else
+                {
+                    if ((currentTime - gLastKeyRepeatTime) * 1000.0 > gKeyRepeatConfig.repeatInterval)
+                    {
+                        CompositorController::onKeyPress(gLastKeyCode, gLastKeyModifiers, gLastKeyMetadata);
+                        gLastKeyRepeatTime = currentTime;
+                    }
+                }
+
+            }
         }
     }
 
@@ -1202,8 +1241,10 @@ namespace RdkShell
         }
         gLastKeyCode = keycode;
         gLastKeyModifiers = flags;
+        gLastKeyMetadata = metadata;
         gLastKeyEventTime = currentTime;
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
+        gLastKeyRepeatTime = 0.0;
 
         if ((keycode != 0) && ((keycode == gPowerKeyCode) || ((gFrontPanelButtonCode != 0) && (keycode == gFrontPanelButtonCode))) && (gPowerKeyReleaseReceived == false))
         {
@@ -1607,6 +1648,8 @@ namespace RdkShell
     {
         resolveWaitingEasterEggs();
         RdkShell::Animator::instance()->animate();
+        updateKeyRepeat();
+
         if (gEnableInactivityReporting)
         {
             double currentTime = RdkShell::seconds();
@@ -2376,5 +2419,15 @@ namespace RdkShell
         {
             return false;
         }
+    }
+
+    void CompositorController::setKeyRepeatConfig(bool enabled, int32_t initialDelay, int32_t repeatInterval)
+    {
+        gKeyRepeatConfig.enabled = enabled;
+        gKeyRepeatConfig.initialDelay = initialDelay;
+        gKeyRepeatConfig.repeatInterval = repeatInterval;
+
+        Logger::log(LogLevel::Information, "setKeyRepeatConfig enabled: %d, initialDelay: %d, repeatInterval: %d",
+            enabled, initialDelay, repeatInterval);
     }
 }

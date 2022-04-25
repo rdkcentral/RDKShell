@@ -125,6 +125,7 @@ namespace RdkShell
             static bool hideCursor();
             static bool setCursorSize(uint32_t width, uint32_t height);
             static bool getCursorSize(uint32_t& width, uint32_t& height);
+            static void setKeyRepeatConfig(bool enabled, int32_t initialDelay, int32_t repeatInterval);
     };
 }
 
