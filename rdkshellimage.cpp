@@ -701,6 +701,8 @@ namespace RdkShell
         return true;
     }
 
+    //Based on pxCore, Copyright 2005-2018 John Robinson
+    //Licensed under the Apache License, Version 2.0
     void Image::BlendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
     {
         unsigned int i, j;
@@ -734,6 +736,8 @@ namespace RdkShell
         }
     }
     
+    //Based on pxCore, Copyright 2005-2018 John Robinson
+    //Licensed under the Apache License, Version 2.0
     bool Image::loadAPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height)
     {
         FILE *file = fopen(fileName.c_str(), "rb");

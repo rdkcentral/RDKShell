@@ -170,6 +170,8 @@ namespace RdkShell
         return Rectangle(0, 0, width(), height());
     }
 
+    //Based on pxCore, Copyright 2005-2018 John Robinson
+    //Licensed under the Apache License, Version 2.0
     void FrameData::blit(FrameData& b, int32_t destinationLeft, int32_t destinationTop,
                      int32_t destinationWidth, int32_t destinationHeight,
                      int32_t sourceLeft, int32_t sourceTop)
