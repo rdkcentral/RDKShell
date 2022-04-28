@@ -701,8 +701,6 @@ namespace RdkShell
         return true;
     }
 
-    //Based on pxCore, Copyright 2005-2018 John Robinson
-    //Licensed under the Apache License, Version 2.0
     void Image::BlendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
     {
         unsigned int i, j;
