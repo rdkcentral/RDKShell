@@ -258,27 +258,28 @@ namespace RdkShell
     
     bool interceptKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
-      bool ret = false;
-      if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keycode))
-      {
-        for (int i=0; i<gKeyInterceptInfoMap[keycode].size(); i++) {
-          struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
-          if (info.flags == flags)
-          {
-            Logger::log(Debug, "Key %d intercepted by client %s", keycode, info.compositorInfo.name.c_str());
-            if (isPressed)
+        bool ret = false;
+        if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keycode))
+        {
+            for (int i=0; i<gKeyInterceptInfoMap[keycode].size(); i++)
             {
-              info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
+                struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
+                if (info.flags == flags && info.compositorInfo.compositor->getInputEventsEnabled())
+                {
+                    Logger::log(Debug, "Key %d intercepted by client %s", keycode, info.compositorInfo.name.c_str());
+                    if (isPressed)
+                    {
+                        info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
+                    }
+                    else
+                    {
+                        info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
+                    }
+                    ret = true;
+                }
             }
-            else
-            {
-              info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
-            }
-            ret = true;
-          }
         }
-      }
-      return ret;
+        return ret;
     }
 
     void evaluateKeyListeners(struct CompositorInfo& compositor, uint32_t keycode, uint32_t flags, bool& foundlistener, bool& activate, bool& propagate)
@@ -332,6 +333,12 @@ namespace RdkShell
         bool isFocusedCompositor = true;
         while (compositorIterator != gCompositorList.end())
         {
+          if (!compositorIterator->compositor->getInputEventsEnabled())
+          {
+              compositorIterator++;
+              continue;
+          }
+
           #ifdef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
           if (compositorIterator->name == focusedCompositorName)
           {
@@ -2367,6 +2374,17 @@ namespace RdkShell
         data = (uint8_t *)malloc(size);
         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
         return true;
+    }
+
+    bool CompositorController::enableInputEvents(const std::string& client, bool enable)
+    {
+        CompositorListIterator it;
+        if (getCompositorInfo(client, it))
+        {
+            it->compositor->enableInputEvents(enable);
+            return true;
+        }
+        return false;
     }
 
     bool CompositorController::showCursor()
