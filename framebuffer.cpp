@@ -31,6 +31,9 @@ namespace RdkShell
         Logger::log(LogLevel::Information, "RdkShell creating FrameBuffer resolution: %d x %d", width, height);
 
         glGenFramebuffers(1, &mFboId);
+
+        GLint prevFbo;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFbo);
         glBindFramebuffer(GL_FRAMEBUFFER, mFboId);
 
         glGenTextures(1, &mTextureId);
@@ -57,7 +60,7 @@ namespace RdkShell
             Logger::log(LogLevel::Error, "%s: glCheckFramebufferStatus() = %X\n", __func__, valid);
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, prevFbo);
     }
 
     FrameBuffer::~FrameBuffer()
@@ -68,11 +71,12 @@ namespace RdkShell
 
     void FrameBuffer::bind()
     {
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &mPrevFbo);
         glBindFramebuffer(GL_FRAMEBUFFER, mFboId);
     }
 
     void FrameBuffer::unbind()
     {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, mPrevFbo);
     }
 }

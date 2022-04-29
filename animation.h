@@ -52,7 +52,7 @@ namespace RdkShell
         }
 
         std::string name;
-        std::shared_ptr<RdkCompositor> compositor;
+        std::shared_ptr<Node> compositor;
         int32_t startX;
         int32_t startY;
         uint32_t startWidth;

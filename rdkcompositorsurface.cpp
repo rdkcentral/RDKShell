@@ -147,6 +147,8 @@ namespace RdkShell
     bool RdkCompositorSurface::createDisplay(const std::string& displayName, const std::string& clientName,
         uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight)
     {
+        mName = clientName;
+        
         if (width > 0 && height > 0)
         {
             mWidth = width;

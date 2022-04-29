@@ -2,7 +2,7 @@
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
 *
-* Copyright 2021 RDK Management
+* Copyright 2020 RDK Management
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,32 +17,15 @@
 * limitations under the License.
 **/
 
-#pragma once
-
-#include <GLES2/gl2.h>
+#include "node.h"
+#include "group.h"
 
 namespace RdkShell
 {
-    class FrameBuffer
-    {
-    public:
-        FrameBuffer(int width, int height);
-        ~FrameBuffer();
 
-        int width() const { return mWidth; }
-        int height() const { return mHeight; }
+std::shared_ptr<Group> Node::root()
+{
+    return mParent.expired() ? group() : mParent.lock()->root();
+}
 
-        GLuint texture() const { return mTextureId; }
-
-        void bind();
-        void unbind();
-
-    private:
-        int mWidth;
-        int mHeight;
-
-        GLuint mTextureId;
-        GLuint mFboId;
-        GLint mPrevFbo;
-    };
 }

@@ -127,6 +127,12 @@ namespace RdkShell
             static bool setCursorSize(uint32_t width, uint32_t height);
             static bool getCursorSize(uint32_t& width, uint32_t& height);
             static void setKeyRepeatConfig(bool enabled, int32_t initialDelay, int32_t repeatInterval);
+            
+            static bool createGroup(const std::string& groupName, const std::vector<std::string>& clients);
+            static bool getGroups(std::map<std::string, std::vector<std::string>>& groups);
+            static bool deleteGroup(const std::string& groupName);
+            static bool setGroup(const std::string& groupName, const std::vector<std::string>& clients);
+            static bool removeFromGroup(const std::string& groupName, const std::vector<std::string>& clients);
     };
 }
 

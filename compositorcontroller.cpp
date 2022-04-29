@@ -32,6 +32,7 @@
 #include "rdkshellimage.h"
 #include "rdkshellrect.h"
 #include "cursor.h"
+#include "scene.h"
 #include <iostream>
 #include <map>
 #include <ctime>
@@ -39,39 +40,18 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
 #define RDKSHELL_WILDCARD_KEY_CODE 255
 #define RDKSHELL_WATERMARK_ID 65536
 
 namespace RdkShell
 {
-    struct KeyListenerInfo
-    {
-        KeyListenerInfo() : keyCode(-1), flags(0), activate(false), propagate(true) {}
-        uint32_t keyCode;
-        uint32_t flags;
-        bool activate;
-        bool propagate;
-    };
-
-    struct CompositorInfo
-    {
-        CompositorInfo() : name(), compositor(nullptr), eventListeners(), mimeType() {}
-        std::string name;
-        std::shared_ptr<RdkCompositor> compositor;
-        std::map<uint32_t, std::vector<KeyListenerInfo>> keyListenerInfo;
-        std::vector<std::shared_ptr<RdkShellEventListener>> eventListeners;
-        std::string mimeType;
-	bool autoDestroy;
-    };
-
     struct KeyInterceptInfo
     {
-        KeyInterceptInfo() : keyCode(-1), flags(0), compositorInfo() {}
+        KeyInterceptInfo() : keyCode(-1), flags(0), compositor(nullptr) {}
         uint32_t keyCode;
         uint32_t flags;
-        struct CompositorInfo compositorInfo;
+        std::shared_ptr<RdkCompositor> compositor;
     };
 
     enum RdkShellCompositorType
@@ -96,14 +76,9 @@ namespace RdkShell
         bool enabled;
     };
 
-    typedef std::vector<CompositorInfo> CompositorList;
-    typedef CompositorList::iterator CompositorListIterator;
-
-    CompositorList gCompositorList;
-    CompositorList gTopmostCompositorList;
-    CompositorInfo gFocusedCompositor;
+    std::shared_ptr<RdkCompositor> gFocusedCompositor;
     std::vector<std::shared_ptr<RdkCompositor>> gPendingKeyUpListeners;
-    CompositorList gDeletedCompositors;
+    std::vector<std::shared_ptr<RdkCompositor>> gDeletedCompositors;
 
     static std::map<uint32_t, std::vector<KeyInterceptInfo>> gKeyInterceptInfoMap;
 
@@ -137,6 +112,7 @@ namespace RdkShell
     bool gIgnoreKeyInputEnabled = false;
     std::shared_ptr<Cursor> gCursor = nullptr;
     KeyRepeatConfig gKeyRepeatConfig;
+    Scene gScene;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -144,182 +120,62 @@ namespace RdkShell
         std::transform(displayName.begin(), displayName.end(), displayName.begin(), [](unsigned char c){ return std::tolower(c); });
         return displayName;
     }
-
-    /*
-        getCompositorInfo searches gCompositorList and gTopmostCompositoList for compositor info with
-        client name equal to clientName parameter.
-        Returns true if compositor info was found in any of the lists and false otherwise.
-
-        Iterator for found compositor info is stored in it parameter foundIt.
-
-        If compositorList parameter is not null, it will store the compositor list in which
-        compositor info was found.
-    */
-    bool getCompositorInfo(const std::string& clientName, CompositorListIterator& foundIt,
-        CompositorList** compositorList = nullptr)
-    {
-        std::string stdClientName = standardizeName(clientName);
-
-        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
-        {
-            if (it->name == stdClientName)
-            {
-                foundIt = it;
-
-                if (compositorList)
-                    *compositorList = &gCompositorList;
-                return true;
-            }
-        }
-
-        for (auto it = gTopmostCompositorList.begin(); it != gTopmostCompositorList.end(); ++it)
-        {
-            if (it->name == stdClientName)
-            {
-                foundIt = it;
-
-                if (compositorList)
-                    *compositorList = &gTopmostCompositorList;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /*
-        getCompositorInfo searches gCompositorList and gTopmostCompositoList for compositor info with
-        RdkCompositor equal to compositor parameter.
-        Returns true if compositor info was found in any of the lists and false otherwise.
-    */
-    bool getCompositorInfo(const RdkCompositor* compositor, CompositorListIterator& foundIt)
-    {
-        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
-        {
-            if (it->compositor.get() == compositor)
-            {
-                foundIt = it;
-                return true;
-            }
-        }
-
-        for (auto it = gTopmostCompositorList.begin(); it != gTopmostCompositorList.end(); ++it)
-        {
-            if (it->compositor.get() == compositor)
-            {
-                foundIt = it;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    size_t getNumCompositorInfo()
-    {
-        return gCompositorList.size() + gTopmostCompositorList.size();
-    }
-
-    void sendApplicationEvent(std::shared_ptr<RdkShellEventListener>& listener, const std::string& eventName, const std::string& client)
-    {
-         if (eventName.compare(RDKSHELL_EVENT_APPLICATION_LAUNCHED) == 0)
-         {
-                 listener->onApplicationLaunched(client);
-         }
-         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_TERMINATED) == 0)
-         {
-                 listener->onApplicationTerminated(client);
-         }
-         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0)
-         {
-                 listener->onApplicationConnected(client);
-         }
-         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0)
-         {
-                 listener->onApplicationDisconnected(client);
-         }
-         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_FIRST_FRAME) == 0)
-         {
-                 listener->onApplicationFirstFrame(client);
-         }
-         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_SUSPENDED) == 0)
-         {
-                 listener->onApplicationSuspended(client);
-         }
-         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_RESUMED) == 0)
-         {
-                 listener->onApplicationResumed(client);
-         }
-         else if(eventName.compare(RDKSHELL_EVENT_SIZE_CHANGE_COMPLETE) == 0)
-         {
-                 listener->onSizeChangeComplete(client);
-         }
-    }
     
     bool interceptKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
-        bool ret = false;
-        if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keycode))
+        if (gKeyInterceptInfoMap.find(keycode) == gKeyInterceptInfoMap.end())
         {
-            for (int i=0; i<gKeyInterceptInfoMap[keycode].size(); i++)
+            Logger::log(Debug, "No intercepts found for key %d %s", keycode, isPressed ? "press" : "release");
+            return false;
+        }
+
+        bool intercepted = false;
+        auto& intercepts = gKeyInterceptInfoMap[keycode];
+
+        for (auto& intercept : intercepts)
+        {
+            auto& compositor = intercept.compositor;
+            if (intercept.flags == flags && compositor->getInputEventsEnabled())
             {
-                struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
-                if (info.flags == flags && info.compositorInfo.compositor->getInputEventsEnabled())
+                intercepted = true;
+                Logger::log(Debug, "Key %d intercepted by client %s", keycode, compositor->name().c_str());
+
+                if (isPressed)
                 {
-                    Logger::log(Debug, "Key %d intercepted by client %s", keycode, info.compositorInfo.name.c_str());
-                    if (isPressed)
-                    {
-                        info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
-                    }
-                    else
-                    {
-                        info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
-                    }
-                    ret = true;
+                    compositor->onKeyPress(keycode, flags, metadata);
+                }
+                else
+                {
+                    compositor->onKeyRelease(keycode, flags, metadata);
                 }
             }
         }
-        return ret;
+
+        return intercepted;
     }
 
-    void evaluateKeyListeners(struct CompositorInfo& compositor, uint32_t keycode, uint32_t flags, bool& foundlistener, bool& activate, bool& propagate)
-    {
-        std::map<uint32_t, std::vector<KeyListenerInfo>>& keyListenerInfo = compositor.keyListenerInfo;
 
-        if (keyListenerInfo.end() != keyListenerInfo.find(keycode))
-        {
-          for (size_t i=0; i<keyListenerInfo[keycode].size(); i++)
-          {
-            struct KeyListenerInfo& info = keyListenerInfo[keycode][i];
-
-            if (info.flags == flags)
-            {
-              foundlistener  = true;
-              activate = info.activate;
-              propagate = info.propagate;
-              break;
-            }
-          }
-        }
-
-        // handle wildcard if no listener found
-        if ((false == foundlistener) && (keyListenerInfo.find(RDKSHELL_ANY_KEY) != keyListenerInfo.end()))
-        {
-          struct KeyListenerInfo& info = keyListenerInfo[RDKSHELL_ANY_KEY][0];
-          foundlistener  = true;
-          activate = info.activate;
-          propagate = info.propagate;
-        }
-    }
-
+    // NOTE: This is really difficult to understand
     void bubbleKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
-        std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
-        std::string focusedCompositorName = gFocusedCompositor.name;
-        #ifndef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
-        for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
+        if (isPressed)
         {
-          if (compositorIterator->name == gFocusedCompositor.name)
+            gFocusedCompositor->onKeyPress(keycode, flags, metadata);
+            // NOTE: gPendingKeyUpListeners?
+        }
+        else
+        {
+            gFocusedCompositor->onKeyRelease(keycode, flags, metadata);
+        }
+
+        auto nodes = gScene.clients();
+        auto nodeIt = nodes.rbegin();
+
+        #ifndef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
+        // NOTE: Start with the focused compositor
+        for (; nodeIt != nodes.rend(); nodeIt++)
+        {
+          if (*nodeIt == gFocusedCompositor)
           {
             break;
           }
@@ -331,18 +187,18 @@ namespace RdkShell
         bool activateCompositor = false, propagateKey = true, foundListener = false;
         bool stopPropagation = false;
         bool isFocusedCompositor = true;
-        while (compositorIterator != gCompositorList.end())
+        for (; nodeIt != nodes.rend(); nodeIt++)
         {
-          if (!compositorIterator->compositor->getInputEventsEnabled())
-          {
-              compositorIterator++;
-              continue;
-          }
+            auto compositor = (*nodeIt)->compositor();
+            
+            if (compositor->getInputEventsEnabled())
+            {
+                continue;
+            }
 
           #ifdef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
-          if (compositorIterator->name == focusedCompositorName)
+          if (compositor == gFocusedCompositor) // NOTE: Start from the top, but act on the focused compositor first, then skip it later
           {
-              compositorIterator++;
               continue;
           }
           isFocusedCompositor = false;
@@ -350,39 +206,37 @@ namespace RdkShell
           activateCompositor = false;
           propagateKey = true;
           foundListener = false;
-          evaluateKeyListeners(*compositorIterator, keycode, flags, foundListener, activateCompositor, propagateKey);
 
-          if ((false == isFocusedCompositor) && (true == foundListener))
+          compositor->evaluateKeyListeners(keycode, flags, foundListener, activateCompositor, propagateKey);
+
+          if (foundListener && !isFocusedCompositor)
           {
-            Logger::log(Debug, "Key %d sent to listener %s", keycode, compositorIterator->name.c_str());
+            Logger::log(Debug, "Key %d sent to listener %s", keycode, compositor->name().c_str());
             if (isPressed)
             {
-              compositorIterator->compositor->onKeyPress(keycode, flags, metadata);
-              gPendingKeyUpListeners.push_back(compositorIterator->compositor);
+              compositor->onKeyPress(keycode, flags, metadata);
+              gPendingKeyUpListeners.push_back(compositor);
             }
             else
             {
-              compositorIterator->compositor->onKeyRelease(keycode, flags, metadata);
+              compositor->onKeyRelease(keycode, flags, metadata);
             }
           }
           isFocusedCompositor = false;
-          if (activateCompositor)
+          if (activateCompositor && gFocusedCompositor != compositor)
           {
-              if (gFocusedCompositor.name != compositorIterator->name)
-              {
-                  std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-                  Logger::log(LogLevel::Information,  "rdkshell_focus bubbleKey: the focused client is now %s . previous: %s", (*compositorIterator).name.c_str(), previousFocusedClient.c_str());
-                  if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
-                  {
-                      gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
-                  }
-                  gFocusedCompositor = *compositorIterator;
+                if (gFocusedCompositor->isKeyPressed())
+                {
+                    gPendingKeyUpListeners.push_back(gFocusedCompositor);
+                }
+                
+                Logger::log(LogLevel::Information,  "rdkshell_focus bubbleKey: the focused client is now %s . previous: %s", compositor->name().c_str(), gFocusedCompositor->name().c_str());
+                gFocusedCompositor = compositor;
 
-                  if (gRdkShellEventListener)
-                  {
-                      gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
-                  }
-              }
+                if (gRdkShellEventListener)
+                {
+                    gRdkShellEventListener->onApplicationActivated(compositor->name());
+                }
           }
 
           //propagate is false, stopping here
@@ -390,7 +244,6 @@ namespace RdkShell
           {
             break;
           }
-          compositorIterator++;
         }
     }
 
@@ -420,30 +273,6 @@ namespace RdkShell
 
             }
         }
-    }
-
-    std::shared_ptr<RdkCompositor> CompositorController::getCompositor(const std::string& displayName)
-    {
-        auto lambda = [displayName](CompositorInfo& info)
-        {
-            std::string compositorDisplayName;
-            info.compositor->displayName(compositorDisplayName);
-            return compositorDisplayName == displayName;
-        };
-
-        auto it = std::find_if(gCompositorList.begin(), gCompositorList.end(), lambda);
-
-        if (it == gCompositorList.end())
-        {
-            it = std::find_if(gTopmostCompositorList.begin(), gTopmostCompositorList.end(), lambda);
-
-            if (it == gTopmostCompositorList.end())
-            {
-                return nullptr;
-            }
-        }
-
-        return it->compositor;
     }
 
     void CompositorController::initialize()
@@ -549,206 +378,198 @@ namespace RdkShell
 
     bool CompositorController::moveToFront(const std::string& client)
     {
-        CompositorListIterator it;
-        CompositorList* compositorInfoList = nullptr;
-        if (!getCompositorInfo(client, it, &compositorInfoList))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot move to front ", client.c_str());
+            Logger::log(LogLevel::Information,  "%s not found and cannot move to front", client.c_str());
             return false;
         }
-
-        if (it == compositorInfoList->begin())
-        {
-            Logger::log(LogLevel::Information,  "%s is already in front and cannot move to front ", client.c_str());
-            return false;
-        }
-
-        auto compositorInfo = *it;
-        compositorInfoList->erase(it);
-        compositorInfoList->insert(compositorInfoList->begin(), compositorInfo);
-
+        
+        gScene.moveToFront(node);
         return true;
     }
 
     bool CompositorController::moveToBack(const std::string& client)
     {
-        CompositorListIterator it;
-        CompositorList* compositorInfoList = nullptr;
-        if (!getCompositorInfo(client, it, &compositorInfoList))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind ", client.c_str());
+            Logger::log(LogLevel::Information,  "%s not found and cannot be moved to back", client.c_str());
             return false;
         }
 
-        auto compositorInfo = *it;
-        compositorInfoList->erase(it);
-        compositorInfoList->push_back(compositorInfo);
-
+        gScene.moveToBack(node);
         return true;
     }
 
     bool CompositorController::moveBehind(const std::string& client, const std::string& target)
     {
-        CompositorListIterator clientIt;
-        CompositorList* clientCompositorList = nullptr;
-        if (!getCompositorInfo(client, clientIt, &clientCompositorList))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind ", client.c_str());
+            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind", client.c_str());
             return false;
         }
 
-        CompositorListIterator targetIt;
-        CompositorList* targetCompositorList = nullptr;
-        if (!getCompositorInfo(target, targetIt, &targetCompositorList))
+        auto targetNode = gScene.find(target);
+        if (!node)
         {
-            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind ", target.c_str());
+            Logger::log(LogLevel::Information,  "%s not found and cannot be moved behind", target.c_str());
             return false;
         }
 
-        if (clientCompositorList != targetCompositorList)
-        {
-            Logger::log(LogLevel::Information,  "%s and %s not on the same compositor stack ", client.c_str(), target.c_str());
-            return false;
-        }
-
-        auto compositorInfo = *clientIt;
-        targetCompositorList->erase(clientIt);
-
-        if (getCompositorInfo(target, targetIt))
-        {
-            targetCompositorList->insert(++targetIt, compositorInfo);
-            return true;
-        }
-
-        return false;
+        gScene.moveBehind(node, targetNode);
+        return true;
     }
 
     bool CompositorController::getFocused(std::string& client)
     {
-        client = "";
-        if (gFocusedCompositor.compositor)
-        {
-            client = gFocusedCompositor.name;
-        }
+        client = gFocusedCompositor ? gFocusedCompositor->name() : "";
         return true;
     }
 
     bool CompositorController::setFocus(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
-            Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", it->name.c_str(), previousFocusedClient.c_str());
-            if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
-            {
-                gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
-            }
-            gFocusedCompositor = *it;
-            return true;
+            Logger::log(Information, "Cannot focus %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot focus %s, not a compositor", client.c_str());
+            return false;
+        }
+        
+        std::string previousFocusedClient = gFocusedCompositor ? gFocusedCompositor->name() : "none";
+        Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", compositor->name().c_str(), previousFocusedClient.c_str());
+
+        if (gFocusedCompositor && gFocusedCompositor->isKeyPressed())
+        {
+            gPendingKeyUpListeners.push_back(gFocusedCompositor);
+        }
+
+        gFocusedCompositor = compositor;
+        return true;
     }
 
     bool CompositorController::kill(const std::string& client)
     {
-        CompositorListIterator it;
-        CompositorList* compositorInfoList;
-        if (getCompositorInfo(client, it, &compositorInfoList))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            std::string clientDisplayName = standardizeName(client);
-            RdkShell::Animator::instance()->stopAnimation(clientDisplayName);
+            Logger::log(Information, "Cannot kill %s, client not found", client.c_str());
+            return false;
+        }
 
-            // cleanup key intercepts
-            std::vector<std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator> emptyKeyCodeEntries;
-            std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator entry = gKeyInterceptInfoMap.begin();
-            while(entry != gKeyInterceptInfoMap.end())
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot kill %s, not a compositor", client.c_str());
+            return false;
+        }
+
+
+        std::string clientDisplayName = standardizeName(client);
+        RdkShell::Animator::instance()->stopAnimation(clientDisplayName);
+
+
+        // cleanup key intercepts
+        std::vector<std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator> emptyKeyCodeEntries;
+        std::map<uint32_t, std::vector<KeyInterceptInfo>>::iterator entry = gKeyInterceptInfoMap.begin();
+        while(entry != gKeyInterceptInfoMap.end())
+        {
+            std::vector<KeyInterceptInfo>& interceptMap = entry->second;
+            std::vector<KeyInterceptInfo>::iterator interceptMapEntry=interceptMap.begin();
+            while (interceptMapEntry != interceptMap.end())
             {
-                std::vector<KeyInterceptInfo>& interceptMap = entry->second;
-                std::vector<KeyInterceptInfo>::iterator interceptMapEntry=interceptMap.begin();
-                while (interceptMapEntry != interceptMap.end())
+                if ((*interceptMapEntry).compositor == compositor)
                 {
-                    if ((*interceptMapEntry).compositorInfo.name == clientDisplayName)
-                    {
-                        interceptMapEntry = interceptMap.erase(interceptMapEntry);
-                    }
-                    else
-                    {
-                        interceptMapEntry++;
-                    }
-                }
-                if (interceptMap.size() == 0)
-                {
-                    entry = gKeyInterceptInfoMap.erase(entry);
+                    interceptMapEntry = interceptMap.erase(interceptMapEntry);
                 }
                 else
                 {
-                    entry++;
+                    interceptMapEntry++;
                 }
             }
-
-            // cleanup key listeners
-            for (std::map<uint32_t, std::vector<KeyListenerInfo>>::iterator iter = it->keyListenerInfo.begin(); iter != it->keyListenerInfo.end(); iter++)
+            if (interceptMap.size() == 0)
             {
-                iter->second.clear();
+                entry = gKeyInterceptInfoMap.erase(entry);
             }
-            it->keyListenerInfo.clear();
-            it->eventListeners.clear();
-            std::cout << "adding " << clientDisplayName << " to the deleted list\n";
-            gDeletedCompositors.push_back(*it);
-            compositorInfoList->erase(it);
-            if (gFocusedCompositor.name == clientDisplayName)
+            else
             {
-                // this may be changed to next available compositor
-                gFocusedCompositor.name = "";
-                gFocusedCompositor.compositor = nullptr;
-                Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName.c_str());
+                entry++;
             }
-            return true;
         }
-        return false;
+
+        // TODO
+        // cleanup key listeners
+        compositor->removeAllKeyListeners();
+        compositor->removeAllEventListeners();
+
+        std::cout << "adding " << clientDisplayName << " to the deleted list\n";
+        gDeletedCompositors.push_back(compositor);
+        gScene.remove(compositor); // NOTE: what about other references?
+
+        if (gFocusedCompositor == compositor)
+        {
+            // this may be changed to next available compositor
+            gFocusedCompositor = nullptr;
+            Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName.c_str());
+        }
+        return true;
     }
 
     bool CompositorController::addKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
-        //Logger::log(LogLevel::Information,  "key intercept added " << keyCode << " flags " << flags << std::endl;
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            struct KeyInterceptInfo info;
-            info.keyCode = keyCode;
-            info.flags = flags;
-            info.compositorInfo = *it;
-            if (gKeyInterceptInfoMap.end() == gKeyInterceptInfoMap.find(keyCode))
-            {
-                gKeyInterceptInfoMap[keyCode] = std::vector<KeyInterceptInfo>();
-                gKeyInterceptInfoMap[keyCode].push_back(info);
-            }
-            else
-            {
-                std::string clientDisplayName = standardizeName(client);
-                bool isEntryAvailable = false;
-                for (int i=0; i<gKeyInterceptInfoMap[keyCode].size(); i++)
-                {
-                    struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keyCode][i];
-                    if ((info.flags == flags) && (info.compositorInfo.name == clientDisplayName))
-                    {
-                        isEntryAvailable = true;
-                        break;
-                    }
-                }
-                if (false == isEntryAvailable)
-                {
-                    gKeyInterceptInfoMap[keyCode].push_back(info);
-                }
-            }
-            return true;
+            Logger::log(Information, "Cannot add key intercept for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot add key intercept for %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        // Logger::log(LogLevel::Information,  "key intercept added " << keyCode << " flags " << flags << std::endl;
+
+        struct KeyInterceptInfo info;
+        info.keyCode = keyCode;
+        info.flags = flags;
+        info.compositor = compositor;
+
+        auto& intercepts = gKeyInterceptInfoMap[keyCode];
+        std::string clientDisplayName = standardizeName(client);
+        
+        bool found = false;
+        for (auto& intercept : intercepts)
+        {
+            if (intercept.flags == flags && compositor->name() == clientDisplayName)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            intercepts.push_back(info);
+        }
+        
+        return true;
     }
 
     bool CompositorController::removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        // TODO
         if (keyCode == RDKSHELL_WILDCARD_KEY_CODE)
         {
             std::string clientDisplayName = standardizeName(client);
@@ -758,7 +579,7 @@ namespace RdkShell
                 std::vector<KeyInterceptInfo>::iterator interceptInfoIterator = interceptInfo.begin();
                 while(interceptInfoIterator != interceptInfo.end())
                 {
-                    if ((*interceptInfoIterator).compositorInfo.name == clientDisplayName)
+                    if ((*interceptInfoIterator).compositor->name() == clientDisplayName)
                     {
                          interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
                     }
@@ -780,9 +601,9 @@ namespace RdkShell
               {
                   if ((*entry).flags == flags)
                   {
-                    if (((*entry).compositorInfo.compositor) && ((*entry).compositorInfo.compositor->isKeyPressed()))
+                    if (entry->compositor->isKeyPressed())
                     {
-                        gPendingKeyUpListeners.push_back((*entry).compositorInfo.compositor);
+                        gPendingKeyUpListeners.push_back(entry->compositor);
                     }
                     entry = gKeyInterceptInfoMap[keyCode].erase(entry);
                   }
@@ -800,42 +621,49 @@ namespace RdkShell
         }
 
         std::string clientDisplayName = standardizeName(client);
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+
+        auto node = gScene.find(clientDisplayName);
+        if (!node)
         {
-            if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keyCode))
+            return false; // TODO: logging
+        }
+
+
+        if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keyCode))
+        {
+            bool isEntryAvailable = false;
+            std::vector<KeyInterceptInfo>::iterator entryPos = gKeyInterceptInfoMap[keyCode].end();
+            for (std::vector<KeyInterceptInfo>::iterator it = gKeyInterceptInfoMap[keyCode].begin() ; it != gKeyInterceptInfoMap[keyCode].end(); ++it)
             {
-                bool isEntryAvailable = false;
-                std::vector<KeyInterceptInfo>::iterator entryPos = gKeyInterceptInfoMap[keyCode].end();
-                for (std::vector<KeyInterceptInfo>::iterator it = gKeyInterceptInfoMap[keyCode].begin() ; it != gKeyInterceptInfoMap[keyCode].end(); ++it)
+                if (it->flags == flags && it->compositor->name() == clientDisplayName)
                 {
-                    if (((*it).flags == flags) && ((*it).compositorInfo.name == clientDisplayName))
-                    {
-                        entryPos = it;
-                        isEntryAvailable = true;
-                        break;
-                    }
-                }
-                if (true == isEntryAvailable)
-                {
-                    if (((*entryPos).compositorInfo.compositor) && ((*entryPos).compositorInfo.compositor->isKeyPressed()))
-                    {
-                        gPendingKeyUpListeners.push_back((*entryPos).compositorInfo.compositor);
-                    }
-                    gKeyInterceptInfoMap[keyCode].erase(entryPos);
-                    if (gKeyInterceptInfoMap[keyCode].size() == 0)
-                    {
-                        gKeyInterceptInfoMap.erase(keyCode);
-                    }
+                    entryPos = it;
+                    isEntryAvailable = true;
+                    break;
                 }
             }
+            if (true == isEntryAvailable)
+            {
+                if (entryPos->compositor->isKeyPressed())
+                {
+                    gPendingKeyUpListeners.push_back(entryPos->compositor);
+                }
+                gKeyInterceptInfoMap[keyCode].erase(entryPos);
+                if (gKeyInterceptInfoMap[keyCode].size() == 0)
+                {
+                    gKeyInterceptInfoMap.erase(keyCode);
+                }
+            }
+        
             return true;
         }
+
         return false;
     }
 
     bool CompositorController::addKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties)
     {
+        // TODO
         bool activate = false, propagate = true;
         for ( const auto &property : listenerProperties)
         {
@@ -848,45 +676,25 @@ namespace RdkShell
             propagate = property.second.toBoolean();
           }
         }
+
         Logger::log(LogLevel::Information,  "key listener added client: %s activate: %d propagate: %d RDKShell keyCode: %d flags: %d", client.c_str(), activate, propagate, keyCode, flags);
 
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            struct KeyListenerInfo info;
-            info.keyCode = keyCode;
-            info.flags = flags;
-            info.activate = activate;
-            info.propagate = propagate;
-
-            if (it->keyListenerInfo.end() == it->keyListenerInfo.find(keyCode))
-            {
-                it->keyListenerInfo[keyCode] = std::vector<KeyListenerInfo>();
-                it->keyListenerInfo[keyCode].push_back(info);
-            }
-            else
-            {
-                std::vector<KeyListenerInfo>& keyListenerEntry = it->keyListenerInfo[keyCode];
-                bool isEntryAvailable = false;
-                for (int i = 0; i < keyListenerEntry.size(); i++)
-                {
-                    struct KeyListenerInfo& listenerInfo = keyListenerEntry[i];
-                    if (listenerInfo.flags == flags)
-                    {
-                        listenerInfo.activate = activate;
-                        listenerInfo.propagate = propagate;
-                        isEntryAvailable = true;
-                        break;
-                    }
-                }
-                if (false == isEntryAvailable)
-                {
-                    keyListenerEntry.push_back(info);
-                }
-            }
-            return true;
+            Logger::log(Information, "Cannot add key listener for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot add key listener for %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->addKeyListener(keyCode, flags, activate, propagate);
+        return true;
     }
 
     bool CompositorController::addNativeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties)
@@ -901,40 +709,25 @@ namespace RdkShell
 
     bool CompositorController::removeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
+        // TODO
         Logger::log(LogLevel::Information,  "key listener removed client: %s RDKShell keyCode %d flags %d", client.c_str(), keyCode, flags);
 
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            if (it->keyListenerInfo.end() != it->keyListenerInfo.find(keyCode))
-            {
-                bool isEntryAvailable = false;
-                std::vector<KeyListenerInfo>::iterator entryPos = it->keyListenerInfo[keyCode].end();
-                for (std::vector<KeyListenerInfo>::iterator iter = it->keyListenerInfo[keyCode].begin() ; iter != it->keyListenerInfo[keyCode].end(); ++iter)
-                {
-                    if ((*iter).flags == flags)
-                    {
-                        entryPos = iter;
-                        isEntryAvailable = true;
-                        break;
-                    }
-                }
-                if (true == isEntryAvailable)
-                {
-                    if ((it->compositor) && (it->compositor->isKeyPressed()))
-                    {
-                        gPendingKeyUpListeners.push_back(it->compositor);
-                    }
-                    it->keyListenerInfo[keyCode].erase(entryPos);
-                    if (it->keyListenerInfo[keyCode].size() == 0)
-                    {
-                        it->keyListenerInfo.erase(keyCode);
-                    }
-                }
-            }
-            return true;
+            Logger::log(Information, "Cannot remove key listener for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot remove key listener for %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->removeKeyListener(keyCode, flags);
+        return true;
     }
 
     bool CompositorController::removeNativeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
@@ -947,6 +740,7 @@ namespace RdkShell
         return CompositorController::removeKeyListener(client, mappedKeyCode, mappedFlags);
     }
 
+    // NOTE: doesn't update pending keys
     bool CompositorController::removeAllKeyIntercepts()
     {
         for (auto it = gKeyInterceptInfoMap.begin(); it != gKeyInterceptInfoMap.end(); ++it)
@@ -957,45 +751,57 @@ namespace RdkShell
         return true;
     }
 
+    // NOTE: same as above
     bool CompositorController::removeAllKeyListeners()
     {
-        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
+        auto clients = gScene.clients();
+
+        for (auto& client : clients)
         {
-            for (auto keyListener = it->keyListenerInfo.begin(); keyListener != it->keyListenerInfo.end(); ++keyListener)
-            {
-                keyListener->second.clear();
-            }
-            it->keyListenerInfo.clear();
+            client->compositor()->removeAllKeyListeners();
         }
+
         return true;
     }
 
     bool CompositorController::addKeyMetadataListener(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            if (it->compositor != nullptr)
-            {
-                it->compositor->setKeyMetadataEnabled(true);
-                return true;
-            }
+            Logger::log(Information, "Cannot add key metadata listener for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot add key metadata listener for %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->setKeyMetadataEnabled(true);
+        return true;
     }
 
     bool CompositorController::removeKeyMetadataListener(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            if (it->compositor != nullptr)
-            {
-                it->compositor->setKeyMetadataEnabled(false);
-                return true;
-            }
+            Logger::log(Information, "Cannot remove key metadata listener for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot remove key metadata listener for %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->setKeyMetadataEnabled(false);
+        return true;
     }
 
     bool CompositorController::injectKey(const uint32_t& keyCode, const uint32_t& flags)
@@ -1023,22 +829,26 @@ namespace RdkShell
         {
             CompositorController::onKeyPress(code, modifiers, 0, false);
             CompositorController::onKeyRelease(code, modifiers, 0, false);
-            ret = true;
+            return true;
         }
-        else
+        
+        auto node = gScene.find(client);
+        if (!node)
         {
-            CompositorListIterator it;
-            if (getCompositorInfo(client, it))
-            {
-                if (it->compositor != nullptr)
-                {
-                    it->compositor->onKeyPress(code, modifiers, 0);
-                    it->compositor->onKeyRelease(code, modifiers, 0);
-                    ret = true;
-                }
-            }
+            Logger::log(Information, "Cannot generate key for %s, client not found", client.c_str());
+            return false;
         }
-        return ret;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot generate key for %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->onKeyPress(code, modifiers, 0);
+        compositor->onKeyRelease(code, modifiers, 0);        
+        return true;
     }
 
     bool CompositorController::getScreenResolution(uint32_t &width, uint32_t &height)
@@ -1056,185 +866,183 @@ namespace RdkShell
     bool CompositorController::getClients(std::vector<std::string>& clients)
     {
         clients.clear();
-
-        for (const auto &client : gTopmostCompositorList)
+        auto nodes = gScene.clients();
+        
+        for (auto it = nodes.rbegin(); it != nodes.rend(); it++)
         {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
+            clients.push_back((*it)->name());
         }
 
-        for ( const auto &client : gCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
         return true;
     }
 
     bool CompositorController::getZOrder(std::vector<std::string>& clients)
     {
-        clients.clear();
-
-        for (const auto &client : gTopmostCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
-
-        for (const auto &client : gCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
-        return true;
+        return getClients(clients);
     }
 
     bool CompositorController::getBounds(const std::string& client, uint32_t &x, uint32_t &y, uint32_t &width, uint32_t &height)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            int32_t xPos = 0;
-            int32_t yPos = 0;
-            it->compositor->position(xPos, yPos);
-            it->compositor->size(width, height);
-            x = (uint32_t)xPos;
-            y = (uint32_t)yPos;
-            return true;
+            Logger::log(Information, "Cannot get bounds for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        int32_t _x, _y;
+        node->position(_x, _y);
+        x = (uint32_t) _x;
+        y = (uint32_t) _y;
+        
+        node->size(width, height);
+        return true;
     }
     bool CompositorController::setBounds(const std::string& client, const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->setPosition(x,y);
-            it->compositor->setSize(width, height);
-            return true;
+            Logger::log(Information, "Cannot set bounds for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        node->setPosition(x, y);
+        node->setSize(width, height);
+        return true;
     }
 
     bool CompositorController::getVisibility(const std::string& client, bool& visible)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->visible(visible);
-            return true;
+            Logger::log(Information, "Cannot get visibility for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        node->visible(visible);
+        return true;
     }
 
     bool CompositorController::setVisibility(const std::string& client, const bool visible)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->setVisible(visible);
-            return true;
+            Logger::log(Information, "Cannot set visibility for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        node->setVisible(visible);
+        return true;
     }
 
     bool CompositorController::getOpacity(const std::string& client, unsigned int& opacity)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            double o = 1.0;
-            it->compositor->opacity(o);
-            if (o <= 0.0)
-            {
-                o = 0.0;
-            }
-            opacity = (unsigned int)(o * 100);
-            if (opacity > 100)
-            {
-                    opacity = 100;
-            }
-            return true;
+            Logger::log(Information, "Cannot get opacity for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        double o;
+        node->opacity(o);
+
+        opacity = (unsigned int)(o * 100);
+        opacity = opacity < 0 ? 0 
+                : opacity > 100 ? 100 
+                : opacity;
+
+        return true;
     }
 
     bool CompositorController::setOpacity(const std::string& client, const unsigned int opacity)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            double o = (double)opacity / 100.0;
-            it->compositor->setOpacity(o);
-            return true;
+            Logger::log(Information, "Cannot set opacity for %s, client not found", client.c_str());
+            return false;
         }
+
+        const double o = (double) opacity / 100.0;
+        node->setOpacity(o);
         return true;
     }
 
 
     bool CompositorController::getScale(const std::string& client, double &scaleX, double &scaleY)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->scale(scaleX, scaleY);
-            return true;
+            Logger::log(Information, "Cannot get scale for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        node->scale(scaleX, scaleY);
+        return true;
     }
 
     bool CompositorController::setScale(const std::string& client, double scaleX, double scaleY)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->setScale(scaleX, scaleY);
-            return true;
+            Logger::log(Information, "Cannot set scale for %s, client not found", client.c_str());
+            return false;
         }
+
+        node->setScale(scaleX, scaleY);
         return true;
     }
 
     bool CompositorController::getHolePunch(const std::string& client, bool& holePunch)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->holePunch(holePunch);
-            return true;
+            Logger::log(Information, "Cannot get hole punch for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        node->holePunch(holePunch);
+        return true;
     }
 
     bool CompositorController::setHolePunch(const std::string& client, const bool holePunch)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->setHolePunch(holePunch);
-            RdkShell::Logger::log(RdkShell::LogLevel::Information, "hole punch for %s set to %s", client.c_str(), holePunch ? "true" : "false");
-            return true;
+            Logger::log(Information, "Cannot set hole punch for %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        node->setHolePunch(holePunch);
+        Logger::log(LogLevel::Information, "hole punch for %s set to %s", client.c_str(), holePunch ? "true" : "false");
+        return true;
     }
 
     bool CompositorController::scaleToFit(const std::string& client, const int32_t x, const int32_t y, const uint32_t width, const uint32_t height)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            if (it->compositor != nullptr)
-            {
-                uint32_t currentWidth = 0;
-                uint32_t currentHeight = 0;
-                it->compositor->size(currentWidth, currentHeight);
-
-                double scaleX = (double)width / (double)currentWidth;
-                double scaleY = (double)height / (double)currentHeight;
-
-                it->compositor->setPosition(x, y);
-                it->compositor->setScale(scaleX, scaleY);
-            }
+            Logger::log(Information, "Cannot set scale and position for %s, client not found", client.c_str());
+            return false;
         }
+
+        uint32_t currentWidth, currentHeight;
+        node->size(currentWidth, currentHeight);
+
+        const double scaleX = (double) width / (double) currentWidth;
+        const double scaleY = (double) height / (double) currentHeight;
+        
+        node->setPosition(x, y);
+        node->setScale(scaleX, scaleY);
         return true;
     }
 
@@ -1259,18 +1067,15 @@ namespace RdkShell
             return;
         }
 
-        bool isInterceptAvailable = false;
+        bool isInterceptAvailable = interceptKey(keycode, flags, metadata, true);
 
-        isInterceptAvailable = interceptKey(keycode, flags, metadata, true);
-
-        if (false == isInterceptAvailable && gFocusedCompositor.compositor)
+        if (!isInterceptAvailable && gFocusedCompositor)
         {
-            gFocusedCompositor.compositor->onKeyPress(keycode, flags, metadata);
             bubbleKey(keycode, flags, metadata, true);
         }
         else
         {
-            std::string focusedClientName = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name : "none";
+            std::string focusedClientName = gFocusedCompositor ? gFocusedCompositor->name() : "none";
             Logger::log(LogLevel::Information,  "rdkshell_focus key intercepted: %d focused client: %s", isInterceptAvailable, focusedClientName.c_str());
         }
         if (gRdkShellEventListener && physicalKeyPress)
@@ -1301,20 +1106,14 @@ namespace RdkShell
         gLastKeyEventTime = RdkShell::seconds();
         gNextInactiveEventTime = gLastKeyEventTime + gInactivityIntervalInSeconds;
 
-        bool isInterceptAvailable = false;
-        isInterceptAvailable = interceptKey(keycode, flags, metadata, false);
-
-        if (false == isInterceptAvailable)
+        if (!interceptKey(keycode, flags, metadata, false) && gFocusedCompositor)
         {
-            if (gFocusedCompositor.compositor)
-            {
-                gFocusedCompositor.compositor->onKeyRelease(keycode, flags, metadata);
-                bubbleKey(keycode, flags, metadata, false);
-            }
+            bubbleKey(keycode, flags, metadata, false);
         }
+
         for ( const auto &compositor : gPendingKeyUpListeners )
         {
-            compositor->onKeyRelease(keycode, flags, metadata);
+            compositor->onKeyRelease(keycode, flags, metadata); // NOTE: Why? In some scenarios this gets called three times for a single compositor
         }
         gPendingKeyUpListeners.clear();
 
@@ -1344,9 +1143,9 @@ namespace RdkShell
             gCursor->setPosition(x, y);
         }
 
-        if (gFocusedCompositor.compositor)
+        if (gFocusedCompositor)
         {
-            gFocusedCompositor.compositor->onPointerMotion(x, y);
+            gFocusedCompositor->onPointerMotion(x, y);
         }
     }
 
@@ -1359,9 +1158,9 @@ namespace RdkShell
             gCursor->setPosition(x, y);
         }
 
-        if (gFocusedCompositor.compositor)
+        if (gFocusedCompositor)
         {
-            gFocusedCompositor.compositor->onPointerButtonPress(keyCode, x, y);
+            gFocusedCompositor->onPointerButtonPress(keyCode, x, y);
         }
     }
 
@@ -1374,9 +1173,9 @@ namespace RdkShell
             gCursor->setPosition(x, y);
         }
 
-        if (gFocusedCompositor.compositor)
+        if (gFocusedCompositor)
         {
-            gFocusedCompositor.compositor->onPointerButtonRelease(keyCode, x, y);
+            gFocusedCompositor->onPointerButtonRelease(keyCode, x, y);
         }
     }
 
@@ -1384,37 +1183,37 @@ namespace RdkShell
         uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight,
         bool topmost, bool focus , bool autodestroy)
     {
+        // TODO
         Logger::log(LogLevel::Information,
             "rdkshell createDisplay client: %s, displayName: %s, res: %d x %d, virtualDisplayEnabled: %d, virtualRes: %d x %d, topmost: %d, focus: %d\n",
             client.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplayEnabled, virtualWidth, virtualHeight,
             topmost, focus);
 
         std::string clientDisplayName = standardizeName(client);
-        std::string compositorDisplayName = displayName;
-        if (displayName.empty())
-        {
-            compositorDisplayName = clientDisplayName;
-        }
+        std::string compositorDisplayName = !displayName.empty() ? displayName : clientDisplayName;
 
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        // NOTE: Make sure that client name and display name are unique
+        if (gScene.find(client))
         {
             Logger::log(LogLevel::Information,  "display with name %s already exists", client.c_str());
             return false;
         }
-        CompositorInfo compositorInfo;
-        compositorInfo.name = clientDisplayName;
-	compositorInfo.autoDestroy = autodestroy;
-        if (gRdkShellCompositorType == SURFACE)
+
+
+        std::shared_ptr<RdkCompositor> compositor;
+        
+        if (isSurfaceModeEnabled())
         {
-            compositorInfo.compositor = std::make_shared<RdkCompositorSurface>();
+            compositor = std::make_shared<RdkCompositorSurface>();
         }
         else
         {
-            compositorInfo.compositor = std::make_shared<RdkCompositorNested>();
+            compositor = std::make_shared<RdkCompositorNested>();
         }
-        uint32_t width = 0;
-        uint32_t height = 0;
+
+        compositor->setAutoDestroy(autodestroy);
+
+        uint32_t width, height;
         RdkShell::EssosInstance::instance()->resolution(width, height);
         if (displayWidth > 0)
         {
@@ -1437,27 +1236,20 @@ namespace RdkShell
             }
         }
 
-        bool ret = compositorInfo.compositor->createDisplay(compositorDisplayName, clientDisplayName, width, height,
-            virtualDisplayEnabled, virtualWidth, virtualHeight);
-
-        if (ret)
+        if (!compositor->createDisplay(compositorDisplayName, clientDisplayName, width, height,
+                                       virtualDisplayEnabled, virtualWidth, virtualHeight))
         {
-            if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus))
-            {
-                gFocusedCompositor = compositorInfo;
-                Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
-            }
-
-            if (topmost)
-            {
-                gTopmostCompositorList.insert(gTopmostCompositorList.begin(), compositorInfo);
-            }
-            else
-            {
-                gCompositorList.insert(gCompositorList.begin(), compositorInfo);
-            }
+            return false;
         }
-        return ret;
+
+        if ((!topmost && gScene.nodes.size() == 0) || (topmost && focus))
+        {
+            gFocusedCompositor = compositor;
+            Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor->name().c_str());
+        }
+
+        gScene.moveInto(topmost ? gScene.layerTopmost : gScene.layerDefault, compositor);
+        return true;
     }
 
     static void drawWatermarkImages(RdkShellRect rect, bool drawWithRect=true)
@@ -1485,37 +1277,39 @@ namespace RdkShell
 
     bool CompositorController::draw()
     {
+        // TODO
         //first render deleted compositors to ensure there is no memory leak
         //mfnote: todo - come back and revisit this approach to prevent a memory leak
 
-        for (auto reverseIterator = gDeletedCompositors.rbegin(); reverseIterator != gDeletedCompositors.rend(); reverseIterator++)
+        for (auto& compositor : gDeletedCompositors)
         {
-            bool needsHolePunch = false;
             RdkShellRect rect;
+            bool needsHolePunch = false;
             std::string compositorName = "unknown";
-            reverseIterator->compositor->displayName(compositorName);
             std::cout << "rendering deleted compositor " << compositorName << std::endl;
-            reverseIterator->compositor->draw(needsHolePunch, rect);
+            compositor->draw(needsHolePunch, rect); // NOTE: This might cause a brief appearance of the client
         }
         gDeletedCompositors.clear();
 
-        for (auto reverseIterator = gCompositorList.rbegin(); reverseIterator != gCompositorList.rend(); reverseIterator++)
-        {
-            bool needsHolePunch = false;
-            RdkShellRect rect;
-            reverseIterator->compositor->draw(needsHolePunch, rect);
-            if (needsHolePunch && !gAlwaysShowWatermarkImageOnTop)
-            {
-                drawWatermarkImages(rect, true);
-            }
-        }
+        // for (auto reverseIterator = gCompositorList.rbegin(); reverseIterator != gCompositorList.rend(); reverseIterator++)
+        // {
+        //     bool needsHolePunch = false;
+        //     RdkShellRect rect;
+        //     reverseIterator->compositor->draw(needsHolePunch, rect);
+        //     if (needsHolePunch && !gAlwaysShowWatermarkImageOnTop)
+        //     {
+        //         drawWatermarkImages(rect, true); // NOTE: handle this in scene
+        //     }
+        // }
 
-        for (auto reverseIterator = gTopmostCompositorList.rbegin(); reverseIterator != gTopmostCompositorList.rend(); reverseIterator++)
-        {
-            bool needsHolePunch = false;
-            RdkShellRect rect;
-            reverseIterator->compositor->draw(needsHolePunch, rect);
-        }
+        // for (auto reverseIterator = gTopmostCompositorList.rbegin(); reverseIterator != gTopmostCompositorList.rend(); reverseIterator++)
+        // {
+        //     bool needsHolePunch = false;
+        //     RdkShellRect rect;
+        //     reverseIterator->compositor->draw(needsHolePunch, rect);
+        // }
+
+        gScene.draw();
 
         if (gAlwaysShowWatermarkImageOnTop)
         {
@@ -1563,86 +1357,86 @@ namespace RdkShell
 
     bool CompositorController::addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties)
     {
-        bool ret = false;
-        RdkShell::Animation animation;
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            int32_t x = 0;
-            int32_t y = 0;
-            uint32_t width = 0;
-            uint32_t height = 0;
-            double scaleX = 1.0;
-            double scaleY = 1.0;
-            double opacity = 1.0;
-            double delay = 0.0;
-            std::string tween = "linear";
-            if (it->compositor != nullptr)
-            {
-                //retrieve the initial values in case they are not specified in the property set
-                it->compositor->position(x, y);
-                it->compositor->size(width, height);
-                it->compositor->scale(scaleX, scaleY);
-                it->compositor->opacity(opacity);
-            }
-
-            for (const auto &property : animationProperties)
-            {
-                if (property.first == "x")
-                {
-                    x = property.second.toInteger32();
-                }
-                else if (property.first == "y")
-                {
-                    y = property.second.toInteger32();
-                }
-                else if (property.first == "w")
-                {
-                    width = property.second.toUnsignedInteger32();
-                }
-                else if (property.first == "h")
-                {
-                    height = property.second.toUnsignedInteger32();
-                }
-                else if (property.first == "sx")
-                {
-                    scaleX = property.second.toDouble();
-                }
-                else if (property.first == "sy")
-                {
-                    scaleY = property.second.toDouble();
-                }
-                else if (property.first == "a")
-                {
-                    double opacityPercent = property.second.toDouble();
-                    opacity = opacityPercent / 100.0;
-                }
-                else if (property.first == "tween")
-                {
-                    tween = property.second.toString();
-                }
-                else if (property.first == "delay")
-                {
-                    delay = property.second.toDouble();
-                }
-            }
-
-            animation.compositor = it->compositor;
-            animation.endX = x;
-            animation.endY = y;
-            animation.endWidth = width;
-            animation.endHeight = height;
-            animation.endScaleX = scaleX;
-            animation.endScaleY = scaleY;
-            animation.endOpacity = opacity;
-            animation.duration = duration;
-            animation.name = client;
-            animation.tween = tween;
-            animation.delay = delay;
-            RdkShell::Animator::instance()->addAnimation(animation);
-            ret = true;
+            Logger::log(Information, "Cannot add animation for %s, client not found", client.c_str());
+            return false;
         }
-        return ret;
+
+        int32_t x = 0;
+        int32_t y = 0;
+        uint32_t width = 0;
+        uint32_t height = 0;
+        double scaleX = 1.0;
+        double scaleY = 1.0;
+        double opacity = 1.0;
+        double delay = 0.0;
+        std::string tween = "linear";
+
+        //retrieve the initial values in case they are not specified in the property set
+        node->position(x, y);
+        node->size(width, height);
+        node->scale(scaleX, scaleY);
+        node->opacity(opacity);
+
+        for (const auto &property : animationProperties)
+        {
+            if (property.first == "x")
+            {
+                x = property.second.toInteger32();
+            }
+            else if (property.first == "y")
+            {
+                y = property.second.toInteger32();
+            }
+            else if (property.first == "w")
+            {
+                width = property.second.toUnsignedInteger32();
+            }
+            else if (property.first == "h")
+            {
+                height = property.second.toUnsignedInteger32();
+            }
+            else if (property.first == "sx")
+            {
+                scaleX = property.second.toDouble();
+            }
+            else if (property.first == "sy")
+            {
+                scaleY = property.second.toDouble();
+            }
+            else if (property.first == "a")
+            {
+                double opacityPercent = property.second.toDouble();
+                opacity = opacityPercent / 100.0;
+            }
+            else if (property.first == "tween")
+            {
+                tween = property.second.toString();
+            }
+            else if (property.first == "delay")
+            {
+                delay = property.second.toDouble();
+            }
+        }
+
+        RdkShell::Animation animation;
+        animation.compositor = node;
+        animation.endX = x;
+        animation.endY = y;
+        animation.endWidth = width;
+        animation.endHeight = height;
+        animation.endScaleX = scaleX;
+        animation.endScaleY = scaleY;
+        animation.endOpacity = opacity;
+        animation.duration = duration;
+        animation.name = client;
+        animation.tween = tween;
+        animation.delay = delay;
+        RdkShell::Animator::instance()->addAnimation(animation);
+
+        return true;
     }
 
     bool CompositorController::removeAnimation(const std::string& client)
@@ -1674,68 +1468,41 @@ namespace RdkShell
 
     bool CompositorController::addListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->eventListeners.push_back(listener);
+            Logger::log(Information, "Cannot add event listeners to %s, client not found", client.c_str());
+            return false;
         }
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot add event listeners to %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->addEventListener(listener);
         return true;
     }
 
     bool CompositorController::removeListener(const std::string& client, std::shared_ptr<RdkShellEventListener> listener)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            std::vector<std::shared_ptr<RdkShellEventListener>>::iterator entryToRemove = it->eventListeners.end();
-            for (std::vector<std::shared_ptr<RdkShellEventListener>>::iterator iter = it->eventListeners.begin() ; iter != it->eventListeners.end(); ++iter)
-            {
-                if ((*iter) == listener)
-                {
-                    entryToRemove = iter;
-                    break;
-                }
-            }
-            if (entryToRemove != it->eventListeners.end())
-            {
-                it->eventListeners.erase(entryToRemove);
-            }
+            Logger::log(Information, "Cannot remove event listeners from %s, client not found", client.c_str());
+            return false;
         }
-        return true;
-    }
 
-    bool CompositorController::onEvent(RdkCompositor* eventCompositor, const std::string& eventName)
-    {
-        bool killClient = false;
-        std::string clientToKill("");
-
-        CompositorListIterator it;
-        if (getCompositorInfo(eventCompositor, it))
+        auto compositor = node->compositor();
+        if (!compositor)
         {
-            for (int i=0; i< it->eventListeners.size(); i++)
-            {
-                sendApplicationEvent(it->eventListeners[i], eventName, it->name);
-            }
-	    if((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0))
-            {
-		    it->compositor->updateSurfaceCount(true);
-            }
-	    else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
-            {
-		it->compositor->updateSurfaceCount(false);
-		bool SurfaceCount = it->compositor->getSurfaceCount();
+            Logger::log(Information, "Cannot remove event listeners from %s, not a compositor", client.c_str());
+            return false;
+        }
 
-		if((SurfaceCount == 0) && (it->autoDestroy == true ))
-                {
-                  clientToKill = it->name;
-                  killClient = true;
-	        }
-            }
-        }
-        if (true == killClient)
-        {
-            CompositorController::kill(clientToKill);
-        }
+        compositor->removeEventListener(listener);
         return true;
     }
 
@@ -1770,139 +1537,161 @@ namespace RdkShell
     bool CompositorController::launchApplication(const std::string& client, const std::string& uri, const std::string& mimeType,
         bool topmost, bool focus)
     {
-        if (mimeType == RDKSHELL_APPLICATION_MIME_TYPE_NATIVE)
+        if (mimeType != RDKSHELL_APPLICATION_MIME_TYPE_NATIVE)
         {
-            CompositorListIterator it;
-            if (getCompositorInfo(client, it))
-            {
-                Logger::log(LogLevel::Information,  "application with name %s is already launched", client.c_str());
-                return false;
-            }
-            std::string clientDisplayName = standardizeName(client);
-            CompositorInfo compositorInfo;
-            compositorInfo.name = clientDisplayName;
-            if (gRdkShellCompositorType == SURFACE)
-            {
-                compositorInfo.compositor = std::make_shared<RdkCompositorSurface>();
-            }
-            else
-            {
-                compositorInfo.compositor = std::make_shared<RdkCompositorNested>();
-            }
-            compositorInfo.mimeType = RDKSHELL_APPLICATION_MIME_TYPE_NATIVE;
-            uint32_t width = 0;
-            uint32_t height = 0;
-            RdkShell::EssosInstance::instance()->resolution(width, height);
-            compositorInfo.compositor->setApplication(uri);
-            bool ret = compositorInfo.compositor->createDisplay(clientDisplayName, "", width, height, false, 0, 0);
-            if (ret)
-            {
-                if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus))
-                {
-                    gFocusedCompositor = compositorInfo;
-                    Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
-                }
+            Logger::log(LogLevel::Information,  "unable to launch application.  mime type %d is not supported", mimeType);
+            return false;
+        }
 
-                if (topmost)
-                {
-                    gTopmostCompositorList.insert(gTopmostCompositorList.begin(), compositorInfo);
-                }
-                else
-                {
-                    gCompositorList.insert(gCompositorList.begin(), compositorInfo);
-                }
-            }
-            return true;
+        if (gScene.find(client))
+        {
+            Logger::log(LogLevel::Information,  "application with name %s is already launched", client.c_str());
+            return false;
+        }
+
+        std::string clientDisplayName = standardizeName(client);
+        std::shared_ptr<RdkCompositor> compositor;
+        
+        if (isSurfaceModeEnabled())
+        {
+            compositor = std::make_shared<RdkCompositorSurface>();
         }
         else
         {
-            Logger::log(LogLevel::Information,  "unable to launch application.  mime type %d is not supported", mimeType);
+            compositor = std::make_shared<RdkCompositorNested>();
         }
 
+        compositor->setApplication(uri);
+        compositor->setMimeType(mimeType);
+        
+        uint32_t width, height;
+        RdkShell::EssosInstance::instance()->resolution(width, height);
+        
+        if (compositor->createDisplay(clientDisplayName, clientDisplayName, width, height, false, 0, 0))
+        {
+            if ((!topmost && gScene.nodes.size() == 0) || (topmost && focus))
+            {
+                gFocusedCompositor = compositor;
+                Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor->name().c_str());
+            }
+
+            gScene.moveInto(topmost ? gScene.layerTopmost : gScene.layerDefault, compositor);
+            return true;
+        }
+  
         return false;
     }
 
     bool CompositorController::suspendApplication(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            if (it->compositor != nullptr)
-            {
-                bool result = it->compositor->suspendApplication();
-                if (result)
-                {
-                    Logger::log(LogLevel::Information,  "%s client has been suspended", client.c_str());
-                    it->compositor->setVisible(false);
-                }
-                return result;
-            }
-            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
+            Logger::log(Information, "Cannot suspend %s, client not found", client.c_str());
             return false;
         }
-        Logger::log(LogLevel::Information,  "display with name %s was not found", client.c_str());
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot suspend %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        bool result = compositor->suspendApplication();
+        if (result)
+        {
+            Logger::log(LogLevel::Information,  "%s client has been suspended", client.c_str());
+            node->setVisible(false);
+        }
+            
+        return result;
     }
 
     bool CompositorController::resumeApplication(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            if (it->compositor != nullptr)
-            {
-                bool result = it->compositor->resumeApplication();
-                if (result)
-                {
-                    Logger::log(LogLevel::Information,  "%s client has been resumed", client.c_str());
-                    it->compositor->setVisible(true);
-                }
-            }
-            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
+            Logger::log(Information, "Cannot resume %s, client not found", client.c_str());
             return false;
         }
-        Logger::log(LogLevel::Information,  "display with name %s was not found", client);
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot resume %s, not a compsitor", client.c_str());
+            return false;
+        }
+
+        bool result = compositor->resumeApplication();
+        if (result)
+        {
+            Logger::log(LogLevel::Information,  "%s client has been resumed", client.c_str());
+            node->setVisible(true);
+        }
+
+        return result;
     }
 
     bool CompositorController::closeApplication(const std::string& client)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            if (it->compositor != nullptr)
-            {
-                it->compositor->closeApplication();
-                return true;
-            }
-            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client);
+            Logger::log(Information, "Cannot close %s, client not found", client.c_str());
             return false;
         }
-        Logger::log(LogLevel::Information,  "display with name %s was not found", client);
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot close %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->closeApplication();
+        return true;
     }
 
     bool CompositorController::getMimeType(const std::string& client, std::string& mimeType)
     {
-        mimeType = "";
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            mimeType = it->mimeType;
-            return true;
+            Logger::log(Information, "Cannot get mimetype of %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot get mimetype of %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->setMimeType(mimeType);
+        return true;
     }
 
     bool CompositorController::setMimeType(const std::string& client, const std::string& mimeType)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->mimeType = mimeType;
-            return true;
+            Logger::log(Information, "Cannot set mimetype of %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot set mimetype of %s, not a compositor", client.c_str());
+            return false;
+        }
+
+        compositor->setMimeType(mimeType);
+        return true;
     }
 
     bool CompositorController::hideWatermark()
@@ -2021,12 +1810,7 @@ namespace RdkShell
 
     bool CompositorController::isSurfaceModeEnabled()
     {
-        bool surfaceModeEnabled = false;
-        if (gRdkShellCompositorType == SURFACE)
-        {
-            surfaceModeEnabled = true;
-        }
-        return surfaceModeEnabled;
+        return gRdkShellCompositorType == SURFACE;
     }
 
     bool CompositorController::sendEvent(const std::string& eventName, std::vector<std::map<std::string, RdkShellData>>& data)
@@ -2107,42 +1891,21 @@ namespace RdkShell
 
     bool CompositorController::setTopmost(const std::string& client, bool topmost, bool focus)
     {
-        Logger::log(LogLevel::Information,  "setTopmost client: %s, topmost: %d, focus: %d", client.c_str(), topmost, focus);
-        bool ret = false;
-
-        CompositorListIterator it;
-        CompositorList* compositorInfoList = nullptr;
-        if (!getCompositorInfo(client, it, &compositorInfoList))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            Logger::log(LogLevel::Error,  "%s no such client ", client.c_str());
+            Logger::log(Information, "Cannot set topmost for %s, client not found", client.c_str());
             return false;
         }
 
-        CompositorList* targetList;
-        if (topmost)
+        auto targetLayer = topmost ? gScene.layerTopmost : gScene.layerDefault;
+        
+        if (node->root() == targetLayer)
         {
-            if (compositorInfoList == &gTopmostCompositorList)
-            {
-                Logger::log(LogLevel::Information,  "%s is already topmost and cannot set topmost again ", client.c_str());
-                return false;
-            }
-
-            targetList = &gTopmostCompositorList;
-        }
-        else
-        {
-            if (compositorInfoList == &gCompositorList)
-            {
-                Logger::log(LogLevel::Information,  "%s is already non topmost and cannot set non topmost again ", client.c_str());
-                return false;
-            }
-
-            targetList = &gCompositorList;
+            return false; // TODO: logging
         }
 
-        auto compositorInfo = *it;
-        compositorInfoList->erase(it);
-        targetList->insert(targetList->begin(), compositorInfo);
+        gScene.moveInto(targetLayer, node);
 
         if (topmost && focus)
         {
@@ -2154,58 +1917,83 @@ namespace RdkShell
 
     bool CompositorController::getTopmost(std::string& client)
     {
-        bool ret = false;
-
-        if (!gTopmostCompositorList.empty())
-        {
-            client = gTopmostCompositorList.front().name;
-            ret = true;
-        }
-        return ret;
+        auto clients = gScene.clients();
+        client = clients.size() > 0 ? clients.back()->name() : ""; 
+        return true;
     }
 
     bool CompositorController::getVirtualResolution(const std::string& client, uint32_t &virtualWidth, uint32_t &virtualHeight)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->getVirtualResolution(virtualWidth, virtualHeight);
-            return true;
+            Logger::log(Information, "Cannot get virtual resolution of %s, client not found", client.c_str());
+            return false;
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            Logger::log(Information, "Cannot get virtual resolution of %s, not a compositor", client.c_str());
+            return false;
+        }
+        
+        compositor->getVirtualResolution(virtualWidth, virtualHeight);
+        return true;
     }
 
     bool CompositorController::setVirtualResolution(const std::string& client, const uint32_t virtualWidth, const uint32_t virtualHeight)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->setVirtualResolution(virtualWidth, virtualHeight);
-            return true;
+            return false; // TODO: logging
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            return false; // TODO: logging
+        }
+        
+        compositor->setVirtualResolution(virtualWidth, virtualHeight);
+        return true;
     }
 
     bool CompositorController::enableVirtualDisplay(const std::string& client, const bool enable)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->enableVirtualDisplay(enable);
-            return true;
+            return false; // TODO: logging
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            return false; // TODO: logging
+        }
+        
+        compositor->enableVirtualDisplay(enable);
+        return true;
     }
 
     bool CompositorController::getVirtualDisplayEnabled(const std::string& client, bool &enabled)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            enabled = it->compositor->getVirtualDisplayEnabled();
-            return true;
+            return false; // TODO: logging
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            return false; // TODO: logging
+        }
+        
+        enabled = compositor->getVirtualDisplayEnabled();
+        return true;
     }
 
     bool CompositorController::getLastKeyPress(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds)
@@ -2378,13 +2166,20 @@ namespace RdkShell
 
     bool CompositorController::enableInputEvents(const std::string& client, bool enable)
     {
-        CompositorListIterator it;
-        if (getCompositorInfo(client, it))
+        auto node = gScene.find(client);
+        if (!node)
         {
-            it->compositor->enableInputEvents(enable);
-            return true;
+            return false; // TODO: logging
         }
-        return false;
+
+        auto compositor = node->compositor();
+        if (!compositor)
+        {
+            return false; // TODO: logging
+        }
+
+        compositor->enableInputEvents(enable);
+        return true;
     }
 
     bool CompositorController::showCursor()
@@ -2447,5 +2242,149 @@ namespace RdkShell
 
         Logger::log(LogLevel::Information, "setKeyRepeatConfig enabled: %d, initialDelay: %d, repeatInterval: %d",
             enabled, initialDelay, repeatInterval);
+    }
+
+    static void addWatermarks(bool needsHolePunch, RdkShellRect rect)
+    {
+        if (needsHolePunch && !gAlwaysShowWatermarkImageOnTop)
+        {
+            drawWatermarkImages(rect, true);
+        }
+    }
+
+    bool CompositorController::createGroup(const std::string& groupName, const std::vector<std::string>& clients)
+    {
+        if (gScene.find(groupName))
+        {
+            return false; // TODO: logging
+        }
+
+        std::vector<std::shared_ptr<Node>> clientNodes;
+        for (auto& client : clients)
+        {
+            auto clientNode = gScene.find(client);
+            if (!clientNode)
+            {
+                return false; // TODO: logging
+            }
+
+            clientNodes.push_back(clientNode);
+        }
+
+        auto group = std::make_shared<Group>(standardizeName(groupName), &addWatermarks);
+        gScene.moveInto(gScene.layerDefault, group);
+        for (auto& node : clientNodes)
+        {
+            gScene.moveInto(group, node);
+        }
+
+        return true;
+    }
+
+    bool CompositorController::getGroups(std::map<std::string, std::vector<std::string>>& groups)
+    {
+        groups.clear();
+
+        auto nodeList = gScene.groups();
+        for (auto nodeIt = nodeList.rbegin(); nodeIt != nodeList.rend(); ++nodeIt)
+        {
+            auto group = (*nodeIt)->group();
+            auto& children = group->children();
+
+            auto& clients = groups[group->name()];
+            for (auto childIt = children.rbegin(); childIt != children.rend(); ++childIt)
+            {
+                auto& child = *childIt;
+                clients.push_back(child->name());
+            }
+        }
+
+        return true;
+    }
+
+    bool CompositorController::deleteGroup(const std::string& groupName)
+    {
+        auto node = gScene.find(groupName);
+        if (!node)
+        {
+            return false; // TODO: logging
+        }
+
+        auto group = node->group();
+        if (!group)
+        {
+            return false; // TODO: logging
+        }
+
+        gScene.remove(group);
+        return true;
+    }
+
+    bool CompositorController::setGroup(const std::string& groupName, const std::vector<std::string>& clients)
+    {
+        auto node = gScene.find(groupName);
+        if (!node)
+        {
+            return false; // TODO: logging
+        }
+
+        auto group = node->group();
+        if (!group)
+        {
+            return false; // TODO: logging
+        }
+
+        std::vector<std::shared_ptr<Node>> clientNodes;
+        for (auto& client : clients)
+        {
+            auto clientNode = gScene.find(client);
+            if (!clientNode)
+            {
+                return false; // TODO: logging
+            }
+
+            clientNodes.push_back(clientNode);
+        }
+
+        for (auto& client : clientNodes)
+        {
+            gScene.moveInto(group, client);
+        }
+        return true;
+    }
+
+    bool CompositorController::removeFromGroup(const std::string& groupName, const std::vector<std::string>& clients)
+    {
+        auto node = gScene.find(groupName);
+        if (!node)
+        {
+            return false; // TODO: logging
+        }
+
+        auto group = node->group();
+        if (!group)
+        {
+            return false; // TODO: logging
+        }
+
+        std::vector<std::shared_ptr<Node>> clientNodes;
+        for (auto& client : clients)
+        {
+            auto clientNode = gScene.find(client);
+            if (!clientNode)
+            {
+                return false; // TODO: logging
+            }
+
+            clientNodes.push_back(clientNode);
+        }
+
+        auto root = group->root();
+        for (auto& client : clientNodes)
+        {
+            gScene.moveInto(root, client);
+        }
+
+        return true;
     }
 }

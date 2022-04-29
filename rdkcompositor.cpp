@@ -170,7 +170,7 @@ namespace RdkShell
 
         if (eventFound)
         {
-            CompositorController::onEvent(this, eventName);
+            onEvent(eventName);
         }
     }
 
@@ -179,7 +179,7 @@ namespace RdkShell
         if (mSizeChangeRequestPresent)
         {		
             mSizeChangeRequestPresent = false;
-            CompositorController::onEvent(this, RDKSHELL_EVENT_SIZE_CHANGE_COMPLETE);
+            onEvent(RDKSHELL_EVENT_SIZE_CHANGE_COMPLETE);
         }
     }
 
@@ -614,7 +614,7 @@ namespace RdkShell
         if (mApplicationState == RdkShell::ApplicationState::Suspended)
         {
             mApplicationState = RdkShell::ApplicationState::Running;
-            CompositorController::onEvent(this, RDKSHELL_EVENT_APPLICATION_RESUMED);
+            onEvent(RDKSHELL_EVENT_APPLICATION_RESUMED);
             return true;
         }
         return false;
@@ -626,7 +626,7 @@ namespace RdkShell
         if (mApplicationState == RdkShell::ApplicationState::Running)
         {
             mApplicationState = RdkShell::ApplicationState::Suspended;
-            CompositorController::onEvent(this, RDKSHELL_EVENT_APPLICATION_SUSPENDED);
+            onEvent(RDKSHELL_EVENT_APPLICATION_SUSPENDED);
             return true;
         }
         return false;
@@ -703,5 +703,187 @@ namespace RdkShell
     bool RdkCompositor::getInputEventsEnabled() const
     {
         return mInputEventsEnabled;
+     }
+    
+
+    void sendApplicationEvent(std::shared_ptr<RdkShellEventListener>& listener, const std::string& eventName, const std::string& client)
+    {
+         if (eventName.compare(RDKSHELL_EVENT_APPLICATION_LAUNCHED) == 0)
+         {
+                 listener->onApplicationLaunched(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_TERMINATED) == 0)
+         {
+                 listener->onApplicationTerminated(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0)
+         {
+                 listener->onApplicationConnected(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0)
+         {
+                 listener->onApplicationDisconnected(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_FIRST_FRAME) == 0)
+         {
+                 listener->onApplicationFirstFrame(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_SUSPENDED) == 0)
+         {
+                 listener->onApplicationSuspended(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_APPLICATION_RESUMED) == 0)
+         {
+                 listener->onApplicationResumed(client);
+         }
+         else if(eventName.compare(RDKSHELL_EVENT_SIZE_CHANGE_COMPLETE) == 0)
+         {
+                 listener->onSizeChangeComplete(client);
+         }
+    }
+
+    void RdkCompositor::onEvent(std::string const& eventName)
+    {
+        for (auto& listener : mEventListeners)
+        {
+            sendApplicationEvent(listener, eventName, mName);
+        }
+
+        if (!CompositorController::isSurfaceModeEnabled()) return;
+
+        if (eventName == RDKSHELL_EVENT_APPLICATION_CONNECTED)
+        {
+            mSurfaceCount++;
+        }
+        else if (eventName == RDKSHELL_EVENT_APPLICATION_DISCONNECTED && mSurfaceCount > 0)
+        {
+            mSurfaceCount--;
+        }
+
+        if (getSurfaceCount() == 0 && mAutoDestroy) // FIXME
+        {
+            CompositorController::kill(""); // FIXME
+        }
+    }
+
+    void RdkCompositor::addEventListener(std::shared_ptr<RdkShellEventListener> listener)
+    {
+        mEventListeners.push_back(listener);
+    }
+
+    void RdkCompositor::removeEventListener(std::shared_ptr<RdkShellEventListener> listener)
+    {
+        auto it = std::find(mEventListeners.begin(), mEventListeners.end(), listener);
+        if (it != mEventListeners.end())
+        {
+            mEventListeners.erase(it);
+        }
+    }
+
+    void RdkCompositor::addKeyListener(uint32_t keyCode, uint32_t flags, bool activate, bool propagate)
+    {
+        KeyListenerInfo info;
+        info.keyCode = keyCode;
+        info.flags = flags;
+        info.activate = activate;
+        info.propagate = propagate;
+
+        bool found = false;
+        auto& keyListeners = mKeyListeners[keyCode];
+
+        for (auto& listener : keyListeners)
+        {
+            if (listener.flags == flags)
+            {
+                listener = info;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            keyListeners.push_back(info);
+        }
+    }
+
+    void RdkCompositor::removeKeyListener(uint32_t keyCode, uint32_t flags)
+    {
+        auto it = mKeyListeners.find(keyCode);
+        if (it == mKeyListeners.end()) return;
+
+        auto& listeners = it->second;
+        auto listenerIt = std::find_if(listeners.begin(), listeners.end(), [flags](auto& listener) { return listener.flags == flags; });
+
+        if (listenerIt == listeners.end()) return;
+
+        if (isKeyPressed())
+        {
+            // TODO: add compositor to gPendingKeyUpListeners
+        }
+
+        listeners.erase(listenerIt);
+
+        if (listeners.size() == 0)
+        {
+            mKeyListeners.erase(keyCode);
+        }
+    }
+
+    void RdkCompositor::evaluateKeyListeners(uint32_t keycode, uint32_t flags, bool& found, bool& activate, bool& propagate)
+    {
+        found = false;
+        
+        auto it = mKeyListeners.find(keycode);
+        if (it != mKeyListeners.end())
+        {
+            for (auto& listener : it->second)
+            {
+                if (listener.flags == flags)
+                {
+                    found = true;
+                    activate = listener.activate;
+                    propagate = listener.propagate;
+                    break;
+                }
+            }
+        }
+
+        if (!found)
+        {
+            auto wildcardIt = mKeyListeners.find(RDKSHELL_ANY_KEY);
+            if (wildcardIt != mKeyListeners.end())
+            {
+                auto& listener = wildcardIt->second[0];
+                found = true;
+                activate = listener.activate;
+                propagate = listener.propagate;
+            }
+        }
+    }
+
+    void RdkCompositor::removeAllKeyListeners()
+    {
+        mKeyListeners.clear();
+    }
+
+    void RdkCompositor::removeAllEventListeners()
+    {
+        mEventListeners.clear();
+    }
+
+    void RdkCompositor::setMimeType(std::string const& mimetype)
+    {
+        mMimeType = mimetype;
+    }
+
+    void RdkCompositor::mimeType(std::string& mimetype)
+    {
+        mimetype = mMimeType;
+    }
+
+    void RdkCompositor::setAutoDestroy(bool autoDestroy)
+    {
+        mAutoDestroy = autoDestroy;
     }
 }
