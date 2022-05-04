@@ -225,15 +225,15 @@ namespace RdkShell
 
             if (mApngData.cachedFrame != mApngData.currentFrame)
             {
-                FrameData &frame = mApngData.sequence.getFrameBuffer(mApngData.currentFrame);
+                Frame* frame = mApngData.sequence.getFrameBuffer(mApngData.currentFrame);
                 glBindTexture(GL_TEXTURE_2D, mTexture);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame.width(),
-                                frame.height(), GL_RGBA, GL_UNSIGNED_BYTE, frame.base());
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame->width,
+                                frame->height, GL_RGBA, GL_UNSIGNED_BYTE, frame->data);
                 mApngData.cachedFrame = mApngData.currentFrame;
             }
         }
@@ -867,25 +867,29 @@ namespace RdkShell
                     // TODO Extra copy of frame going on here
                     if (i >= first)
                     {
-                        FrameData frame;
-                        frame.init(width, height);
+                        Frame* frame = new Frame();
+                        frame->data = (char*) new unsigned char[width * height * 4];
+                        frame->width = width;
+                        frame->height = height;
                         for (uint32_t i = 0; i < height; i++)
                         {
-                            memcpy(frame.scanline(i), rows_image[i], width * 4);
+                            uint8_t* row = (uint8_t*) frame->data + (i * width * 4);
+                            memcpy(row, rows_image[i], width * 4);
                         }
 
                         // frame.setUpsideDown(true);
 			// premultiply
                         for (int y = 0; y < height; y++)
                         {
-                            Pixel* d = frame.scanline(y);
-                            Pixel* de = d + width;
+                            uint8_t* d = ((uint8_t*)frame->data + (y * width * 4));
+                            uint8_t* de = d + (width*4);
                             while (d < de)
                             {
-                                d->r = (d->r * d->a)/255;
-                                d->g = (d->g * d->a)/255;
-                                d->b = (d->b * d->a)/255;
-                                d++;
+                                uint8_t alpha = *(d+3);
+                                *d = ((*d) * alpha)/255;
+                                *(d+1) = (*(d+1) * alpha)/255;
+                                *(d+2) = (*(d+2) * alpha)/255;
+                                d+=4;
                             }
                         }
                         mApngData.sequence.addBuffer(frame, (double)delay_num / (double)delay_den);
@@ -913,10 +917,10 @@ namespace RdkShell
         }
         if (mApngData.sequence.numFrames() > 0)
 	{
-            FrameData& data = mApngData.sequence.getFrameBuffer(0);
-            mWidth = data.width();
-            mHeight = data.height();
-            image = (unsigned char*) data.base();
+            Frame* frame = mApngData.sequence.getFrameBuffer(0);
+            mWidth = frame->width;
+            mHeight = frame->height;
+            image = (unsigned char*) frame->data;
 	}
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
     
