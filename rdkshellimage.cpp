@@ -701,7 +701,7 @@ namespace RdkShell
         return true;
     }
 
-    void Image::BlendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
+    void Image::blendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
     {
         unsigned int i, j;
         int u, v, al;
@@ -734,6 +734,8 @@ namespace RdkShell
         }
     }
     
+    //Based on pxCore, Copyright 2005-2018 John Robinson
+    //Licensed under the Apache License, Version 2.0
     bool Image::loadAPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height)
     {
         FILE *file = fopen(fileName.c_str(), "rb");
@@ -853,7 +855,7 @@ namespace RdkShell
                     }
                     if (bop == PNG_BLEND_OP_OVER)
                     {
-                        BlendOver(rows_image, rows_frame, x0, y0, w0, h0);
+                        blendOver(rows_image, rows_frame, x0, y0, w0, h0);
                     }
                     else
                     {

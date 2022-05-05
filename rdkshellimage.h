@@ -48,7 +48,7 @@ namespace RdkShell
             bool loadBmp(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadAPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height);
             bool loadPngFromData(const char* imageData, int32_t imageSize, unsigned char *&image, int32_t &width, int32_t &height);
-            void BlendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
+            void blendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
             std::string mFileName;
             int32_t mX;
             int32_t mY;
