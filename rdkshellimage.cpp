@@ -192,7 +192,7 @@ namespace RdkShell
             return;
         }
 
-        uint32_t numFrames = mApngData.sequence.numFrames();
+        uint32_t numFrames = mApngData.frameList.numFrames();
         if (numFrames > 0)
         {
             double t = RdkShell::seconds();
@@ -204,7 +204,7 @@ namespace RdkShell
 
             for (; mApngData.currentFrame < numFrames; mApngData.currentFrame++)
             {
-                double d = mApngData.sequence.getDuration(mApngData.currentFrame);
+                double d = mApngData.frameList.getFrameDuration(mApngData.currentFrame);
                 if (mApngData.frameTime + d >= t)
                 {
                     break;
@@ -216,7 +216,7 @@ namespace RdkShell
             {
                 mApngData.currentFrame = numFrames - 1; // snap animation to last frame
 
-                if (!mApngData.sequence.numPlays() || mApngData.plays < mApngData.sequence.numPlays())
+                if (!mApngData.frameList.numPlays() || mApngData.plays < mApngData.frameList.numPlays())
                 {
                     mApngData.frameTime = -1; // reset animation
                     mApngData.plays++;
@@ -225,7 +225,7 @@ namespace RdkShell
 
             if (mApngData.cachedFrame != mApngData.currentFrame)
             {
-                Frame* frame = mApngData.sequence.getFrameBuffer(mApngData.currentFrame);
+                Frame* frame = mApngData.frameList.getFrameFromIndex(mApngData.currentFrame);
                 glBindTexture(GL_TEXTURE_2D, mTexture);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -734,8 +734,6 @@ namespace RdkShell
         }
     }
     
-    //Based on pxCore, Copyright 2005-2018 John Robinson
-    //Licensed under the Apache License, Version 2.0
     bool Image::loadAPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height)
     {
         FILE *file = fopen(fileName.c_str(), "rb");
@@ -745,7 +743,7 @@ namespace RdkShell
             return false;
         }
 
-        mApngData.sequence.init();
+        mApngData.frameList.init();
       
         unsigned char pngHeader[8];
         memset(pngHeader, 0, sizeof(pngHeader));
@@ -818,7 +816,7 @@ namespace RdkShell
                 {
                     png_get_acTL(png_ptr, info_ptr, &frames, &plays);
                 }
-                mApngData.sequence.setNumPlays(plays);
+                mApngData.frameList.setNumPlays(plays);
                 for (j = 0; j < height; j++)
                 {
                     rows_image[j] = p_image + j * rowbytes;
@@ -892,7 +890,7 @@ namespace RdkShell
                                 d+=4;
                             }
                         }
-                        mApngData.sequence.addBuffer(frame, (double)delay_num / (double)delay_den);
+                        mApngData.frameList.addFrame(frame, (double)delay_num / (double)delay_den);
                     }
     
                     if (dop == PNG_DISPOSE_OP_PREVIOUS)
@@ -915,9 +913,9 @@ namespace RdkShell
             free(p_frame);
             free(p_image);
         }
-        if (mApngData.sequence.numFrames() > 0)
+        if (mApngData.frameList.numFrames() > 0)
 	{
-            Frame* frame = mApngData.sequence.getFrameBuffer(0);
+            Frame* frame = mApngData.frameList.getFrameFromIndex(0);
             mWidth = frame->width;
             mHeight = frame->height;
             image = (unsigned char*) frame->data;

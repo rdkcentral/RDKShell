@@ -1,5 +1,6 @@
 /**
-* If not stated otherwise in this file or this component's LICENSE
+
+  not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
 *
 * Copyright 2020 RDK Management
@@ -25,74 +26,85 @@ namespace RdkShell
     {
     }
 
-    TimedOffscreenSequence::TimedOffscreenSequence():mTotalTime(0),mNumPlays(0)
+    void Frame::clear()
+    {
+        if (data)
+        {
+            delete data;
+	    data = NULL;
+        }
+	width = 0;
+	height = 0;
+    }
+
+    FrameList::FrameList():mTotalTime(0),mNumPlays(0)
     {
     }
 
-    TimedOffscreenSequence::~TimedOffscreenSequence()
+    FrameList::~FrameList()
     {
     }	    
 
-    void TimedOffscreenSequence::init()
+    void FrameList::init()
     {
         mTotalTime = 0;
         mNumPlays = 0;
-        mSequence.clear();
+        mFrames.clear();
     }
     
-    void TimedOffscreenSequence::addBuffer(Frame* b, double d)
+    void FrameList::addFrame(Frame* b, double d)
     {
-        entry e;
-        e.mData = b;
-        e.mDuration = d;
-        mSequence.push_back(e);
+        FrameDetails frameDetails;
+        frameDetails.frame = b;
+        frameDetails.duration = d;
+        mFrames.push_back(frameDetails);
         mTotalTime += d;
     }
 
-    void TimedOffscreenSequence::clear()
+    void FrameList::clear()
     {
-        for (size_t i=0; i<mSequence.size(); i++)
+        for (size_t i=0; i<mFrames.size(); i++)
 	{
-            mSequence[i].mData->term();
-            delete mSequence[i].mData;
+            mFrames[i].frame->clear();
+            delete mFrames[i].frame;
 	}
-	mSequence.clear();
+	mFrames.clear();
         mTotalTime = 0;
         mNumPlays = 0;
     }
 
-    uint32_t TimedOffscreenSequence::numFrames()
+    uint32_t FrameList::numFrames()
     {
-        return mSequence.size();
+        return mFrames.size();
     }
 
-    uint32_t TimedOffscreenSequence::numPlays()
+    uint32_t FrameList::numPlays()
     {
         return mNumPlays;
     }
 
-    void TimedOffscreenSequence::setNumPlays(uint32_t numPlays)
+    void FrameList::setNumPlays(uint32_t numPlays)
     {
         mNumPlays = numPlays;
     }
 
-    Frame* TimedOffscreenSequence::getFrameFromIndex(int frameNum)
+    Frame* FrameList::getFrameFromIndex(int frameNum)
     {
-        return mSequence[frameNum].mData;
+        return mFrames[frameNum].frame;
     }
 
-    double TimedOffscreenSequence::getDuration(int frameNum)
+    double FrameList::getFrameDuration(int frameNum)
     {
-        return mSequence[frameNum].mDuration;
+        return mFrames[frameNum].duration;
     }
 
-    APNGData::APNGData(): sequence(), plays(0), cachedFrame(UINT32_MAX), currentFrame(UINT32_MAX), frameTime(-1)
+    APNGData::APNGData(): frameList(), plays(0), cachedFrame(UINT32_MAX), currentFrame(UINT32_MAX), frameTime(-1)
     {
     }
 
     void APNGData::clear()
     {
-        sequence.clear();
+        frameList.clear();
 	plays = 0;
 	cachedFrame = UINT32_MAX;
 	currentFrame = UINT32_MAX;

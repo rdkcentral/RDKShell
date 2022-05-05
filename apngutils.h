@@ -27,34 +27,35 @@ namespace RdkShell
     struct Frame
     { 
         Frame();
+        void clear();
         char* data;
         int32_t width;
         int32_t height;
     };
 
-    class TimedOffscreenSequence
+    class FrameList
     {
         public:
-            TimedOffscreenSequence();
-            ~TimedOffscreenSequence();
+            FrameList();
+            ~FrameList();
         
             void init();
-            void addBuffer(Frame* b, double duration);
             void clear();
+            void addFrame(Frame* b, double duration);
             uint32_t numFrames();
             uint32_t numPlays();
             void setNumPlays(uint32_t numPlays);
             Frame* getFrameFromIndex(int frameNum);
-            double getDuration(int frameNum);
+            double getFrameDuration(int frameNum);
         
         private:
-            struct entry
+            struct FrameDetails
             {
-                Frame* mData;
-                double mDuration;
+                Frame* frame;
+                double duration;
             };
         
-            std::vector<entry> mSequence;
+            std::vector<FrameDetails> mFrames;
             double mTotalTime;
             uint32_t mNumPlays;
     };
@@ -63,7 +64,7 @@ namespace RdkShell
     { 
         APNGData();
         void clear();
-        TimedOffscreenSequence sequence;
+        FrameList frameList;
         uint32_t plays;
         uint32_t cachedFrame;
         uint32_t currentFrame;
