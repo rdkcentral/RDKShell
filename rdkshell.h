@@ -30,6 +30,7 @@ namespace RdkShell
     void run();
     void update();
     void draw();
+    void deinitialize();
     double seconds();
     double milliseconds();
     double microseconds();
