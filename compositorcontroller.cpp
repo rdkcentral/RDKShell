@@ -1989,39 +1989,47 @@ namespace RdkShell
 
         if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING) == 0)
         {
-            int32_t freeKb = -1;
+            int32_t freeKb = -1, availableKb = -1, usedSwapKb = -1;
             if (!data.empty())
             {
                 freeKb = data[0]["freeKb"].toInteger32();
+                availableKb = data[0]["availableKb"].toInteger32();
+                usedSwapKb = data[0]["usedSwapKb"].toInteger32();
             }
-            gRdkShellEventListener->onDeviceLowRamWarning(freeKb);
+            gRdkShellEventListener->onDeviceLowRamWarning(freeKb, availableKb, usedSwapKb);
         }
         else if (eventName.compare(RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING) == 0)
         {
-            int32_t freeKb = -1;
+            int32_t freeKb = -1, availableKb = -1, usedSwapKb = -1;
             if (!data.empty())
             {
                 freeKb = data[0]["freeKb"].toInteger32();
+                availableKb = data[0]["availableKb"].toInteger32();
+                usedSwapKb = data[0]["usedSwapKb"].toInteger32();
             }
-            gRdkShellEventListener->onDeviceCriticallyLowRamWarning(freeKb);
+            gRdkShellEventListener->onDeviceCriticallyLowRamWarning(freeKb, availableKb, usedSwapKb);
         }
         else if (eventName.compare(RDKSHELL_EVENT_DEVICE_LOW_RAM_WARNING_CLEARED) == 0)
         {
-            int32_t freeKb = -1;
+            int32_t freeKb = -1, availableKb = -1, usedSwapKb = -1;
             if (!data.empty())
             {
                 freeKb = data[0]["freeKb"].toInteger32();
+                availableKb = data[0]["availableKb"].toInteger32();
+                usedSwapKb = data[0]["usedSwapKb"].toInteger32();
             }
-            gRdkShellEventListener->onDeviceLowRamWarningCleared(freeKb);
+            gRdkShellEventListener->onDeviceLowRamWarningCleared(freeKb, availableKb, usedSwapKb);
         }
         else if (eventName.compare(RDKSHELL_EVENT_DEVICE_CRITICALLY_LOW_RAM_WARNING_CLEARED) == 0)
         {
-            int32_t freeKb = -1;
+            int32_t freeKb = -1, availableKb = -1, usedSwapKb = -1;
             if (!data.empty())
             {
                 freeKb = data[0]["freeKb"].toInteger32();
+                availableKb = data[0]["availableKb"].toInteger32();
+                usedSwapKb = data[0]["usedSwapKb"].toInteger32();
             }
-            gRdkShellEventListener->onDeviceCriticallyLowRamWarningCleared(freeKb);
+            gRdkShellEventListener->onDeviceCriticallyLowRamWarningCleared(freeKb, availableKb, usedSwapKb);
         }
         else if (eventName.compare(RDKSHELL_EVENT_ANIMATION) == 0)
         {
