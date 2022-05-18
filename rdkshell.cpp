@@ -104,6 +104,7 @@ namespace RdkShell
     {
         struct sysinfo systemInformation;
         int ret = sysinfo(&systemInformation);
+        uint64_t freeMemKb=0, usedSwapMemKb=0, totalMemKb=0;
 
         if (0 != ret)
         {

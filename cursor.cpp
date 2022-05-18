@@ -57,7 +57,7 @@ namespace RdkShell
             RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading cursor image: '%s'", cursorImageName.c_str());
         }
 
-        RdkShell::Logger::log(RdkShell::LogLevel::Error, "finish lading cursor '%s', mIsLoaded: %d", cursorImageName.c_str(), mIsLoaded);
+        RdkShell::Logger::log(RdkShell::LogLevel::Information, "finish lading cursor '%s', mIsLoaded: %d", cursorImageName.c_str(), mIsLoaded);
 
         return mIsLoaded;
     }

@@ -50,7 +50,8 @@ namespace RdkShell
         mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false),
-        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false) , mSurfaceCount(0) 
+        mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false), mSurfaceCount(0),
+        mInputEventsEnabled(true)
     {
         if (gForce720)
         {
@@ -362,6 +363,13 @@ namespace RdkShell
 
     void RdkCompositor::processKeyEvent(bool keyPressed, uint32_t keycode, uint32_t flags, uint64_t metadata)
     {
+        if (!mInputEventsEnabled)
+        {
+            RdkShell::Logger::log(LogLevel::Information, "processKeyEvent input event blocked disp:%s, keyCode: %d",
+                mDisplayName, keycode);
+            return;
+        }
+
         uint32_t modifiers = 0;
 
         if ( flags & RDKSHELL_FLAGS_SHIFT )
@@ -669,19 +677,31 @@ namespace RdkShell
     }
 
     void RdkCompositor::updateSurfaceCount (bool status)
-     {
-        if(status == true)
+    {
+        if (status == true)
         {
-	  mSurfaceCount++;
-	}
-	else if ((status == false) && ( mSurfaceCount > 0))
-	{
-          mSurfaceCount--;
+            mSurfaceCount++;
+        }
+        else if ((status == false) && (mSurfaceCount > 0))
+        {
+            mSurfaceCount--;
         } 
-     }
+    }
 
-     uint32_t RdkCompositor::getSurfaceCount (void)
-     {
+    uint32_t RdkCompositor::getSurfaceCount (void)
+    {
         return mSurfaceCount;
-     }
+    }
+
+    void RdkCompositor::enableInputEvents(bool enable)
+    {
+        RdkShell::Logger::log(LogLevel::Information, "enableInputEvents disp:%s, oldVal: %d, newVal: %d",
+            mDisplayName, mInputEventsEnabled, enable);
+        mInputEventsEnabled = enable;
+    }
+
+    bool RdkCompositor::getInputEventsEnabled() const
+    {
+        return mInputEventsEnabled;
+    }
 }
