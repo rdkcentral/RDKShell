@@ -99,15 +99,19 @@ namespace RdkShell
     {
         struct sysinfo systemInformation;
         int ret = sysinfo(&systemInformation);
+        uint64_t freeMemKb=0, usedSwapMemKb=0, totalMemKb=0;
 
         if (0 != ret)
         {
           Logger::log(Debug, "failed to get memory details");
           return false;
         }
-        totalKb = systemInformation.totalram/(1024);
-        freeKb = systemInformation.freeram/(1024);
-        usedSwapKb = (systemInformation.totalswap - systemInformation.freeswap)/1024;
+        totalMemKb = (systemInformation.totalram * systemInformation.mem_unit)/1024;
+        freeMemKb = (systemInformation.freeram * systemInformation.mem_unit)/1024;
+        usedSwapMemKb = ((systemInformation.totalswap - systemInformation.freeswap) * systemInformation.mem_unit)/1024;
+        totalKb = (uint32_t) totalMemKb;
+        freeKb = (uint32_t) freeMemKb;
+        usedSwapKb = (uint32_t) usedSwapMemKb;
         return true;
     }
 
