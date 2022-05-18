@@ -95,7 +95,7 @@ namespace RdkShell
         return ((double)(ts.tv_sec * 1000000) + ((double)ts.tv_nsec/1000));
     }
 
-    bool systemRam(uint32_t &freeKb, uint32_t & totalKb,  uint32_t& usedSwapKb)
+    bool systemRam(uint64_t &freeKb, uint64_t & totalKb,  uint64_t& usedSwapKb)
     {
         struct sysinfo systemInformation;
         int ret = sysinfo(&systemInformation);
@@ -105,9 +105,9 @@ namespace RdkShell
           Logger::log(Debug, "failed to get memory details");
           return false;
         }
-        totalKb = systemInformation.totalram/(1024);
-        freeKb = systemInformation.freeram/(1024);
-        usedSwapKb = (systemInformation.totalswap - systemInformation.freeswap)/1024;
+        totalKb = (systemInformation.totalram * systemInformation.mem_unit)/1024;
+        freeKb = (systemInformation.freeram * systemInformation.mem_unit)/1024;
+        usedSwapKb = ((systemInformation.totalswap - systemInformation.freeswap) * systemInformation.mem_unit)/1024;
         return true;
     }
 
@@ -147,7 +147,7 @@ namespace RdkShell
 
     void checkSystemMemory()
     {
-        uint32_t freeKb=0, usedKb=0, totalKb=0;
+        uint64_t freeKb=0, usedKb=0, totalKb=0;
         bool ret = systemRam(freeKb, totalKb, usedKb);
 
         if (false == ret)
