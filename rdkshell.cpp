@@ -100,6 +100,13 @@ namespace RdkShell
         return ((double)(ts.tv_sec * 1000000) + ((double)ts.tv_nsec/1000));
     }
 
+    bool systemRam(uint32_t& freeKb, uint32_t& totalKb, uint32_t& usedSwapKb)
+    {
+        uint32_t availableKb = 0;
+	bool ret = systemRam(freeKb, totalKb, availableKb, usedSwapKb);
+        return ret;
+    }
+
     bool systemRam(uint32_t& freeKb, uint32_t& totalKb, uint32_t& availableKb, uint32_t& usedSwapKb)
     {
         struct sysinfo systemInformation;
@@ -111,9 +118,12 @@ namespace RdkShell
             Logger::log(Debug, "failed to get memory details");
             return false;
         }
-        totalKb = systemInformation.totalram/(1024);
-        freeKb = systemInformation.freeram/(1024);
-        usedSwapKb = (systemInformation.totalswap - systemInformation.freeswap)/1024;
+	totalMemKb = (systemInformation.totalram * systemInformation.mem_unit)/1024;
+        freeMemKb = (systemInformation.freeram * systemInformation.mem_unit)/1024;
+        usedSwapMemKb = ((systemInformation.totalswap - systemInformation.freeswap) * systemInformation.mem_unit)/1024;
+        totalKb = (uint32_t) totalMemKb;
+        freeKb = (uint32_t) freeMemKb;
+        usedSwapKb = (uint32_t) usedSwapMemKb;
         FILE* file = fopen("/proc/meminfo", "r");
         if (!file)
         {
