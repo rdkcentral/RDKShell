@@ -116,6 +116,10 @@ if (RDKSHELL_BUILD_ENABLE_KEYREPEATS)
   add_definitions("-DRDKSHELL_ENABLE_KEYREPEATS")
 endif (RDKSHELL_BUILD_ENABLE_KEYREPEATS)
 
+add_subdirectory(extensions/RdkShellLink)
+add_subdirectory(extensions/RdkShellRenderer)
+add_subdirectory(extensions/RdkShellShell)
+
 add_subdirectory(extensions/RdkShellExtendedInput)
 add_subdirectory(extensions/RdkShellClientControl)
 add_library(rdkshell_shared SHARED ${RDKSHELL_SOURCES})

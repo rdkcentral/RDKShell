@@ -644,7 +644,18 @@ namespace RdkShell
             {
                 gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
             }
+
+            if (gFocusedCompositor.compositor)
+            {
+                gFocusedCompositor.compositor->mFocused = false;
+                gFocusedCompositor.compositor->updateWaylandState();
+            }
+
             gFocusedCompositor = *it;
+            gFocusedCompositor.compositor->mFocused = true;
+            gFocusedCompositor.compositor->updateWaylandState();
+
+            //gRdkShellEventListener->onApplicationFocused(client);
             return true;
         }
         return false;
@@ -2090,6 +2101,17 @@ namespace RdkShell
             }
             gRdkShellEventListener->onEasterEgg(name, actionJson);
         }
+        // else if (eventName.compare(RDKSHELL_EVENT_APPLICATION_STATE_CHANGED) == 0)
+        // {
+        //     std::string name("");
+        //     int32_t state = 0;
+        //     if (!data.empty())
+        //     {
+        //         name = data[0]["display"].toString();
+        //         state = data[0]["state"].toInteger32();
+        //     }
+        //     gRdkShellEventListener->onApplicationStateChanged(name, state);
+        // }
         return true;
     }
 
@@ -2448,4 +2470,39 @@ namespace RdkShell
         Logger::log(LogLevel::Information, "setKeyRepeatConfig enabled: %d, initialDelay: %d, repeatInterval: %d",
             enabled, initialDelay, repeatInterval);
     }
+
+    bool CompositorController::getClientInfo(const std::string& client, ClientInfo& ci)
+    {
+        CompositorListIterator it;
+        if (!getCompositorInfo(client, it))
+            return false;
+        auto c = it->compositor;
+        
+        c->visible(ci.visible);
+        //c->zorder(ci.zorder);
+        c->opacity(ci.opacity);
+        c->scale(ci.sx, ci.sy);
+        c->position(ci.x, ci.y);
+        c->size(ci.width, ci.height);
+
+        return true;
+    }
+
+    bool CompositorController::setClientInfo(const std::string& client, const ClientInfo& ci)
+    {
+        CompositorListIterator it;
+        if (!getCompositorInfo(client, it))
+            return false;
+        auto c = it->compositor;
+
+        c->setVisible(ci.visible);
+        //c->setZorder(ci.zorder);
+        c->setOpacity(ci.opacity);
+        c->setScale(ci.sx, ci.sy);
+        c->setPosition(ci.x, ci.y);
+        c->setSize(ci.width, ci.height);
+
+        return true;
+    }
+
 }

@@ -9,7 +9,7 @@
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
 
-    * http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,10 @@
     limitations under the License.
 -->
 <protocol name="rdkshell_client_control">
+
+    <copyright>
+        Copyright 2022 RDK Management
+    </copyright>
 
     <interface name="rdkshell_client_control" version="1">
 
@@ -72,6 +76,36 @@
             <arg name="sy" type="fixed"
                  summary="vertical scale factor, fixed point number representing "/>             
         </request>
+
+        <request name="set_client_properties">
+            <arg name="id" type="string" summary="Id of the app"/>
+            <arg name="x" type="int" summary="the left position of the surface in pixel screen coordinates"/>
+            <arg name="y" type="int" summary="the top position of the surface in pixel screen coordinates"/>
+            <arg name="width" type="uint" summary="the width of the video surface in pixel screen coordinates"/>
+            <arg name="height" type="uint" summary="the height of the video surface in pixel screen coordinates"/>                 
+            <arg name="sx" type="fixed" summary="horizontal scale factor, fixed point number"/>
+            <arg name="sy" type="fixed" summary="vertical scale factor, fixed point number representing "/>
+            <arg name="opacity" type="fixed" summary="opacticty factor"/>
+            <arg name="zorder" type="int" summary="location in the z-order"/>
+            <arg name="visible" type="int" summary="the visibility of the surface"/>
+        </request>
+
+        <request name="get_client_properties">
+            <arg name="id" type="string" summary="Id of the app"/>
+        </request>
+
+        <event name="client_properties">
+            <arg name="id" type="string" summary="Id of the app"/>
+            <arg name="x" type="int" summary="the left position of the surface in pixel screen coordinates"/>
+            <arg name="y" type="int" summary="the top position of the surface in pixel screen coordinates"/>
+            <arg name="width" type="uint" summary="the width of the video surface in pixel screen coordinates"/>
+            <arg name="height" type="uint" summary="the height of the video surface in pixel screen coordinates"/>                 
+            <arg name="sx" type="fixed" summary="horizontal scale factor, fixed point number"/>
+            <arg name="sy" type="fixed" summary="vertical scale factor, fixed point number representing "/>
+            <arg name="opacity" type="fixed" summary="opacticty factor"/>
+            <arg name="zorder" type="int" summary="location in the z-order"/>
+            <arg name="visible" type="int" summary="the visibility of the surface"/>
+        </event>
 
     </interface>
 

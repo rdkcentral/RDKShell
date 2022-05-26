@@ -48,6 +48,9 @@ namespace RdkShell
           virtual void onPowerKey() {}
           virtual void onKeyEvent(const uint32_t keyCode, const uint32_t flags, const bool keyDown) {}
           virtual void onSizeChangeComplete(const std::string& client) {}
+        //   virtual void onApplicationFocused(const std::string& client) {}
+        //   virtual void onApplicationVisibilityChanged(const std::string& client, const bool visible) {}
+        //   virtual void onApplicationStateChanged(const std::string& display, const uint32_t state) {}
     };
 
     const std::string RDKSHELL_EVENT_APPLICATION_LAUNCHED = "onApplicationLaunched";
@@ -68,4 +71,5 @@ namespace RdkShell
     const std::string RDKSHELL_EVENT_POWER_KEY = "onPowerKey";
     const std::string RDKSHELL_EVENT_KEY = "onKeyEvent";
     const std::string RDKSHELL_EVENT_SIZE_CHANGE_COMPLETE = "onSizeChangeComplete";
+    //const std::string RDKSHELL_EVENT_APPLICATION_STATE_CHANGED = "onApplicationStateChanged";
 }

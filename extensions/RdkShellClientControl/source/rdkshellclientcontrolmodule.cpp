@@ -86,11 +86,74 @@ void rdkShellClientControlSetClientScale(struct wl_client *client,
     RdkShell::CompositorController::setScale(id, wl_fixed_to_double(sx), wl_fixed_to_double(sy));
 }
 
+void rdkShellClientControlSetClientProperties(struct wl_client *client,
+                struct wl_resource *resource,
+                const char *id,
+                int32_t x,
+                int32_t y,
+                uint32_t width,
+                uint32_t height,
+                wl_fixed_t sx,
+                wl_fixed_t sy,
+                wl_fixed_t opacity,
+                int32_t zorder,
+                int32_t visible)
+{
+    RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s appId: %s\n", __func__, id);
+
+    std::string clientName(id);
+    RdkShell::ClientInfo clientInfo{
+        .x = x, .y = y, .width = width, .height = height, .sx = wl_fixed_to_double(sx), .sy = wl_fixed_to_double(sy),
+        .opacity = wl_fixed_to_double(opacity), .zorder = zorder, .visible = !!visible};
+
+    RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s clientName: %s\n", __func__, clientName.c_str()); 
+
+    RdkShell::CompositorController::setClientInfo(clientName, clientInfo);
+}
+
+void rdkShellClientControlGetClientProperties(struct wl_client *client,
+                struct wl_resource *resource,
+                const char *id)
+{
+    RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s appId: %s\n", __func__, id);
+
+    std::string clientName(id);
+    RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s clientName: %s\n", __func__, clientName.c_str());
+    uint32_t visible, x, y, width, height;
+    int32_t zorder;
+    unsigned int opacity;
+    RdkShell::ClientInfo ci;
+
+    if (clientName.empty())
+    {
+        std::vector<std::string> clientNames;
+        RdkShell::CompositorController::getClients(clientNames);
+        for (int i=0; i<clientNames.size(); i++)
+        {
+            if (RdkShell::CompositorController::getClientInfo(clientName, ci))
+            {
+                rdkshell_client_control_send_client_properties(resource, clientName.c_str(), ci.x, ci.y, ci.width, ci.height,
+                    wl_fixed_from_double(ci.sx), wl_fixed_from_double(ci.sy), wl_fixed_from_double(ci.opacity), ci.zorder, ci.visible ? 1 : 0);
+            }
+        }
+    }
+    else
+    {
+        if (RdkShell::CompositorController::getClientInfo(clientName, ci))
+        {
+            rdkshell_client_control_send_client_properties(resource, clientName.c_str(), ci.x, ci.y, ci.width, ci.height,
+                wl_fixed_from_double(ci.sx), wl_fixed_from_double(ci.sy), wl_fixed_from_double(ci.opacity), ci.zorder, ci.visible ? 1 : 0);
+        }
+    }	
+}
+
 struct rdkshell_client_control_interface rdkShellClientControlInterface =
 {
     rdkShellClientControlSetClientBoundsAndScale,
     rdkShellClientControlSetClientBounds,
-    rdkShellClientControlSetClientScale
+    rdkShellClientControlSetClientScale,
+    rdkShellClientControlSetClientProperties,
+    rdkShellClientControlGetClientProperties,
 };
 
 
