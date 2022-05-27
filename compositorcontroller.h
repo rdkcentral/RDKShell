@@ -127,6 +127,9 @@ namespace RdkShell
             static bool setCursorSize(uint32_t width, uint32_t height);
             static bool getCursorSize(uint32_t& width, uint32_t& height);
             static void setKeyRepeatConfig(bool enabled, int32_t initialDelay, int32_t repeatInterval);
+            static bool enableScreenCapture(bool enabled);
+            static bool getSharedMemoryKey(int& key);
+            static bool getSharedMemory(void*& memory);
     };
 }
 

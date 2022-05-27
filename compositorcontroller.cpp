@@ -32,6 +32,7 @@
 #include "rdkshellimage.h"
 #include "rdkshellrect.h"
 #include "cursor.h"
+#include "shm.h"
 #include <iostream>
 #include <map>
 #include <ctime>
@@ -43,6 +44,7 @@
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
 #define RDKSHELL_WILDCARD_KEY_CODE 255
 #define RDKSHELL_WATERMARK_ID 65536
+#define RDKSHELL_SHM_KEY 12355
 
 namespace RdkShell
 {
@@ -137,6 +139,10 @@ namespace RdkShell
     bool gIgnoreKeyInputEnabled = false;
     std::shared_ptr<Cursor> gCursor = nullptr;
     KeyRepeatConfig gKeyRepeatConfig;
+
+    static void* gShm = nullptr;
+    static unsigned gFrameCounter = 0;
+    static unsigned gFrameCaptureInterval = 5;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -512,8 +518,11 @@ namespace RdkShell
             }
         }
 
-        char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
+        uint32_t width = 0;
+        uint32_t height = 0;
+        RdkShell::EssosInstance::instance()->resolution(width, height);
 
+        char const *rdkshellCompositorType = getenv("RDKSHELL_COMPOSITOR_TYPE");
         if (NULL == rdkshellCompositorType)
         {
             Logger::log(LogLevel::Information,  "compositor type is empty, setting to nested by default");
@@ -523,9 +532,6 @@ namespace RdkShell
             if (strcmp(rdkshellCompositorType, "surface") == 0)
             {
                 gRdkShellCompositorType = SURFACE;
-                uint32_t width = 0;
-                uint32_t height = 0;
-                RdkShell::EssosInstance::instance()->resolution(width, height);
                 RdkCompositorSurface::createMainCompositor("rdkshell_display", width, height);
             }
             else if (strcmp(rdkshellCompositorType, "nested") != 0)
@@ -542,6 +548,12 @@ namespace RdkShell
         else
         {
             gCursor = std::make_shared<Cursor>(std::string(cursorImageName));
+        }
+
+        const char* screenCaptureInterval = getenv("RDKSHELL_CAPTURE_INTERVAL");
+        if (screenCaptureInterval)
+        {
+            gFrameCaptureInterval = strtoul(screenCaptureInterval, nullptr, 10);
         }
 
         sCompositorInitialized = true;
@@ -1558,7 +1570,15 @@ namespace RdkShell
                 gSplashImage->draw();
             }
         }
-	return true;
+
+        if (gShm && ++gFrameCounter % gFrameCaptureInterval == 0)
+        {
+            uint32_t width, height;
+            getScreenResolution(width, height);
+            glReadPixels(0, 0, width, height, GL_RGBA, GL_BYTE, gShm);
+        }
+        
+        return true;
     }
 
     bool CompositorController::addAnimation(const std::string& client, double duration, std::map<std::string, RdkShellData> &animationProperties)
@@ -2455,5 +2475,47 @@ namespace RdkShell
 
         Logger::log(LogLevel::Information, "setKeyRepeatConfig enabled: %d, initialDelay: %d, repeatInterval: %d",
             enabled, initialDelay, repeatInterval);
+    }
+
+    bool CompositorController::enableScreenCapture(bool enabled)
+    {
+        if (enabled == static_cast<bool>(gShm)) return true;
+
+        if (enabled)
+        {
+            uint32_t width = 0;
+            uint32_t height = 0;
+            RdkShell::EssosInstance::instance()->resolution(width, height);
+
+            gShm = Shm::create(RDKSHELL_SHM_KEY, width*height*4);
+            if (!gShm)
+            {
+                Logger::log(LogLevel::Warn, "Cannot create a shared memory segment: %s", Shm::error());
+                return false;
+            }
+        }
+        else
+        {
+            if (!Shm::detach(gShm))
+            {
+                Logger::log(LogLevel::Warn, "Cannot detach a shared memory segment: %s", Shm::error());
+                return false;
+            }
+            gShm = nullptr;
+        }
+
+        return true;
+    }
+    
+    bool CompositorController::getSharedMemoryKey(int& key)
+    {
+        key = RDKSHELL_SHM_KEY;
+        return true;
+    }
+
+    bool CompositorController::getSharedMemory(void*& memory)
+    {
+        memory = gShm;
+        return true;
     }
 }
