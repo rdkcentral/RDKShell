@@ -250,6 +250,12 @@ namespace RdkShell
             gInputDeviceMetadata.devicePhysicalAddress = 0;
         }
 #endif //RDKSHELL_ENABLE_KEY_METADATA
+#ifdef ENABLE_ERM
+            if (nullptr != mEssRMgr)
+            {
+                EssRMgrDestroy( mEssRMgr );
+            }
+#endif //ENABLE_ERM
     }
 
     EssosInstance* EssosInstance::instance()
@@ -340,6 +346,12 @@ namespace RdkShell
                 RdkShell::Logger::log(LogLevel::Information,  "Essos error during initialization: %s", errorDetail);
             }
         }
+#ifdef ENABLE_ERM
+        mEssRMgr = EssRMgrCreate();
+        RdkShell::Logger::log(LogLevel::Information,  "EssRMgrCreate %s",(mEssRMgr != nullptr)?"succeeded":"failed");
+#else
+        RdkShell::Logger::log(LogLevel::Error,  "ENABLE_ERM not defined");
+#endif
     }
 
     void EssosInstance::initialize(bool useWayland, uint32_t width, uint32_t height)
@@ -468,5 +480,31 @@ namespace RdkShell
     void EssosInstance::ignoreKeyInputs(bool ignore)
     {
         mKeyInputsIgnored = ignore;
+    }
+
+    bool EssosInstance::setAVBlocked(std::string app, bool blockAV)
+    {
+        bool status = true;
+#ifdef ENABLE_ERM
+        status = blockAV?EssRMgrAddToBlackList(mEssRMgr, app.c_str()):EssRMgrRemoveFromBlackList(mEssRMgr, app.c_str());
+        if (true == status)
+        {
+            mAppsAVBlacklistStatus[app] = blockAV;
+        }
+#endif
+        return status;
+    }
+    void EssosInstance::getBlockedAVApplications(std::vector<std::string> &appsList)
+    {
+#ifdef ENABLE_ERM
+        std::map<std::string, bool>::iterator appsItr = mAppsAVBlacklistStatus.begin();
+        for (;appsItr != mAppsAVBlacklistStatus.end(); appsItr++)
+        {
+            if (true == appsItr->second)
+            {
+                appsList.push_back(appsItr->first);
+            }
+        }
+#endif
     }
 }
