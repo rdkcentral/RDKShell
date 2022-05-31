@@ -21,6 +21,12 @@
 #define RDKSHELL_ESSOS_INSTANCE_H
 
 #include <essos.h>
+#ifdef ENABLE_ERM
+#include <string>
+#include <vector>
+#include <map>
+#include <essos-resmgr.h>
+#endif
 
 namespace RdkShell
 {
@@ -44,6 +50,8 @@ namespace RdkShell
             void setKeyRepeats(bool enable);
             void keyRepeats(bool& enable);
             void ignoreKeyInputs(bool ignore);
+            bool setAVBlocked(std::string app, bool blockAV);
+            void getBlockedAVApplications(std::vector<std::string> &appsList);
 
         private:
             EssosInstance();
@@ -57,6 +65,10 @@ namespace RdkShell
             uint32_t mKeyRepeatInterval;
             bool mKeyRepeatsEnabled;
             bool mKeyInputsIgnored;
+#ifdef ENABLE_ERM
+            EssRMgr* mEssRMgr;
+            std::map<std::string, bool> mAppsAVBlacklistStatus;
+#endif
     };
 }
 

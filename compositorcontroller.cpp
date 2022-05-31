@@ -2456,4 +2456,15 @@ namespace RdkShell
         Logger::log(LogLevel::Information, "setKeyRepeatConfig enabled: %d, initialDelay: %d, repeatInterval: %d",
             enabled, initialDelay, repeatInterval);
     }
+
+    bool CompositorController::setAVBlocked(std::string callsign, bool blockAV)
+    {
+        return RdkShell::EssosInstance::instance()->setAVBlocked(callsign, blockAV);
+    }
+
+    bool CompositorController::getBlockedAVApplications(std::vector<std::string>& apps)
+    {
+        RdkShell::EssosInstance::instance()->getBlockedAVApplications(apps);
+        return true;
+    }
 }
