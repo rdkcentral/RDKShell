@@ -23,10 +23,6 @@
 #include <essos.h>
 #include <string>
 #include <vector>
-#ifdef ENABLE_ERM
-#include <map>
-#include <essos-resmgr.h>
-#endif
 
 namespace RdkShell
 {
@@ -65,10 +61,6 @@ namespace RdkShell
             uint32_t mKeyRepeatInterval;
             bool mKeyRepeatsEnabled;
             bool mKeyInputsIgnored;
-#ifdef ENABLE_ERM
-            EssRMgr* mEssRMgr;
-            std::map<std::string, bool> mAppsAVBlacklistStatus;
-#endif
     };
 }
 

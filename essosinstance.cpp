@@ -26,6 +26,13 @@
 
 #include <iostream>
 
+#ifdef ENABLE_ERM
+#include <map>
+#include <essos-resmgr.h>
+
+    EssRMgr* gEssRMgr;
+    std::map<std::string, bool> gAppsAVBlacklistStatus;
+#endif
 #ifdef RDKSHELL_ENABLE_KEY_METADATA
 EssInputDeviceMetadata gInputDeviceMetadata = {};
 #endif //RDKSHELL_ENABLE_KEY_METADATA
@@ -251,9 +258,9 @@ namespace RdkShell
         }
 #endif //RDKSHELL_ENABLE_KEY_METADATA
 #ifdef ENABLE_ERM
-            if (nullptr != mEssRMgr)
+            if (nullptr != gEssRMgr)
             {
-                EssRMgrDestroy( mEssRMgr );
+                EssRMgrDestroy(gEssRMgr );
             }
 #endif //ENABLE_ERM
     }
@@ -347,8 +354,8 @@ namespace RdkShell
             }
         }
 #ifdef ENABLE_ERM
-        mEssRMgr = EssRMgrCreate();
-        RdkShell::Logger::log(LogLevel::Information,  "EssRMgrCreate %s",(mEssRMgr != nullptr)?"succeeded":"failed");
+        gEssRMgr = EssRMgrCreate();
+        RdkShell::Logger::log(LogLevel::Information,  "EssRMgrCreate %s",(gEssRMgr != nullptr)?"succeeded":"failed");
 #else
         RdkShell::Logger::log(LogLevel::Error,  "ENABLE_ERM not defined");
 #endif
@@ -486,10 +493,10 @@ namespace RdkShell
     {
         bool status = true;
 #ifdef ENABLE_ERM
-        status = blockAV?EssRMgrAddToBlackList(mEssRMgr, app.c_str()):EssRMgrRemoveFromBlackList(mEssRMgr, app.c_str());
+        status = blockAV?EssRMgrAddToBlackList(gEssRMgr, app.c_str()):EssRMgrRemoveFromBlackList(gEssRMgr, app.c_str());
         if (true == status)
         {
-            mAppsAVBlacklistStatus[app] = blockAV;
+            gAppsAVBlacklistStatus[app] = blockAV;
         }
 #endif
         return status;
@@ -497,8 +504,8 @@ namespace RdkShell
     void EssosInstance::getBlockedAVApplications(std::vector<std::string> &appsList)
     {
 #ifdef ENABLE_ERM
-        std::map<std::string, bool>::iterator appsItr = mAppsAVBlacklistStatus.begin();
-        for (;appsItr != mAppsAVBlacklistStatus.end(); appsItr++)
+        std::map<std::string, bool>::iterator appsItr = gAppsAVBlacklistStatus.begin();
+        for (;appsItr != gAppsAVBlacklistStatus.end(); appsItr++)
         {
             if (true == appsItr->second)
             {
