@@ -116,6 +116,11 @@ if (RDKSHELL_BUILD_ENABLE_KEYREPEATS)
   add_definitions("-DRDKSHELL_ENABLE_KEYREPEATS")
 endif (RDKSHELL_BUILD_ENABLE_KEYREPEATS)
 
+if(BUILD_ENABLE_ERM)
+    add_definitions("-DENABLE_ERM")
+    set(RDKSHELL_LINK_LIBRARIES ${RDKSHELL_LINK_LIBRARIES} -lessosrmgr)
+endif()
+
 add_subdirectory(extensions/RdkShellExtendedInput)
 add_subdirectory(extensions/RdkShellClientControl)
 add_library(rdkshell_shared SHARED ${RDKSHELL_SOURCES})

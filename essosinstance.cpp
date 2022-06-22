@@ -26,6 +26,13 @@
 
 #include <iostream>
 
+#ifdef ENABLE_ERM
+#include <map>
+#include <essos-resmgr.h>
+
+    EssRMgr* gEssRMgr;
+    std::map<std::string, bool> gAppsAVBlacklistStatus;
+#endif
 #ifdef RDKSHELL_ENABLE_KEY_METADATA
 EssInputDeviceMetadata gInputDeviceMetadata = {};
 #endif //RDKSHELL_ENABLE_KEY_METADATA
@@ -250,6 +257,12 @@ namespace RdkShell
             gInputDeviceMetadata.devicePhysicalAddress = 0;
         }
 #endif //RDKSHELL_ENABLE_KEY_METADATA
+#ifdef ENABLE_ERM
+            if (nullptr != gEssRMgr)
+            {
+                EssRMgrDestroy(gEssRMgr );
+            }
+#endif //ENABLE_ERM
     }
 
     EssosInstance* EssosInstance::instance()
@@ -340,6 +353,12 @@ namespace RdkShell
                 RdkShell::Logger::log(LogLevel::Information,  "Essos error during initialization: %s", errorDetail);
             }
         }
+#ifdef ENABLE_ERM
+        gEssRMgr = EssRMgrCreate();
+        RdkShell::Logger::log(LogLevel::Information,  "EssRMgrCreate %s",(gEssRMgr != nullptr)?"succeeded":"failed");
+#else
+        RdkShell::Logger::log(LogLevel::Error,  "ENABLE_ERM not defined");
+#endif
     }
 
     void EssosInstance::initialize(bool useWayland, uint32_t width, uint32_t height)
@@ -468,5 +487,31 @@ namespace RdkShell
     void EssosInstance::ignoreKeyInputs(bool ignore)
     {
         mKeyInputsIgnored = ignore;
+    }
+
+    bool EssosInstance::setAVBlocked(std::string app, bool blockAV)
+    {
+        bool status = true;
+#ifdef ENABLE_ERM
+        status = blockAV?EssRMgrAddToBlackList(gEssRMgr, app.c_str()):EssRMgrRemoveFromBlackList(gEssRMgr, app.c_str());
+        if (true == status)
+        {
+            gAppsAVBlacklistStatus[app] = blockAV;
+        }
+#endif
+        return status;
+    }
+    void EssosInstance::getBlockedAVApplications(std::vector<std::string> &appsList)
+    {
+#ifdef ENABLE_ERM
+        std::map<std::string, bool>::iterator appsItr = gAppsAVBlacklistStatus.begin();
+        for (;appsItr != gAppsAVBlacklistStatus.end(); appsItr++)
+        {
+            if (true == appsItr->second)
+            {
+                appsList.push_back(appsItr->first);
+            }
+        }
+#endif
     }
 }
