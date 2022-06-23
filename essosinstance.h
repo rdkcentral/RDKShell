@@ -48,6 +48,7 @@ namespace RdkShell
             void ignoreKeyInputs(bool ignore);
             bool setAVBlocked(std::string app, bool blockAV);
             void getBlockedAVApplications(std::vector<std::string> &appsList);
+            bool isErmEnabled();
 
         private:
             EssosInstance();

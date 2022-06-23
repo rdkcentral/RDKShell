@@ -129,6 +129,7 @@ namespace RdkShell
             static void setKeyRepeatConfig(bool enabled, int32_t initialDelay, int32_t repeatInterval);
             static bool setAVBlocked(std::string callsign, bool blockAV);
             static bool getBlockedAVApplications(std::vector<std::string>& apps);
+            static bool isErmEnabled();
     };
 }
 
