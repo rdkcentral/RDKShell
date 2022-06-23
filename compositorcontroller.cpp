@@ -2467,4 +2467,9 @@ namespace RdkShell
         RdkShell::EssosInstance::instance()->getBlockedAVApplications(apps);
         return true;
     }
+
+    bool CompositorController::isErmEnabled()
+    {
+        return RdkShell::EssosInstance::instance()->isErmEnabled();
+    }
 }

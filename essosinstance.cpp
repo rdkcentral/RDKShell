@@ -489,6 +489,15 @@ namespace RdkShell
         mKeyInputsIgnored = ignore;
     }
 
+    bool EssosInstance::isErmEnabled()
+    {
+#ifdef ENABLE_ERM
+        return true;
+#else
+        return false;
+#endif // ENABLE_ERM
+    }
+
     bool EssosInstance::setAVBlocked(std::string app, bool blockAV)
     {
         bool status = true;
