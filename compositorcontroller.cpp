@@ -644,7 +644,14 @@ namespace RdkShell
             {
                 gPendingKeyUpListeners.push_back(gFocusedCompositor.compositor);
             }
+
+            if (gFocusedCompositor.compositor)
+            {
+                gFocusedCompositor.compositor->setFocused(false);
+            }
+
             gFocusedCompositor = *it;
+            gFocusedCompositor.compositor->setFocused(true);
             return true;
         }
         return false;
@@ -2456,4 +2463,39 @@ namespace RdkShell
         Logger::log(LogLevel::Information, "setKeyRepeatConfig enabled: %d, initialDelay: %d, repeatInterval: %d",
             enabled, initialDelay, repeatInterval);
     }
+
+    bool CompositorController::getClientInfo(const std::string& client, ClientInfo& ci)
+    {
+        CompositorListIterator it;
+        if (!getCompositorInfo(client, it))
+            return false;
+        auto c = it->compositor;
+
+        c->visible(ci.visible);
+        //c->zorder(ci.zorder);
+        c->opacity(ci.opacity);
+        c->scale(ci.sx, ci.sy);
+        c->position(ci.x, ci.y);
+        c->size(ci.width, ci.height);
+
+        return true;
+    }
+
+    bool CompositorController::setClientInfo(const std::string& client, const ClientInfo& ci)
+    {
+        CompositorListIterator it;
+        if (!getCompositorInfo(client, it))
+            return false;
+        auto c = it->compositor;
+
+        c->setVisible(ci.visible);
+        //c->setZorder(ci.zorder);
+        c->setOpacity(ci.opacity);
+        c->setScale(ci.sx, ci.sy);
+        c->setPosition(ci.x, ci.y);
+        c->setSize(ci.width, ci.height);
+
+        return true;
+    }
+
 }

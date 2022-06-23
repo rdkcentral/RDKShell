@@ -36,6 +36,7 @@ extern bool gForce720;
 namespace RdkShell
 {
     #define RDKSHELL_INITIAL_INPUT_LISTENER_TAG 1001
+    #define RDKSHELL_INITIAL_STATE_CHANGE_LISTENER_TAG 2001
 
     void launchApplicationThreadCallback(RdkCompositor* compositor)
     {
@@ -48,10 +49,11 @@ namespace RdkShell
     RdkCompositor::RdkCompositor() : mDisplayName(), mWstContext(NULL), 
         mWidth(1920), mHeight(1080), mPositionX(0), mPositionY(0), mMatrix(), mOpacity(1.0),
         mVisible(true), mAnimating(false), mHolePunch(true), mScaleX(1.0), mScaleY(1.0), mEnableKeyMetadata(false), mInputListenerTags(RDKSHELL_INITIAL_INPUT_LISTENER_TAG), mInputLock(), mInputListeners(),
+        mStateChangeListenerTags(RDKSHELL_INITIAL_STATE_CHANGE_LISTENER_TAG), mStateChangeLock(), mStateChangeListeners(),
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false),
         mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false), mSurfaceCount(0),
-        mInputEventsEnabled(true)
+        mInputEventsEnabled(true), mSuspendedBeforeStart(false), mFocused(false)
     {
         if (gForce720)
         {
@@ -85,6 +87,7 @@ namespace RdkShell
         mWstContext = NULL;
 
         mInputListeners.clear();
+        mStateChangeListeners.clear();
         mReceivedKeyPress = false;
     }
 
@@ -185,38 +188,39 @@ namespace RdkShell
 
     bool RdkCompositor::loadExtensions(WstCompositor *compositor, const std::string& clientName)
     {
-        RdkShell::Logger::log(LogLevel::Information,  "loadExtensions clientName: %s", clientName.c_str());
+        Logger::log(LogLevel::Information,  "loadExtensions clientName: %s", clientName.c_str());
 
         bool success = true;
         if (compositor)
         {
-            const char* enableRdkShellExtendedInput = getenv("RDKSHELL_EXTENDED_INPUT_ENABLED");
+            std::vector<std::string> extensions;
+            getAllowedExtensions(clientName, extensions);
+            Logger::log(LogLevel::Information,  "loadExtensions getAllowedExtensions found: %d extensions for client %s ", extensions.size(), clientName.c_str());
 
+            const char* enableRdkShellExtendedInput = getenv("RDKSHELL_EXTENDED_INPUT_ENABLED");
             if (enableRdkShellExtendedInput)
             {
                 std::string extensionInputPath = std::string(RDKSHELL_WESTEROS_PLUGIN_DIRECTORY) + "libwesteros_plugin_rdkshell_extended_input.so";
-                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath.c_str());
-                if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
-                {
-                    RdkShell::Logger::log(LogLevel::Information,  "Failed to load plugin: libwesteros_plugin_rdkshell_extended_input.so");
-                    success = false;
-                }
+                extensions.push_back(extensionInputPath);
             }
-
-            std::vector<std::string> extensions;
-            getAllowedExtensions(clientName, extensions);
-
-            RdkShell::Logger::log(LogLevel::Information,  "loadExtensions getAllowedExtensions found: %d extensions for client %s ", extensions.size(), clientName.c_str());
 
             for (int i = 0; i < extensions.size(); ++i)
             {
                 const std::string extensionInputPath = RDKSHELL_WESTEROS_PLUGIN_DIRECTORY + extensions[i];
-                RdkShell::Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath.c_str());
+                Logger::log(LogLevel::Information,  "attempting to load extension: %s", extensionInputPath.c_str());
                 if (!WstCompositorAddModule(compositor, extensionInputPath.c_str()))
                 {
-                    RdkShell::Logger::log(LogLevel::Information,  "Failed to load plugin: libwesteros_plugin_rdkshell_client_control.so");
+                    Logger::log(LogLevel::Error,  "Failed to load plugin:: %s, westeros error: %s", extensionInputPath.c_str(), WstCompositorGetLastErrorDetail(compositor));
                     success = false;
                 }
+            }
+
+            std::string renderer = getRenderer();
+            if (!renderer.empty())
+            {
+                std::string rendererPath = std::string(RDKSHELL_WESTEROS_PLUGIN_DIRECTORY) + renderer;
+                Logger::log(LogLevel::Information,  "attempting to load renderer: %s", rendererPath.c_str());
+                WstCompositorSetRendererModule(compositor, rendererPath.c_str());
             }
         }
         else
@@ -365,8 +369,8 @@ namespace RdkShell
     {
         if (!mInputEventsEnabled)
         {
-            RdkShell::Logger::log(LogLevel::Information, "processKeyEvent input event blocked disp:%s, keyCode: %d",
-                mDisplayName, keycode);
+            RdkShell::Logger::log(LogLevel::Information, "processKeyEvent input event blocked display: %s, keyCode: %d",
+                mDisplayName.c_str(), keycode);
             return;
         }
 
@@ -497,7 +501,14 @@ namespace RdkShell
 
     void RdkCompositor::setVisible(bool visible)
     {
+        if (visible && (mApplicationState == RdkShell::ApplicationState::Suspended))
+        {
+            Logger::log(LogLevel::Information,  "application not made visible because of suspended state");
+            return;
+        }
+
         mVisible = visible;
+        updateWaylandState();
     }
     
     void RdkCompositor::visible(bool &visible)
@@ -552,6 +563,48 @@ namespace RdkShell
         {
             if (listener.second)
                 listener.second(inputEvent);
+        }
+    }
+
+    int RdkCompositor::registerStateChangeEventListener(std::function<void(uint32_t)> listener)
+    {
+        if (true == mSuspendedBeforeStart)
+        {
+            suspendApplication();
+        }
+        std::lock_guard<std::mutex> locker(mStateChangeLock);
+        const int tag = mStateChangeListenerTags++;
+        if (true == mSuspendedBeforeStart)
+	    {
+            if (listener)
+            {
+               listener(3);
+            }
+            mSuspendedBeforeStart = false;
+        }
+        mStateChangeListeners.emplace(tag, std::move(listener));
+        return tag;
+    }
+
+    void RdkCompositor::unregisterStateChangeEventListener(int tag)
+    {
+        std::lock_guard<std::mutex> locker(mStateChangeLock);
+        mStateChangeListeners.erase(tag);
+    }
+
+    void RdkCompositor::broadcastStateChangeEvent(uint32_t state)
+    {
+        Logger::log(LogLevel::Information, "sending state event %d for %s", state, mDisplayName.c_str());
+        // std::vector<std::map<std::string, RdkShellData>> eventData(1);
+        // eventData[0] = std::map<std::string, RdkShellData>();
+        // eventData[0]["state"] = state;
+        // eventData[0]["display"] = mDisplayName;
+        // CompositorController::sendEvent(RDKSHELL_EVENT_APPLICATION_STATE_CHANGED, eventData);
+        std::lock_guard<std::mutex> locker(mStateChangeLock);
+        for (const auto &listener : mStateChangeListeners)
+        {
+            if (listener.second)
+                listener.second(state);
         }
     }
 
@@ -615,6 +668,7 @@ namespace RdkShell
         {
             mApplicationState = RdkShell::ApplicationState::Running;
             CompositorController::onEvent(this, RDKSHELL_EVENT_APPLICATION_RESUMED);
+            updateWaylandState();
             return true;
         }
         return false;
@@ -627,6 +681,12 @@ namespace RdkShell
         {
             mApplicationState = RdkShell::ApplicationState::Suspended;
             CompositorController::onEvent(this, RDKSHELL_EVENT_APPLICATION_SUSPENDED);
+            updateWaylandState();
+            return true;
+        }
+        if (mApplicationState == RdkShell::ApplicationState::Unknown)
+        {
+            mSuspendedBeforeStart = true;
             return true;
         }
         return false;
@@ -695,13 +755,44 @@ namespace RdkShell
 
     void RdkCompositor::enableInputEvents(bool enable)
     {
-        RdkShell::Logger::log(LogLevel::Information, "enableInputEvents disp:%s, oldVal: %d, newVal: %d",
-            mDisplayName, mInputEventsEnabled, enable);
+        Logger::log(LogLevel::Information, "enableInputEvents display: %s, oldVal: %d, newVal: %d",
+            mDisplayName.c_str(), mInputEventsEnabled, enable);
         mInputEventsEnabled = enable;
     }
 
     bool RdkCompositor::getInputEventsEnabled() const
     {
         return mInputEventsEnabled;
+    }
+
+    void RdkCompositor::updateWaylandState()
+    {
+        const uint32_t _ACTIVE = 0;
+        const uint32_t _INACTIVE = 1;
+        const uint32_t _HIDDEN = 2;
+        const uint32_t _SUSPENDED = 3;
+
+        if (mApplicationState == ApplicationState::Suspended)
+        {
+            broadcastStateChangeEvent(_SUSPENDED);
+        }
+        else if (!mVisible)
+        {
+            broadcastStateChangeEvent(_HIDDEN);
+        }
+        else if (mFocused)
+        {
+            broadcastStateChangeEvent(_ACTIVE);
+        }
+        else
+        {
+            broadcastStateChangeEvent(_INACTIVE);
+        }
+    }
+
+    void RdkCompositor::setFocused(bool focused)
+    {
+        mFocused = focused;
+        updateWaylandState();
     }
 }

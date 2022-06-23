@@ -25,11 +25,15 @@
 #include <map>
 #include <algorithm>
 
-namespace RdkShell
+namespace 
 {
     std::map<std::string, std::vector<std::string>> gClientsPermittedExtensions;
     std::vector<std::string> gClientsDefaultPermittedExtensions;
+    std::string gDefaultRenderer;
+}
 
+namespace RdkShell
+{
     void readPermissionsConfiguration()
     {
         const char* configFilePath = getenv("RDKSHELL_CLIENT_PERMISSIONS_CONFIG");
@@ -38,6 +42,7 @@ namespace RdkShell
             Logger::log(LogLevel::Warn, "%s: RDKSHELL_CLIENT_PERMISSIONS_CONFIG not specified\n", __func__);
             return;
         }
+        Logger::log(LogLevel::Information, "Reading Permissions config from: %s", configFilePath);
 
         rapidjson::Document document;
         bool ret = RdkShellJson::readJsonFile(configFilePath, document);
@@ -126,30 +131,46 @@ namespace RdkShell
         {
             const rapidjson::Value& defaultValue = document["default"];
 
-            if (defaultValue.IsObject() &&
-                defaultValue.HasMember("extensions"))
+            if (defaultValue.IsObject())
             {
-                const rapidjson::Value& extensionsValue = defaultValue["extensions"];
-                
-                if (extensionsValue.IsArray())
+                if (defaultValue.HasMember("extensions"))
                 {
-                    for (rapidjson::SizeType j = 0; j < extensionsValue.Size(); ++j)
+                    const rapidjson::Value& extensionsValue = defaultValue["extensions"];
+
+                    if (extensionsValue.IsArray())
                     {
-                        const rapidjson::Value& extesionValue = extensionsValue[j];
-                        if (extesionValue.IsString())
+                        for (rapidjson::SizeType j = 0; j < extensionsValue.Size(); ++j)
                         {
-                            gClientsDefaultPermittedExtensions.push_back(extesionValue.GetString());
+                            const rapidjson::Value& extesionValue = extensionsValue[j];
+                            if (extesionValue.IsString())
+                            {
+                                gClientsDefaultPermittedExtensions.push_back(extesionValue.GetString());
+                            }
+                            else
+                            {
+                                Logger::log(LogLevel::Error, "%s: incorrect extensions\n", __func__);
+                                continue;
+                            }
                         }
-                        else
-                        {
-                            Logger::log(LogLevel::Error, "%s: incorrect extensions\n", __func__);
-                            continue;
-                        }                                
+                    }
+                    else
+                    {
+                        Logger::log(LogLevel::Error, "%s: extensions entry not an array\n", __func__);
                     }
                 }
-                else
+
+                if (defaultValue.HasMember("renderer"))
                 {
-                    Logger::log(LogLevel::Error, "%s: extensions entry not an array\n", __func__);
+                    const rapidjson::Value& defaultRenderer = defaultValue["renderer"];
+
+                    if (defaultRenderer.IsString())
+                    {
+                        gDefaultRenderer = defaultRenderer.GetString();
+                    }
+                    else
+                    {
+                        Logger::log(LogLevel::Error, "%s: incorrect default renderer\n", __func__);
+                    }
                 }
             }
             else
@@ -157,39 +178,10 @@ namespace RdkShell
                 Logger::log(LogLevel::Error, "%s: incorrect config structure\n", __func__);
             } 
         }
-
-        logPermissionsConfiguration();
-    }
-
-    void logPermissionsConfiguration()
-    {
-        std::stringstream ss;
-        ss << __func__ << " default permissions: ";
-        for (int i = 0; i < gClientsDefaultPermittedExtensions.size(); ++i)
-        {
-            ss << gClientsDefaultPermittedExtensions[i] << " ";
-        }
-        ss << "\n";
-
-        ss << __func__ << " permissions:\n";
-        for (auto it = gClientsPermittedExtensions.begin(); it != gClientsPermittedExtensions.end(); ++it)
-        {
-            ss << it->first << ": ";
-            auto exts = it->second;
-            for (int j = 0; j < exts.size(); ++j)
-            {
-                ss << exts[j] << " ";
-            }
-            ss << "\n";
-        }
-
-        Logger::log(LogLevel::Information, ss.str().c_str());
     }
 
     void getAllowedExtensions(const std::string& clientName, std::vector<std::string>& extensions)
     {
-        extensions.clear();
-
         if (gClientsPermittedExtensions.count(clientName) > 0)
         {
             extensions = gClientsPermittedExtensions[clientName];
@@ -198,6 +190,11 @@ namespace RdkShell
         {
             extensions = gClientsDefaultPermittedExtensions;
         }        
+    }
+
+    std::string getRenderer()
+    {
+        return gDefaultRenderer;
     }
 
 }
