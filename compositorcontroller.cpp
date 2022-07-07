@@ -1442,7 +1442,7 @@ namespace RdkShell
 
         if (ret)
         {
-            if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus))
+            if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus) || focus)
             {
                 gFocusedCompositor = compositorInfo;
                 Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
