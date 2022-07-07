@@ -62,6 +62,11 @@ testAPI()
   validate $apiname $expectedResult "$curlOutput"
 }
 
+a=$(curl -sk -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d ' {"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKShell.1.getClients", "params": {}}' http://127.0.0.1:9998/jsonrpc)
+resultsParam=`echo $a|awk -F'"result\":' '{printf $2}'|sed "s/[{}]//g"|awk -F',' '{print $0}'`
+b=`echo $a|awk -F'"clients":' '{printf $2}'|sed "s/[{}]//g"|awk -F',"success":' '{print $1}'`
+c=`echo $b|awk -F'"subtec_s1",' '{print $2}'|awk -F']' '{print $1}'`
+d=`echo $b|awk -F'[' '{printf $2}'|awk -F']' '{print $1}'
 
 #setLogLevel
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.setLogLevel","params":{"logLevel":"DEBUG"}}'
@@ -82,11 +87,11 @@ expectedResult='"w":600,"h":400,"success":true'
 testAPI "getScreenResolution" "$inputParams" "$expectedResult"
 
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.getClients"}'
-expectedResult='"clients":[],"success":true'
+expectedResult=$resultsParam
 testAPI "getClients" "$inputParams" "$expectedResult"
 
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.getZOrder"}'
-expectedResult='"clients":[],"success":true'
+expectedResult=$resultsParam
 testAPI "getZOrder" "$inputParams" "$expectedResult"
 
 #######################api after client creation 
@@ -116,11 +121,21 @@ expectedResult='"success":true'
 testAPI "moveBehind" "$inputParams" "$expectedResult"
 
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.getClients"}'
-expectedResult='"clients":["testapp2","testapp1","testapp"],"success":true'
+if grep -q "subtec_s1" <<<$b
+then
+    expectedResult='"clients":["subtec_s1","testapp2","testapp1","testapp",'${c}'],"success":true'
+else
+    expectedResult='"clients":["testapp2","testapp1","testapp",'${d}'],"success":true'
+fi
 testAPI "getClients" "$inputParams" "$expectedResult"
 
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.getZOrder"}'
-expectedResult='"clients":["testapp2","testapp1","testapp"],"success":true'
+if grep -q "subtec_s1" <<<$b
+then
+    expectedResult='"clients":["subtec_s1","testapp2","testapp1","testapp",'${c}'],"success":true'
+else
+    expectedResult='"clients":["testapp2","testapp1","testapp",'${d}'],"success":true'
+fi
 testAPI "getZOrder" "$inputParams" "$expectedResult"
 
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.setFocus","params":{"client":"testapp1"}}'
@@ -135,8 +150,8 @@ testAPI "addKeyIntercept" "$inputParams" "$expectedResult"
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.generateKey","params":{"keys":[{"keyCode": 50, "delay":"0.0"}]}}'
 expectedResult='"success":true'
 testAPI "generateKeyAfterAddKeyIntercept" "$inputParams" "$expectedResult"
-sleep 2
-journalctl -a|grep -i startwpe|grep "Key 50 intercepted by client testapp2"
+sleep 10
+journalctl -a|grep "Key 50 intercepted by client testapp2"
 
 if [ $? -eq 1 ]
 then
@@ -197,7 +212,7 @@ testAPI "addKeyListener" "$inputParams" "$expectedResult"
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.generateKey","params":{"keys":[{"keyCode": 48, "delay":"0.0"}]}}'
 expectedResult='"success":true'
 testAPI "generateKeyAfterAddKeyListener" "$inputParams" "$expectedResult"
-journalctl -a|grep -i startwpe|grep "Key 48 sent to listener testapp"
+journalctl -a|grep "Key 48 sent to listener testapp"
 
 if [ $? -eq 1 ]
 then
@@ -248,7 +263,7 @@ expectedResult='"success":true'
 testAPI "killTestApp2" "$inputParams" "$expectedResult"
 
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.getClients"}'
-expectedResult='"clients":[],"success":true'
+expectedResult=$resultsParam
 testAPI "getClientsAfterKill" "$inputParams" "$expectedResult"
 
 echo "Number of success test - $numberOfSuccess"
