@@ -2,7 +2,7 @@
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
 *
-* Copyright 2021 RDK Management
+* Copyright 2020 RDK Management
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,31 +18,28 @@
 **/
 
 #pragma once
+#include "rdkcompositor.h"
 
-#include <GLES2/gl2.h>
+#include <vector>
+#include <memory>
+#include "compositorinfo.h"
+
 
 namespace RdkShell
 {
-    class FrameBuffer
+
+    class RdkCompositorGroup : public RdkCompositor
     {
     public:
-        FrameBuffer(int width, int height);
-        ~FrameBuffer();
+        RdkCompositorGroup();
+        CompositorList& compositors();
 
-        int width() const { return mWidth; }
-        int height() const { return mHeight; }
-
-        GLuint texture() const { return mTextureId; }
-
-        void bind();
-        void unbind();
+        void draw(bool& needsHolePunch, RdkShellRect& rect) override;
+        bool createDisplay(const std::string& displayName, const std::string& clientName,
+                uint32_t width, uint32_t height, bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight) override;
 
     private:
-        int mWidth;
-        int mHeight;
-
-        GLuint mTextureId;
-        GLuint mFboId;
-        GLint mPrevFbo;
+        CompositorList mCompositors;
     };
+
 }

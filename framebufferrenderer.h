@@ -32,7 +32,7 @@ namespace RdkShell
         static FrameBufferRenderer *instance();
         
         void draw(std::shared_ptr<FrameBuffer> fbo, uint32_t screenWidth, uint32_t screenHeight,
-            float *matrix, int32_t x, int32_t y, uint32_t width, uint32_t height);
+            float *matrix, int32_t x, int32_t y, uint32_t width, uint32_t height, float alpha = 1.0f);
     
     private:
         FrameBufferRenderer();
@@ -47,5 +47,6 @@ namespace RdkShell
         GLint mTextureLocation;
         GLint mResolutionLocation;
         GLint mMatrixLocation;
+        GLint mAlphaLocation;
     };
 }
