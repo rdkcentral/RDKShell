@@ -130,6 +130,12 @@ namespace RdkShell
             static bool setAVBlocked(std::string callsign, bool blockAV);
             static bool getBlockedAVApplications(std::vector<std::string>& apps);
             static bool isErmEnabled();
+
+            static bool createGroup(const std::string& name);
+            static bool getGroups(std::map<std::string, std::vector<std::string>>& groups);
+            static bool deleteGroup(const std::string& groupName);
+            static bool setGroup(const std::string& clientName, const std::string& groupName);
+            static bool removeFromGroup(const std::string& clientName, const std::string& groupName);
     };
 }
 

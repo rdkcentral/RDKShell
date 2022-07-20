@@ -56,6 +56,7 @@ set(RDKSHELL_SOURCES
   framebuffer.cpp
   framebufferrenderer.cpp
   cursor.cpp
+  rdkcompositorgroup.cpp
 )
 set(RDKSHELL_LINK_LIBRARIES -lz -lessos -lEGL -lGLESv2 -lwayland-client -lwesteros_compositor -lpthread -ljpeg -lpng16)
 

@@ -38,6 +38,8 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include "compositorinfo.h"
+#include "rdkcompositorgroup.h"
 
 #define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
@@ -46,26 +48,6 @@
 
 namespace RdkShell
 {
-    struct KeyListenerInfo
-    {
-        KeyListenerInfo() : keyCode(-1), flags(0), activate(false), propagate(true) {}
-        uint32_t keyCode;
-        uint32_t flags;
-        bool activate;
-        bool propagate;
-    };
-
-    struct CompositorInfo
-    {
-        CompositorInfo() : name(), compositor(nullptr), eventListeners(), mimeType() {}
-        std::string name;
-        std::shared_ptr<RdkCompositor> compositor;
-        std::map<uint32_t, std::vector<KeyListenerInfo>> keyListenerInfo;
-        std::vector<std::shared_ptr<RdkShellEventListener>> eventListeners;
-        std::string mimeType;
-	bool autoDestroy;
-    };
-
     struct KeyInterceptInfo
     {
         KeyInterceptInfo() : keyCode(-1), flags(0), compositorInfo() {}
@@ -95,9 +77,6 @@ namespace RdkShell
         int repeatInterval;
         bool enabled;
     };
-
-    typedef std::vector<CompositorInfo> CompositorList;
-    typedef CompositorList::iterator CompositorListIterator;
 
     CompositorList gCompositorList;
     CompositorList gTopmostCompositorList;
@@ -145,6 +124,152 @@ namespace RdkShell
         return displayName;
     }
 
+    CompositorList& children(CompositorInfo& info)
+    {
+        return std::static_pointer_cast<RdkCompositorGroup>(info.compositor)->compositors();
+    }
+
+    bool findByName(const std::string& name, CompositorList& list,
+                    CompositorListIterator& foundIt, CompositorList** foundList)
+    {
+        for (auto it = list.begin(); it != list.end(); ++it)
+        {
+            if (it->name == name)
+            {
+                foundIt = it;
+                if (foundList)
+                {
+                    *foundList = &list;
+                }
+
+                return true;
+            }
+
+            if (it->isGroup)
+            {
+                if (findByName(name, children(*it), foundIt, foundList))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // NOTE: This is a copy of `findByName` with a changed condition, could be generalized
+    bool findByCompositor(const RdkCompositor* compositor, CompositorList& list,
+                          CompositorListIterator& foundIt, CompositorList** foundList)
+    {
+        for (auto it = list.begin(); it != list.end(); ++it)
+        {
+            if (it->compositor.get() == compositor)
+            {
+                foundIt = it;
+                if (foundList)
+                {
+                    *foundList = &list;
+                }
+
+                return true;
+            }
+
+            if (it->isGroup)
+            {
+                if (findByCompositor(compositor, children(*it), foundIt, foundList))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+    bool findByDisplayName(const std::string& displayName, CompositorList& list,
+                          CompositorListIterator& foundIt, CompositorList** foundList)
+    {
+        std::string name;
+        for (auto it = list.begin(); it != list.end(); ++it)
+        {
+            if (it->isGroup) // groups don't have a display name
+            {
+                if (findByDisplayName(displayName, children(*it), foundIt, foundList))
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                it->compositor->displayName(name);
+                if (name == displayName)
+                {
+                    foundIt = it;
+                    if (foundList)
+                    {
+                        *foundList = &list;
+                    }
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+    void getCompositors(CompositorList& list, CompositorList& saveTo)
+    {
+        for (auto& compositor : list)
+        {
+            if (compositor.isGroup)
+            {
+                getCompositors(children(compositor), saveTo);
+            }
+            else
+            {
+                saveTo.push_back(compositor);
+            }
+        }
+    }
+
+    CompositorList getCompositors(CompositorList& list)
+    {
+        CompositorList result;
+        getCompositors(list, result);
+        return result;
+    }
+
+
+    void getGroups(CompositorList& compositors, 
+                   std::map<std::string, std::vector<std::string>>& saveTo,
+                   const std::string& groupName = "")
+    {
+        for (auto& compositor : compositors)
+        {
+            // if (!groupName.empty())
+            {
+                auto& entry = saveTo[groupName];
+                entry.push_back(compositor.name);
+            }
+
+            if (compositor.isGroup)
+            {
+                getGroups(children(compositor), saveTo, compositor.name);
+            }
+        }
+    }
+
+    // NOTE: Map is sorted by key (group name)
+    bool getGroups(std::map<std::string, std::vector<std::string>>& groups)
+    {
+        groups.clear();
+        getGroups(gCompositorList, groups);
+        getGroups(gTopmostCompositorList, groups);
+    }
+
     /*
         getCompositorInfo searches gCompositorList and gTopmostCompositoList for compositor info with
         client name equal to clientName parameter.
@@ -156,35 +281,11 @@ namespace RdkShell
         compositor info was found.
     */
     bool getCompositorInfo(const std::string& clientName, CompositorListIterator& foundIt,
-        CompositorList** compositorList = nullptr)
+                           CompositorList** foundList = nullptr)
     {
-        std::string stdClientName = standardizeName(clientName);
-
-        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
-        {
-            if (it->name == stdClientName)
-            {
-                foundIt = it;
-
-                if (compositorList)
-                    *compositorList = &gCompositorList;
-                return true;
-            }
-        }
-
-        for (auto it = gTopmostCompositorList.begin(); it != gTopmostCompositorList.end(); ++it)
-        {
-            if (it->name == stdClientName)
-            {
-                foundIt = it;
-
-                if (compositorList)
-                    *compositorList = &gTopmostCompositorList;
-                return true;
-            }
-        }
-
-        return false;
+        std::string name = standardizeName(clientName);
+        return findByName(name, gCompositorList, foundIt, foundList)
+            || findByName(name, gTopmostCompositorList, foundIt, foundList);
     }
 
     /*
@@ -192,27 +293,11 @@ namespace RdkShell
         RdkCompositor equal to compositor parameter.
         Returns true if compositor info was found in any of the lists and false otherwise.
     */
-    bool getCompositorInfo(const RdkCompositor* compositor, CompositorListIterator& foundIt)
+    bool getCompositorInfo(const RdkCompositor* compositor, CompositorListIterator& foundIt,
+                           CompositorList** foundList = nullptr)
     {
-        for (auto it = gCompositorList.begin(); it != gCompositorList.end(); ++it)
-        {
-            if (it->compositor.get() == compositor)
-            {
-                foundIt = it;
-                return true;
-            }
-        }
-
-        for (auto it = gTopmostCompositorList.begin(); it != gTopmostCompositorList.end(); ++it)
-        {
-            if (it->compositor.get() == compositor)
-            {
-                foundIt = it;
-                return true;
-            }
-        }
-
-        return false;
+        return findByCompositor(compositor, gCompositorList, foundIt, foundList)
+            || findByCompositor(compositor, gTopmostCompositorList, foundIt, foundList);
     }
 
     size_t getNumCompositorInfo()
@@ -314,10 +399,11 @@ namespace RdkShell
 
     void bubbleKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
-        std::vector<CompositorInfo>::iterator compositorIterator = gCompositorList.begin();
+        CompositorList compositorList = getCompositors(gCompositorList);
+        CompositorListIterator compositorIterator = compositorList.begin();
         std::string focusedCompositorName = gFocusedCompositor.name;
         #ifndef RDKSHELL_ENABLE_KEYBUBBING_TOP_MODE
-        for (compositorIterator = gCompositorList.begin();  compositorIterator != gCompositorList.end(); compositorIterator++)
+        for (compositorIterator = compositorList.begin();  compositorIterator != compositorList.end(); compositorIterator++)
         {
           if (compositorIterator->name == gFocusedCompositor.name)
           {
@@ -331,7 +417,7 @@ namespace RdkShell
         bool activateCompositor = false, propagateKey = true, foundListener = false;
         bool stopPropagation = false;
         bool isFocusedCompositor = true;
-        while (compositorIterator != gCompositorList.end())
+        while (compositorIterator != compositorList.end())
         {
           if (!compositorIterator->compositor->getInputEventsEnabled())
           {
@@ -424,26 +510,10 @@ namespace RdkShell
 
     std::shared_ptr<RdkCompositor> CompositorController::getCompositor(const std::string& displayName)
     {
-        auto lambda = [displayName](CompositorInfo& info)
-        {
-            std::string compositorDisplayName;
-            info.compositor->displayName(compositorDisplayName);
-            return compositorDisplayName == displayName;
-        };
-
-        auto it = std::find_if(gCompositorList.begin(), gCompositorList.end(), lambda);
-
-        if (it == gCompositorList.end())
-        {
-            it = std::find_if(gTopmostCompositorList.begin(), gTopmostCompositorList.end(), lambda);
-
-            if (it == gTopmostCompositorList.end())
-            {
-                return nullptr;
-            }
-        }
-
-        return it->compositor;
+        CompositorListIterator it;
+        return findByDisplayName(displayName, gCompositorList, it, nullptr) || findByDisplayName(displayName, gTopmostCompositorList, it, nullptr)
+             ? it->compositor
+             : nullptr;
     }
 
     void CompositorController::initialize()
@@ -638,6 +708,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot focus on a group (%s)", it->name.c_str());
+                return false;
+            }
+
             std::string previousFocusedClient = !gFocusedCompositor.name.empty() ? gFocusedCompositor.name:"none";
             Logger::log(LogLevel::Information,  "rdkshell_focus setFocus: the focused client is now %s.  previous: %s", it->name.c_str(), previousFocusedClient.c_str());
             if ((gFocusedCompositor.compositor) && (gFocusedCompositor.compositor->isKeyPressed()))
@@ -656,6 +732,12 @@ namespace RdkShell
         CompositorList* compositorInfoList;
         if (getCompositorInfo(client, it, &compositorInfoList))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot kill a group (%s)", it->name.c_str());
+                return false;
+            }
+
             std::string clientDisplayName = standardizeName(client);
             RdkShell::Animator::instance()->stopAnimation(clientDisplayName);
 
@@ -715,6 +797,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot add key intercepts to a group (%s)", it->name.c_str());
+                return false;
+            }
+
             struct KeyInterceptInfo info;
             info.keyCode = keyCode;
             info.flags = flags;
@@ -803,6 +891,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot remove key intercepts from a group (%s)", it->name.c_str());
+                return false;
+            }
+            
             if (gKeyInterceptInfoMap.end() != gKeyInterceptInfoMap.find(keyCode))
             {
                 bool isEntryAvailable = false;
@@ -853,6 +947,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot add key listeners to a group (%s)", it->name.c_str());
+                return false;
+            }
+
             struct KeyListenerInfo info;
             info.keyCode = keyCode;
             info.flags = flags;
@@ -906,6 +1006,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot remove key listeners from a group (%s)", it->name.c_str());
+                return false;
+            }
+
             if (it->keyListenerInfo.end() != it->keyListenerInfo.find(keyCode))
             {
                 bool isEntryAvailable = false;
@@ -975,6 +1081,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot add key metadata listeners to a group (%s)", it->name.c_str());
+                return false;
+            }
+
             if (it->compositor != nullptr)
             {
                 it->compositor->setKeyMetadataEnabled(true);
@@ -989,6 +1101,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot remove key metadata listeners from a group (%s)", it->name.c_str());
+                return false;
+            }
+
             if (it->compositor != nullptr)
             {
                 it->compositor->setKeyMetadataEnabled(false);
@@ -1030,6 +1148,12 @@ namespace RdkShell
             CompositorListIterator it;
             if (getCompositorInfo(client, it))
             {
+                if (it->isGroup)
+                {
+                    Logger::log(LogLevel::Information,  "Cannot generate key for a group (%s)", it->name.c_str());
+                    return false;
+                }
+
                 if (it->compositor != nullptr)
                 {
                     it->compositor->onKeyPress(code, modifiers, 0);
@@ -1057,36 +1181,20 @@ namespace RdkShell
     {
         clients.clear();
 
-        for (const auto &client : gTopmostCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
+        CompositorList compositors = getCompositors(gCompositorList);
+        getCompositors(gTopmostCompositorList, compositors);
 
-        for ( const auto &client : gCompositorList)
+        for (auto& info : compositors)
         {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
+            clients.push_back(info.name);
         }
+        
         return true;
     }
 
     bool CompositorController::getZOrder(std::vector<std::string>& clients)
     {
-        clients.clear();
-
-        for (const auto &client : gTopmostCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
-
-        for (const auto &client : gCompositorList)
-        {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
-        }
-        return true;
+        return getClients(clients);
     }
 
     bool CompositorController::getBounds(const std::string& client, uint32_t &x, uint32_t &y, uint32_t &width, uint32_t &height)
@@ -1677,6 +1785,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot add listeners to a group (%s)", it->name.c_str());
+                return false;
+            }
+
             it->eventListeners.push_back(listener);
         }
         return true;
@@ -1687,6 +1801,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot remove listeners from a group (%s)", it->name.c_str());
+                return false;
+            }
+
             std::vector<std::shared_ptr<RdkShellEventListener>>::iterator entryToRemove = it->eventListeners.end();
             for (std::vector<std::shared_ptr<RdkShellEventListener>>::iterator iter = it->eventListeners.begin() ; iter != it->eventListeners.end(); ++iter)
             {
@@ -1827,6 +1947,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot suspend a group (%s)", it->name.c_str());
+                return false;
+            }
+
             if (it->compositor != nullptr)
             {
                 bool result = it->compositor->suspendApplication();
@@ -1849,6 +1975,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot resume a group (%s)", it->name.c_str());
+                return false;
+            }
+
             if (it->compositor != nullptr)
             {
                 bool result = it->compositor->resumeApplication();
@@ -1870,6 +2002,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot close a group (%s)", it->name.c_str());
+                return false;
+            }
+
             if (it->compositor != nullptr)
             {
                 it->compositor->closeApplication();
@@ -1888,6 +2026,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot get mime type of a group (%s)", it->name.c_str());
+                return false;
+            }
+
             mimeType = it->mimeType;
             return true;
         }
@@ -1899,6 +2043,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot set mime type of a group (%s)", it->name.c_str());
+                return false;
+            }
+
             it->mimeType = mimeType;
             return true;
         }
@@ -2129,9 +2279,9 @@ namespace RdkShell
         CompositorList* targetList;
         if (topmost)
         {
-            if (compositorInfoList == &gTopmostCompositorList)
+            if (compositorInfoList != &gCompositorList)
             {
-                Logger::log(LogLevel::Information,  "%s is already topmost and cannot set topmost again ", client.c_str());
+                Logger::log(LogLevel::Information,  "%s is already topmost or part of a group", client.c_str());
                 return false;
             }
 
@@ -2139,9 +2289,9 @@ namespace RdkShell
         }
         else
         {
-            if (compositorInfoList == &gCompositorList)
+            if (compositorInfoList != &gTopmostCompositorList)
             {
-                Logger::log(LogLevel::Information,  "%s is already non topmost and cannot set non topmost again ", client.c_str());
+                Logger::log(LogLevel::Information,  "%s is already non topmost or part of a group", client.c_str());
                 return false;
             }
 
@@ -2177,6 +2327,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot get virtual resolution of a group (%s)", it->name.c_str());
+                return false;
+            }
+
             it->compositor->getVirtualResolution(virtualWidth, virtualHeight);
             return true;
         }
@@ -2188,6 +2344,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot set virtual resolution of a group (%s)", it->name.c_str());
+                return false;
+            }
+
             it->compositor->setVirtualResolution(virtualWidth, virtualHeight);
             return true;
         }
@@ -2199,6 +2361,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot enable/disable virtual display of a group (%s)", it->name.c_str());
+                return false;
+            }
+
             it->compositor->enableVirtualDisplay(enable);
             return true;
         }
@@ -2210,6 +2378,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot get virtual display enabled state of a group (%s)", it->name.c_str());
+                return false;
+            }
+
             enabled = it->compositor->getVirtualDisplayEnabled();
             return true;
         }
@@ -2389,6 +2563,12 @@ namespace RdkShell
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
+            if (it->isGroup)
+            {
+                Logger::log(LogLevel::Information,  "Cannot enable/disable input events for a group (%s)", it->name.c_str());
+                return false;
+            }
+
             it->compositor->enableInputEvents(enable);
             return true;
         }
@@ -2471,5 +2651,127 @@ namespace RdkShell
     bool CompositorController::isErmEnabled()
     {
         return RdkShell::EssosInstance::instance()->isErmEnabled();
+    }
+
+
+    // --- GROUP SUPPORT ---
+
+    bool CompositorController::createGroup(const std::string& name)
+    {
+        CompositorListIterator it;
+        if (getCompositorInfo(name, it))
+        {
+            // name already taken
+            return false;
+        }
+
+        CompositorInfo info;
+        info.name = standardizeName(name);
+        info.compositor = std::make_shared<RdkCompositorGroup>();
+        info.isGroup = true;
+
+        gCompositorList.insert(gCompositorList.begin(), info);
+        return true;
+    }
+
+    bool CompositorController::getGroups(std::map<std::string, std::vector<std::string>>& groups)
+    {
+        groups.clear();
+
+        RdkShell::getGroups(gCompositorList, groups);
+        RdkShell::getGroups(gTopmostCompositorList, groups);
+
+        return true;
+    }
+
+    bool CompositorController::deleteGroup(const std::string& groupName)
+    {
+        CompositorListIterator it;
+        CompositorList* list;
+
+        if (!getCompositorInfo(groupName, it, &list))
+        {
+            // compositor not found
+            return false;
+        }
+
+        if (!it->isGroup)
+        {
+            // not a group
+            return false;
+        }
+
+        list->erase(it);
+        return true;
+    }
+
+    bool CompositorController::setGroup(const std::string& clientName, const std::string& groupName)
+    {
+        CompositorListIterator clientIt, groupIt;
+        CompositorList* list;
+
+        if (!getCompositorInfo(clientName, clientIt, &list))
+        {
+            // client not found
+            return false;
+        }
+
+        if (!getCompositorInfo(groupName, groupIt))
+        {
+            // group not found
+            return false;
+        }
+
+        if (!groupIt->isGroup)
+        {
+            // not a group
+            return false;
+        }
+
+        auto& targetList = children(*groupIt);
+        if (&targetList == list)
+        {
+            // client already present in the group
+            return true;
+        }
+
+        auto compositorInfo = *clientIt;
+        list->erase(clientIt);
+        targetList.insert(targetList.begin(), compositorInfo);
+        
+        return true;
+    }
+
+    bool CompositorController::removeFromGroup(const std::string& clientName, const std::string& groupName)
+    {
+        CompositorListIterator clientIt, groupIt;
+        CompositorList* list;
+
+        if (!getCompositorInfo(clientName, clientIt, &list))
+        {
+            // client not found
+            return false;
+        }
+
+        if (!getCompositorInfo(groupName, groupIt))
+        {
+            // group not found
+            return false;
+        }
+
+        if (!groupIt->isGroup)
+        {
+            // not a group
+            return false;
+        }
+
+        if (&children(*groupIt) != list)
+        {
+            // client is not a member of the group
+            return false;
+        }
+
+        list->erase(clientIt);
+        return true;
     }
 }
