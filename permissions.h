@@ -26,7 +26,6 @@ namespace RdkShell
 {
 
     void readPermissionsConfiguration();
-    void logPermissionsConfiguration();
     void getAllowedExtensions(const std::string& clientName, std::vector<std::string>& extensions);
-
+    std::string getRenderer();
 }

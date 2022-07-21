@@ -32,6 +32,20 @@
 
 namespace RdkShell
 {
+
+    struct ClientInfo
+    {
+        int32_t x;
+        int32_t y;
+        uint32_t width;
+        uint32_t height;
+        double sx;
+        double sy;
+        double opacity;
+        int32_t zorder;
+        bool visible;
+    };
+
     class CompositorController
     {
         public:
@@ -130,6 +144,8 @@ namespace RdkShell
             static bool setAVBlocked(std::string callsign, bool blockAV);
             static bool getBlockedAVApplications(std::vector<std::string>& apps);
             static bool isErmEnabled();
+            static bool getClientInfo(const std::string& client, ClientInfo& ci);
+            static bool setClientInfo(const std::string& client, const ClientInfo& ci);
     };
 }
 
