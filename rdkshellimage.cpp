@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 
+#include "rdkshell.h"
 #include "rdkshellimage.h"
 
 #include "logger.h"
@@ -72,20 +73,20 @@ namespace RdkShell
     };
 
     Image::Image() : mFileName(), mProgram(0), mVertexShader(0), mFragmentShader(0),
-        mResolutionLocation(0), mPositionLocation(0), mUvLocation(0), mTextureLocation(0), mTexture(0)
+        mResolutionLocation(0), mPositionLocation(0), mUvLocation(0), mTextureLocation(0), mTexture(0), mApngData()
     {
         initialize();
     }
 
     Image::Image(const std::string& fileName, int32_t x, int32_t y, int32_t width, int32_t height) : 
         mFileName(), mProgram(0), mVertexShader(0), mFragmentShader(0), mX(x), mY(y), mWidth(width), mHeight(height),
-        mResolutionLocation(0), mPositionLocation(0), mUvLocation(0), mTextureLocation(0), mTexture(0)
+        mResolutionLocation(0), mPositionLocation(0), mUvLocation(0), mTextureLocation(0), mTexture(0), mApngData()
     {
         initialize();
         loadLocalFile(fileName);
     }
 
-    Image::Image(const char* imageData, int32_t width, int32_t height) : mWidth(width), mHeight(height)
+    Image::Image(const char* imageData, int32_t width, int32_t height) : mWidth(width), mHeight(height), mApngData()
     {
         initialize();
         loadImageData(imageData, mWidth*mHeight);
@@ -93,6 +94,7 @@ namespace RdkShell
 
     Image::~Image()
     {
+        mApngData.clear();
         mFileName = "";
         if (mTexture != 0)
         {
@@ -189,6 +191,53 @@ namespace RdkShell
         {
             return;
         }
+
+        uint32_t numFrames = mApngData.frameList.numFrames();
+        if (numFrames > 0)
+        {
+            double t = RdkShell::seconds();
+            if (mApngData.frameTime < 0)
+            {
+                mApngData.currentFrame = 0;
+                mApngData.frameTime = t;
+            }
+
+            for (; mApngData.currentFrame < numFrames; mApngData.currentFrame++)
+            {
+                double d = mApngData.frameList.getFrameDuration(mApngData.currentFrame);
+                if (mApngData.frameTime + d >= t)
+                {
+                    break;
+                }
+                mApngData.frameTime += d;
+            }
+
+            if (mApngData.currentFrame >= numFrames)
+            {
+                mApngData.currentFrame = numFrames - 1; // snap animation to last frame
+
+                if (!mApngData.frameList.numPlays() || mApngData.plays < mApngData.frameList.numPlays())
+                {
+                    mApngData.frameTime = -1; // reset animation
+                    mApngData.plays++;
+                }
+            }
+
+            if (mApngData.cachedFrame != mApngData.currentFrame)
+            {
+                Frame* frame = mApngData.frameList.getFrameFromIndex(mApngData.currentFrame);
+                glBindTexture(GL_TEXTURE_2D, mTexture);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame->width,
+                                frame->height, GL_RGBA, GL_UNSIGNED_BYTE, frame->data);
+                mApngData.cachedFrame = mApngData.currentFrame;
+            }
+        }
+
         glUseProgram(mProgram);
 
         glActiveTexture(GL_TEXTURE1);
@@ -275,20 +324,28 @@ namespace RdkShell
             unsigned char *image = nullptr;
             int32_t width = 0;
             int32_t height = 0;
-            bool isPngImage = false, isBitMapImage = false;
+            bool isPngImage = false, isBitMapImage = false, isAPngImage = false;
             if ((-1 != fileName.find(".bmp")) || (-1 != fileName.find(".BMP")))
             {
                 isBitMapImage = true;
                 success = loadBmp(fileName, image, width, height);
             }
+            else if ((-1 != fileName.find(".jpg")) || (-1 != fileName.find(".jpeg")))
+            {
+                success = loadJpeg(fileName, image, width, height);
+            }
             else if (-1 != fileName.find(".png"))
             {
                 success = loadPng(fileName, image, width, height);
-                isPngImage = true;
-            }
-            else
-            {
-                success = loadJpeg(fileName, image, width, height);
+                if (success)
+                {
+                    isPngImage = true;
+                }
+                else
+                {
+                    success = loadAPng(fileName, image, width, height);
+                    isAPngImage = true;
+                }
             }
             if (success)
             {
@@ -307,11 +364,14 @@ namespace RdkShell
                 
 
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexImage2D(GL_TEXTURE_2D, 0, (isPngImage||isBitMapImage)?GL_RGBA:GL_RGB,
-                            width, height, 0, (isPngImage||isBitMapImage)?GL_RGBA:GL_RGB,
+                glTexImage2D(GL_TEXTURE_2D, 0, (isPngImage||isBitMapImage||isAPngImage)?GL_RGBA:GL_RGB,
+                            width, height, 0, (isPngImage||isBitMapImage||isAPngImage)?GL_RGBA:GL_RGB,
                             GL_UNSIGNED_BYTE, image);
             }
-            free(image);
+            if (!isAPngImage)
+            {
+                free(image);
+            }
         }
         return success;
     }
@@ -460,6 +520,12 @@ namespace RdkShell
  
             png_read_info(pngPointer, infoPointer);
 
+            if (png_get_valid(pngPointer, infoPointer, PNG_INFO_acTL))
+            {
+                png_destroy_read_struct(&pngPointer, &infoPointer, NULL);
+                fclose(file);
+                return false;
+            }
             width = png_get_image_width(pngPointer, infoPointer);
             height = png_get_image_height(pngPointer, infoPointer);
             png_byte colorType = png_get_color_type(pngPointer, infoPointer);
@@ -632,6 +698,232 @@ namespace RdkShell
         }
         fclose(file);
         Logger::log(LogLevel::Debug, "completed reading bitmap file [%s]", fileName.c_str());
+        return true;
+    }
+
+    void Image::blendOver(unsigned char **rows_destination, unsigned char **rows_source, unsigned int x, unsigned int y, unsigned int width, unsigned int height)
+    {
+        unsigned int i, j;
+        int u, v, al;
+    
+        for (j = 0; j < height; j++)
+        {
+          unsigned char *sp = rows_source[j];
+          unsigned char *dp = rows_destination[j + y] + x * 4;
+    
+          for (i = 0; i < width; i++, sp += 4, dp += 4)
+          {
+            if (sp[3] == 255)
+              memcpy(dp, sp, 4);
+            else if (sp[3] != 0)
+            {
+              if (dp[3] != 0)
+              {
+                u = sp[3] * 255;
+                v = (255 - sp[3]) * dp[3];
+                al = u + v;
+                dp[0] = (sp[0] * u + dp[0] * v) / al;
+                dp[1] = (sp[1] * u + dp[1] * v) / al;
+                dp[2] = (sp[2] * u + dp[2] * v) / al;
+                dp[3] = al / 255;
+              }
+              else
+                memcpy(dp, sp, 4);
+            }
+          }
+        }
+    }
+    
+    //Based on pxCore, Copyright 2005-2018 John Robinson
+    //Licensed under the Apache License, Version 2.0
+    bool Image::loadAPng(std::string fileName, unsigned char *&image, int32_t &width, int32_t &height)
+    {
+        FILE *file = fopen(fileName.c_str(), "rb");
+        if (!file)
+        {
+            Logger::log(LogLevel::Error, "unable to open apng file %s", fileName.c_str());
+            return false;
+        }
+
+        mApngData.frameList.init();
+      
+        unsigned char pngHeader[8];
+        memset(pngHeader, 0, sizeof(pngHeader));
+        fread(pngHeader, 1, 8, file);
+        if (png_sig_cmp(pngHeader, 0, 8))
+        {
+            Logger::log(LogLevel::Error, "not a png file [%s]", fileName.c_str());
+            fclose(file);
+            return false;
+        }
+
+        //unsigned int width, height, channels, rowbytes, size, i, j;
+        unsigned int i, j;
+      
+        unsigned long size, rowbytes;
+      
+        png_bytepp rows_image;
+        png_bytepp rows_frame;
+        unsigned char *p_image;
+        unsigned char *p_frame;
+        unsigned char *p_temp;
+      
+        png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        png_infop info_ptr = png_create_info_struct(png_ptr);
+        if (png_ptr && info_ptr)
+        {
+            if (setjmp(png_jmpbuf(png_ptr)))
+            {
+              png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+              return false;
+            }
+
+            png_init_io(png_ptr, file);
+            png_set_sig_bytes(png_ptr, 8);
+            png_read_info(png_ptr, info_ptr);
+            png_set_expand(png_ptr);
+            png_set_strip_16(png_ptr);
+            png_set_palette_to_rgb(png_ptr);
+            png_set_gray_to_rgb(png_ptr);
+            png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER);
+            (void)png_set_interlace_handling(png_ptr);
+            png_read_update_info(png_ptr, info_ptr);
+            width = png_get_image_width(png_ptr, info_ptr);
+            height = png_get_image_height(png_ptr, info_ptr);
+            //channels = png_get_channels(png_ptr, info_ptr);
+            rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+            size = height * rowbytes;
+            p_image = (unsigned char *)malloc(size);
+            p_frame = (unsigned char *)malloc(size);
+            p_temp = (unsigned char *)malloc(size);
+            rows_image = (png_bytepp)malloc(height * sizeof(png_bytep));
+            rows_frame = (png_bytepp)malloc(height * sizeof(png_bytep));
+            if (p_image && p_frame && p_temp && rows_image && rows_frame)
+            {
+                png_uint_32 frames = 1;
+                png_uint_32 x0 = 0;
+                png_uint_32 y0 = 0;
+                png_uint_32 w0 = width;
+                png_uint_32 h0 = height;
+                unsigned int first = 0;
+                unsigned short delay_num = 1;
+                unsigned short delay_den = 10;
+      
+                png_uint_32 plays = 0;
+                unsigned char dop = 0;
+                unsigned char bop = 0;
+    
+                first = (png_get_first_frame_is_hidden(png_ptr, info_ptr) != 0) ? 1 : 0;
+                if (png_get_valid(png_ptr, info_ptr, PNG_INFO_acTL))
+                {
+                    png_get_acTL(png_ptr, info_ptr, &frames, &plays);
+                }
+                mApngData.frameList.setNumPlays(plays);
+                for (j = 0; j < height; j++)
+                {
+                    rows_image[j] = p_image + j * rowbytes;
+                }
+                for (j = 0; j < height; j++)
+                {
+                    rows_frame[j] = p_frame + j * rowbytes;
+                }
+                for (i = 0; i < frames; i++)
+                {
+                    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_acTL))
+                    {
+                        png_read_frame_head(png_ptr, info_ptr);
+                        png_get_next_frame_fcTL(png_ptr, info_ptr, &w0, &h0, &x0, &y0, &delay_num, &delay_den, &dop, &bop);
+    
+                        if (!delay_den)
+                        {
+                            delay_den = 100;
+                        }
+                    }
+                    if (i == first)
+                    {
+                        bop = PNG_BLEND_OP_SOURCE;
+                        if (dop == PNG_DISPOSE_OP_PREVIOUS)
+                        {
+                            dop = PNG_DISPOSE_OP_BACKGROUND;
+                        }
+                    }
+                    png_read_image(png_ptr, rows_frame);
+    
+                    if (dop == PNG_DISPOSE_OP_PREVIOUS)
+                    {
+                        memcpy(p_temp, p_image, size);
+                    }
+                    if (bop == PNG_BLEND_OP_OVER)
+                    {
+                        blendOver(rows_image, rows_frame, x0, y0, w0, h0);
+                    }
+                    else
+                    {
+                      for (j = 0; j < h0; j++)
+                      {
+                          memcpy(rows_image[j + y0] + x0 * 4, rows_frame[j], w0 * 4);
+                      }
+                    }
+                    // TODO Extra copy of frame going on here
+                    if (i >= first)
+                    {
+                        Frame* frame = new Frame();
+                        frame->data = (char*) new unsigned char[width * height * 4];
+                        frame->width = width;
+                        frame->height = height;
+                        for (uint32_t i = 0; i < height; i++)
+                        {
+                            uint8_t* row = (uint8_t*) frame->data + (i * width * 4);
+                            memcpy(row, rows_image[i], width * 4);
+                        }
+
+                        // frame.setUpsideDown(true);
+			// premultiply
+                        for (int y = 0; y < height; y++)
+                        {
+                            uint8_t* d = ((uint8_t*)frame->data + (y * width * 4));
+                            uint8_t* de = d + (width*4);
+                            while (d < de)
+                            {
+                                uint8_t alpha = *(d+3);
+                                *d = ((*d) * alpha)/255;
+                                *(d+1) = (*(d+1) * alpha)/255;
+                                *(d+2) = (*(d+2) * alpha)/255;
+                                d+=4;
+                            }
+                        }
+                        mApngData.frameList.addFrame(frame, (double)delay_num / (double)delay_den);
+                    }
+    
+                    if (dop == PNG_DISPOSE_OP_PREVIOUS)
+                    {
+                        memcpy(p_image, p_temp, size);
+                    }
+                    else if (dop == PNG_DISPOSE_OP_BACKGROUND)
+                    {
+                        for (j = 0; j < h0; j++)
+                        {
+                            memset(rows_image[j + y0] + x0 * 4, 0, w0 * 4);
+                        }
+                    }
+                }
+                png_read_end(png_ptr, info_ptr);
+            }
+            free(rows_frame);
+            free(rows_image);
+            free(p_temp);
+            free(p_frame);
+            free(p_image);
+        }
+        if (mApngData.frameList.numFrames() > 0)
+	{
+            Frame* frame = mApngData.frameList.getFrameFromIndex(0);
+            mWidth = frame->width;
+            mHeight = frame->height;
+            image = (unsigned char*) frame->data;
+	}
+        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+    
         return true;
     }
 
