@@ -6,7 +6,7 @@ if [ $? -eq 0 ]
 then
   echo "checking thunder security"
   THUNDER_SECURITY_ENABLED=`tr181 -g Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ThunderSecurity.Enable 2>&1`
-  if [ $THUNDER_SECURITY_ENABLED = "true" ]; then
+  if [ -z "$THUNDER_SECURITY_ENABLED" ]; then  
     echo "Thunder security is enabled"
     isThunderSecurityEnabled="1"
   else
@@ -151,8 +151,16 @@ inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.generateKey"
 expectedResult='"success":true'
 testAPI "generateKeyAfterAddKeyIntercept" "$inputParams" "$expectedResult"
 
-curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d '{"jsonrpc":"2.0", "id":3, "method":"org.rdk.RDKShell.1.getClients", "params":{}}' http://127.0.0.1:9998/jsonrpc
-sleep 2
+inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.getClients"}'
+if grep -q "subtec_s1" <<<$clientStrip
+then
+    expectedResult='"clients":["subtec_s1","testapp2","testapp1","testapp",'${aParam}'],"success":true'
+else
+    expectedResult='"clients":["testapp2","testapp1","testapp",'${bParam}'],"success":true'
+fi
+testAPI "getClients" "$inputParams" "$expectedResult"
+
+sleep 10
 journalctl -a|grep "Key 50 intercepted by client testapp2"
 
 if [ $? -eq 1 ]
@@ -215,7 +223,14 @@ inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.generateKey"
 expectedResult='"success":true'
 testAPI "generateKeyAfterAddKeyListener" "$inputParams" "$expectedResult"
 
-curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d '{"jsonrpc":"2.0", "id":3, "method":"org.rdk.RDKShell.1.getClients", "params":{}}' http://127.0.0.1:9998/jsonrpc
+inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.getClients"}'
+if grep -q "subtec_s1" <<<$clientStrip
+then
+    expectedResult='"clients":["subtec_s1","testapp2","testapp1","testapp",'${aParam}'],"success":true'
+else
+    expectedResult='"clients":["testapp2","testapp1","testapp",'${bParam}'],"success":true'
+fi
+testAPI "getClients" "$inputParams" "$expectedResult"
 
 journalctl -a|grep -i startwpe|grep "Key 48 sent to listener testapp"
 
