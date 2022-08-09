@@ -137,6 +137,7 @@ namespace RdkShell
     bool gIgnoreKeyInputEnabled = false;
     std::shared_ptr<Cursor> gCursor = nullptr;
     KeyRepeatConfig gKeyRepeatConfig;
+    bool gVar = false;
 
     std::string standardizeName(const std::string& clientName)
     {
