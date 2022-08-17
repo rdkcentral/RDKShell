@@ -146,6 +146,7 @@ namespace RdkShell
             static bool isErmEnabled();
             static bool getClientInfo(const std::string& client, ClientInfo& ci);
             static bool setClientInfo(const std::string& client, const ClientInfo& ci);
+            static bool enableGlobalHolePunch(const std::string& client, bool enable);
     };
 }
 

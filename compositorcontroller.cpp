@@ -1521,6 +1521,11 @@ namespace RdkShell
             }
         }
 
+        for (auto reverseIterator = gCompositorList.rbegin(); reverseIterator != gCompositorList.rend(); reverseIterator++)
+        {
+            reverseIterator->compositor->drawHolePunch();
+        }
+
         for (auto reverseIterator = gTopmostCompositorList.rbegin(); reverseIterator != gTopmostCompositorList.rend(); reverseIterator++)
         {
             bool needsHolePunch = false;
@@ -2518,4 +2523,14 @@ namespace RdkShell
         return true;
     }
 
+    bool CompositorController::enableGlobalHolePunch(const std::string& client, bool enable)
+    {
+        CompositorListIterator it;
+        if (!getCompositorInfo(client, it))
+            return false;
+
+        auto clientCompositor = it->compositor;
+        clientCompositor->enableGlobalHolePunch(enable);
+        return true;
+    }
 }

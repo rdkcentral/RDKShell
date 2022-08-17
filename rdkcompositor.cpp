@@ -30,6 +30,7 @@
 #include "framebuffer.h"
 #include "framebufferrenderer.h"
 #include "logger.h"
+#include "essosinstance.h"
 
 extern bool gForce720;
 
@@ -53,7 +54,7 @@ namespace RdkShell
         mApplicationName(), mApplicationThread(), mApplicationState(RdkShell::ApplicationState::Unknown),
         mApplicationPid(-1), mApplicationThreadStarted(false), mApplicationClosedByCompositor(false), mApplicationMutex(), mReceivedKeyPress(false),
         mVirtualDisplayEnabled(false), mVirtualWidth(0), mVirtualHeight(0), mSizeChangeRequestPresent(false), mSurfaceCount(0),
-        mInputEventsEnabled(true), mSuspendedBeforeStart(false), mFocused(false)
+        mInputEventsEnabled(true), mSuspendedBeforeStart(false), mFocused(false), mGlobalHolePunchEnabled(false)
     {
         if (gForce720)
         {
@@ -794,5 +795,23 @@ namespace RdkShell
     {
         mFocused = focused;
         updateWaylandState();
+    }
+
+    void RdkCompositor::enableGlobalHolePunch(bool enable)
+    {
+        mGlobalHolePunchEnabled = enable;
+    }
+
+    void RdkCompositor::drawHolePunch()
+    {
+        if (mGlobalHolePunchEnabled)
+	{
+            uint32_t screenWidth, screenHeight;
+            RdkShell::EssosInstance::instance()->resolution(screenWidth, screenHeight);
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(mPositionX, screenHeight-mHeight-mPositionY, mWidth, mHeight);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glDisable(GL_SCISSOR_TEST);
+	}
     }
 }

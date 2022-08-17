@@ -84,6 +84,8 @@ namespace RdkShell
             void enableInputEvents(bool enable);
             bool getInputEventsEnabled() const;
             void setFocused(bool focused);
+            void enableGlobalHolePunch(bool enable);
+            void drawHolePunch();
 
         private:
             void prepareHolePunchRects(std::vector<WstRect> wstrects, RdkShellRect& rect);
@@ -141,6 +143,7 @@ namespace RdkShell
             bool mInputEventsEnabled;
             bool mSuspendedBeforeStart;
             bool mFocused;
+            bool mGlobalHolePunchEnabled;
     };
 }
 
