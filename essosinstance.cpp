@@ -383,11 +383,13 @@ namespace RdkShell
             RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for press keycode: %d ", keyCode);
             return;
         }
+	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
         double launchStartTime = RdkShell::seconds();	
+        #endif
         CompositorController::onKeyPress(keyCode, flags, metadata);
 	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
 	double endTime = (RdkShell::seconds() - launchStartTime)*1000;
-        RdkShell::Logger::log(LogLevel::Information,  "onKeypress took %f ms to respond ", endTime);
+        RdkShell::Logger::log(LogLevel::Debug,  "onKeyPress processed in %f ms ", endTime);
         #endif
     }
 
@@ -398,11 +400,13 @@ namespace RdkShell
             RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for release keycode: %d ", keyCode);
             return;
         }
+	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
 	double launchStartTime = RdkShell::seconds();
+        #endif
         CompositorController::onKeyRelease(keyCode, flags, metadata);
 	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
 	double endTime = (RdkShell::seconds() - launchStartTime)*1000;
-        RdkShell::Logger::log(LogLevel::Information,  "onKeyRelease took %f ms to respond ", endTime);
+        RdkShell::Logger::log(LogLevel::Debug,  "onKeyRelease processed in %f ms ", endTime);
         #endif
     }
 
