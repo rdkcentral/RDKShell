@@ -382,8 +382,15 @@ namespace RdkShell
         {
             RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for press keycode: %d ", keyCode);
             return;
-        }		
+        }
+	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
+        double launchStartTime = RdkShell::seconds();	
+        #endif
         CompositorController::onKeyPress(keyCode, flags, metadata);
+	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
+	double endTime = (RdkShell::seconds() - launchStartTime)*1000;
+        RdkShell::Logger::log(LogLevel::Debug,  "onKeyPress processed in %f ms ", endTime);
+        #endif
     }
 
     void EssosInstance::onKeyRelease(uint32_t keyCode, unsigned long flags, uint64_t metadata)
@@ -393,7 +400,14 @@ namespace RdkShell
             RdkShell::Logger::log(LogLevel::Information,  "key inputs ignored for release keycode: %d ", keyCode);
             return;
         }
+	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
+	double launchStartTime = RdkShell::seconds();
+        #endif
         CompositorController::onKeyRelease(keyCode, flags, metadata);
+	#ifdef RDKSHELL_ENABLE_TELEMETRY_LOGGING
+	double endTime = (RdkShell::seconds() - launchStartTime)*1000;
+        RdkShell::Logger::log(LogLevel::Debug,  "onKeyRelease processed in %f ms ", endTime);
+        #endif
     }
 
     void EssosInstance::onPointerMotion(uint32_t x, uint32_t y)
