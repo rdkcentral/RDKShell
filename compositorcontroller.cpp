@@ -1056,7 +1056,7 @@ namespace RdkShell
     bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags,
         std::string virtualKey)
     {
-        generateKey(client, keyCode, flags, virtualKey, 0.0);
+        return generateKey(client, keyCode, flags, virtualKey, 0.0);
     }
 
     bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags,
