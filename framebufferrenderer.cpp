@@ -58,10 +58,10 @@ namespace RdkShell
         // vertices in screen coordinates, origin of the blit is translated using the matrix
         const float vertices[4][2] =
         {
-            {0, 0},
-            {boundsWidth, 0},
-            {0, boundsHeight},
-            {boundsWidth, boundsHeight}
+            {0.f, 0.f},
+            {static_cast<float>(boundsWidth), 0.f},
+            {0.f, static_cast<float>(boundsHeight)},
+            {static_cast<float>(boundsWidth), static_cast<float>(boundsHeight)}
         };
 
         const float uvCoordinates[4][2] =

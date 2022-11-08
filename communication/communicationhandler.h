@@ -14,6 +14,7 @@ namespace RdkShell
     class CommunicationHandler
     {
         public:
+            virtual ~CommunicationHandler() {}
             virtual bool initialize() = 0;
             virtual void terminate() = 0;
             virtual bool sendMessage(int id, std::string& message) = 0;

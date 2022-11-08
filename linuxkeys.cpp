@@ -603,9 +603,9 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
     return true;
 }
 
-bool keyCodeFromVirtual(std::string& virtualKey, uint32_t &mappedKeyCode, uint32_t &mappedFlags)
+bool keyCodeFromVirtual(const std::string& virtualKey, uint32_t &mappedKeyCode, uint32_t &mappedFlags)
 {
-    RdkShell::Logger::log(RdkShell::LogLevel::Debug, "virtual key event - key: %s", virtualKey);
+    RdkShell::Logger::log(RdkShell::LogLevel::Debug, "virtual key event - key: %s", virtualKey.c_str());
     std::map<std::string, struct RdkShellKeyMap>::iterator it  = sRdkShellVirtualKeyMap.find(virtualKey);
     if (it != sRdkShellVirtualKeyMap.end())
     {

@@ -1827,7 +1827,7 @@ namespace RdkShell
         }
         else
         {
-            Logger::log(LogLevel::Information,  "unable to launch application.  mime type %d is not supported", mimeType);
+            Logger::log(LogLevel::Information,  "unable to launch application.  mime type %d is not supported", mimeType.c_str());
         }
 
         return false;
@@ -1872,7 +1872,7 @@ namespace RdkShell
             Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
             return false;
         }
-        Logger::log(LogLevel::Information,  "display with name %s was not found", client);
+        Logger::log(LogLevel::Information,  "display with name %s was not found", client.c_str());
         return false;
     }
 
@@ -1886,10 +1886,10 @@ namespace RdkShell
                 it->compositor->closeApplication();
                 return true;
             }
-            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client);
+            Logger::log(LogLevel::Information,  "display with name %s did not have a valid compositor", client.c_str());
             return false;
         }
-        Logger::log(LogLevel::Information,  "display with name %s was not found", client);
+        Logger::log(LogLevel::Information,  "display with name %s was not found", client.c_str());
         return false;
     }
 
@@ -1973,7 +1973,7 @@ namespace RdkShell
             bool imageLoaded = gFullScreenImage->loadLocalFile(file);
             if (!imageLoaded)
             {
-                RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading fullscreen image: %s", file);
+                RdkShell::Logger::log(RdkShell::LogLevel::Error, "error loading fullscreen image: %s", file.c_str());
                 gFullScreenImage = nullptr;
                 return false;
             }
@@ -2347,7 +2347,7 @@ namespace RdkShell
         }
         if (iter != gWatermarkImages.end())
         {
-            iter->image == nullptr;
+            iter->image = nullptr;
             gWatermarkImages.erase(iter);
             ret = true;
         }

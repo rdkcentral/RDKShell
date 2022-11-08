@@ -109,7 +109,7 @@ static void rdkShellClientControlBind(struct wl_client *client, void *data, uint
 {
     WstCompositor *ctx = reinterpret_cast<WstCompositor*>(data);
     std::string displayName = WstCompositorGetDisplayName(ctx);
-    RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s displayName: %s\n", __func__, displayName);
+    RdkShell::Logger::log(RdkShell::LogLevel::Information, "%s displayName: %s\n", __func__, displayName.c_str());
 
     std::shared_ptr<RdkShell::RdkCompositor> rdkCompositor = RdkShell::CompositorController::getCompositor(displayName);
     if (!rdkCompositor)

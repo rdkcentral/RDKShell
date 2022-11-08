@@ -138,6 +138,8 @@ static inline rdkshell_extended_input_key_state convertKeyState(RdkShell::InputE
             return RDKSHELL_EXTENDED_INPUT_KEY_STATE_VIRTUAL_PRESS;
         case RdkShell::InputEvent::Details::Key::VirtualRelease:
             return RDKSHELL_EXTENDED_INPUT_KEY_STATE_VIRTUAL_RELEASE;
+        default:
+            return RDKSHELL_EXTENDED_INPUT_KEY_STATE_PRESSED;
     }
 }
 
@@ -152,6 +154,8 @@ static inline rdkshell_extended_input_touchpad_state convertTouchpadState(RdkShe
             return RDKSHELL_EXTENDED_INPUT_TOUCHPAD_STATE_UP;
         case RdkShell::InputEvent::Details::TouchPad::Click:
             return RDKSHELL_EXTENDED_INPUT_TOUCHPAD_STATE_CLICK;
+        default:
+            return RDKSHELL_EXTENDED_INPUT_TOUCHPAD_STATE_DOWN;
     }
 }
 
@@ -164,6 +168,8 @@ static inline rdkshell_extended_input_slider_state convertSliderState(RdkShell::
             return RDKSHELL_EXTENDED_INPUT_SLIDER_STATE_DOWN;
         case RdkShell::InputEvent::Details::Slider::Up:
             return RDKSHELL_EXTENDED_INPUT_SLIDER_STATE_UP;
+        default:
+            return RDKSHELL_EXTENDED_INPUT_SLIDER_STATE_DOWN;
      }
 }
 
