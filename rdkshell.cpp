@@ -293,7 +293,6 @@ namespace RdkShell
                 gMemoryMonitorMutex.unlock();
 	    }
         });
-        gMemoryMonitorThread.detach();
     }
 
     void initialize()
@@ -482,6 +481,7 @@ namespace RdkShell
         gMemoryMonitorMutex.lock();
         gRunMemoryMonitor = false;
         gMemoryMonitorMutex.unlock();
+	gMemoryMonitorThread.join();
     }
 
     void run()
