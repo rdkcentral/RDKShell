@@ -153,18 +153,18 @@
 #define WAYLAND_KEY_BACK                158
 #define WAYLAND_KEY_MENU                139
 #define WAYLAND_KEY_HOMEPAGE            172
-#define WAYLAND_KEY_F13			        183
-#define WAYLAND_KEY_F14			        184
-#define WAYLAND_KEY_F15			        185
-#define WAYLAND_KEY_F16			        186
-#define WAYLAND_KEY_F17			        187
-#define WAYLAND_KEY_F18			        188
-#define WAYLAND_KEY_F19		        	189
-#define WAYLAND_KEY_F20			        190
-#define WAYLAND_KEY_F21			        191
-#define WAYLAND_KEY_F22			        192
-#define WAYLAND_KEY_F23			        193
-#define WAYLAND_KEY_F24			        194
+#define WAYLAND_KEY_F13                 183
+#define WAYLAND_KEY_F14                 184
+#define WAYLAND_KEY_F15                 185
+#define WAYLAND_KEY_F16                 186
+#define WAYLAND_KEY_F17                 187
+#define WAYLAND_KEY_F18                 188
+#define WAYLAND_KEY_F19                 189
+#define WAYLAND_KEY_F20                 190
+#define WAYLAND_KEY_F21                 191
+#define WAYLAND_KEY_F22                 192
+#define WAYLAND_KEY_F23                 193
+#define WAYLAND_KEY_F24                 194
 
 
 #define RDKSHELL_FLAGS_SHIFT        8
