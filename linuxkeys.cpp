@@ -591,7 +591,42 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
         standardKeyCode = RDKSHELL_KEY_HOMEPAGE;
         break;
     #endif /* WAYLAND_KEY_HOMEPAGE */
-
+   case WAYLAND_KEY_F13:
+        standardKeyCode = RDKSHELL_KEY_F13;
+        break;
+   case WAYLAND_KEY_F14:
+        standardKeyCode = RDKSHELL_KEY_F14;
+        break;
+   case WAYLAND_KEY_F15:
+        standardKeyCode = RDKSHELL_KEY_F15;
+        break;
+    case WAYLAND_KEY_F16:
+        standardKeyCode = RDKSHELL_KEY_F16;
+        break;
+   case WAYLAND_KEY_F17:
+        standardKeyCode = RDKSHELL_KEY_F17;
+        break;
+   case WAYLAND_KEY_F18:
+        standardKeyCode = RDKSHELL_KEY_F18;
+        break;
+   case WAYLAND_KEY_F19:
+        standardKeyCode = RDKSHELL_KEY_F19;
+        break;
+   case WAYLAND_KEY_F20:
+        standardKeyCode = RDKSHELL_KEY_F20;
+        break;
+   case WAYLAND_KEY_F21:
+        standardKeyCode = RDKSHELL_KEY_F21;
+        break;
+    case WAYLAND_KEY_F22:
+        standardKeyCode = RDKSHELL_KEY_F22;
+        break;
+   case WAYLAND_KEY_F23:
+        standardKeyCode = RDKSHELL_KEY_F23;
+        break;
+   case WAYLAND_KEY_F24:
+        standardKeyCode = RDKSHELL_KEY_F24;
+        break;
     default:
         RdkShell::Logger::log(RdkShell::LogLevel::Information,  "unknown key code %u", waylandKeyCode);
         standardKeyCode = waylandKeyCode;
@@ -955,6 +990,42 @@ uint32_t keyCodeToWayland(uint32_t keyCode)
          break;
       case RDKSHELL_KEY_VOLUME_UP:
          waylandKeyCode = WAYLAND_KEY_VOLUME_UP;
+         break;
+      case RDKSHELL_KEY_F13:
+         waylandKeyCode = WAYLAND_KEY_F13;
+         break;
+      case RDKSHELL_KEY_F14:
+         waylandKeyCode = WAYLAND_KEY_F14;
+         break;
+      case RDKSHELL_KEY_F15:
+         waylandKeyCode = WAYLAND_KEY_F15;
+         break;
+      case RDKSHELL_KEY_F16:
+         waylandKeyCode = WAYLAND_KEY_F16;
+         break;
+      case RDKSHELL_KEY_F17:
+         waylandKeyCode = WAYLAND_KEY_F17;
+         break;
+      case RDKSHELL_KEY_F18:
+         waylandKeyCode = WAYLAND_KEY_F18;
+         break;
+      case RDKSHELL_KEY_F19:
+         waylandKeyCode = WAYLAND_KEY_F19;
+         break;
+       case RDKSHELL_KEY_F20:
+         waylandKeyCode = WAYLAND_KEY_F20;
+         break;
+       case RDKSHELL_KEY_F21:
+         waylandKeyCode = WAYLAND_KEY_F21;
+         break;
+      case RDKSHELL_KEY_F22:
+         waylandKeyCode = WAYLAND_KEY_F22;
+         break;
+      case RDKSHELL_KEY_F23:
+         waylandKeyCode = WAYLAND_KEY_F23;
+         break;
+      case RDKSHELL_KEY_F24:
+         waylandKeyCode = WAYLAND_KEY_F24;
          break;
       default:
          RdkShell::Logger::log(RdkShell::LogLevel::Information,  "common key code not found %d",keyCode);

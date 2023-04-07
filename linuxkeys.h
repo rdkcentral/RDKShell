@@ -153,6 +153,18 @@
 #define WAYLAND_KEY_BACK                158
 #define WAYLAND_KEY_MENU                139
 #define WAYLAND_KEY_HOMEPAGE            172
+#define WAYLAND_KEY_F13			        183
+#define WAYLAND_KEY_F14			        184
+#define WAYLAND_KEY_F15			        185
+#define WAYLAND_KEY_F16			        186
+#define WAYLAND_KEY_F17			        187
+#define WAYLAND_KEY_F18			        188
+#define WAYLAND_KEY_F19		        	189
+#define WAYLAND_KEY_F20			        190
+#define WAYLAND_KEY_F21			        191
+#define WAYLAND_KEY_F22			        192
+#define WAYLAND_KEY_F23			        193
+#define WAYLAND_KEY_F24			        194
 
 
 #define RDKSHELL_FLAGS_SHIFT        8
@@ -289,6 +301,19 @@
 #define RDKSHELL_KEY_MUTE         173
 #define RDKSHELL_KEY_VOLUME_DOWN  174
 #define RDKSHELL_KEY_VOLUME_UP    175
+
+#define RDKSHELL_KEY_F13 	124
+#define RDKSHELL_KEY_F14 	125
+#define RDKSHELL_KEY_F15 	126
+#define RDKSHELL_KEY_F16 	127
+#define RDKSHELL_KEY_F17 	129
+#define RDKSHELL_KEY_F18 	130
+#define RDKSHELL_KEY_F19 	131
+#define RDKSHELL_KEY_F20 	132
+#define RDKSHELL_KEY_F21 	133
+#define RDKSHELL_KEY_F22 	134
+#define RDKSHELL_KEY_F23 	135
+#define RDKSHELL_KEY_F24 	136
 
 
 bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t &mappedKeyCode, uint32_t &mappedFlags);
