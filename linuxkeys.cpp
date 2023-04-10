@@ -591,6 +591,7 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
         standardKeyCode = RDKSHELL_KEY_HOMEPAGE;
         break;
     #endif /* WAYLAND_KEY_HOMEPAGE */
+
    case WAYLAND_KEY_F13:
         standardKeyCode = RDKSHELL_KEY_F13;
         break;
