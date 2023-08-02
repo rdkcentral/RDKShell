@@ -411,8 +411,15 @@ namespace RdkShell
         #endif
 
         #ifdef RDKSHELL_ENABLE_FORCE_1080
+        char const* graphicsResolution720 = getenv("RDKSHELL_SET_GRAPHICS_720");
+        if (graphicsResolution720 && (strcmp(graphicsResolution720,"1") == 0))
+        {
+            Logger::log(LogLevel::Information,  "RDKSHELL_SET_GRAPHICS_720 is set");
+            gForce720 = true;
+        }
+
         std::ifstream file720("/tmp/rdkshell720");
-        if (file720.good())
+        if (file720.good() || gForce720)
         {
             Logger::log(LogLevel::Information,  "!!!!! forcing 720 start!");
             RdkShell::EssosInstance::instance()->initialize(false, 1280, 720);
