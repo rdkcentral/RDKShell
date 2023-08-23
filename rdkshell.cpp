@@ -147,13 +147,14 @@ namespace RdkShell
                 {
                     readMemory = true;	
                     availableKb = atoll(token);
-                    break;
                 }
                 else
 		{
                     Logger::log(Debug, "failed to get memory details");
-                    break;
+		    fclose(file);
+		    return false;
                 }
+		break;
             }
         }
         if (!readMemory)
