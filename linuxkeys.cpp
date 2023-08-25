@@ -613,9 +613,10 @@ bool keyCodeFromWayland(uint32_t waylandKeyCode, uint32_t waylandFlags, uint32_t
    case WAYLAND_KEY_F19:
         standardKeyCode = RDKSHELL_KEY_F19;
         break;
-   case WAYLAND_KEY_F20:
-        standardKeyCode = RDKSHELL_KEY_F20;
-        break;
+// Key WAYLAND_KEY_F20 is reserved for RDK FP Power key
+//   case WAYLAND_KEY_F20:
+//        standardKeyCode = RDKSHELL_KEY_F20;
+//        break;
    case WAYLAND_KEY_F21:
         standardKeyCode = RDKSHELL_KEY_F21;
         break;
@@ -1013,9 +1014,9 @@ uint32_t keyCodeToWayland(uint32_t keyCode)
       case RDKSHELL_KEY_F19:
          waylandKeyCode = WAYLAND_KEY_F19;
          break;
-       case RDKSHELL_KEY_F20:
-         waylandKeyCode = WAYLAND_KEY_F20;
-         break;
+//       case RDKSHELL_KEY_F20:
+//         waylandKeyCode = WAYLAND_KEY_F20;
+//         break;
        case RDKSHELL_KEY_F21:
          waylandKeyCode = WAYLAND_KEY_F21;
          break;
