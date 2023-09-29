@@ -128,7 +128,6 @@ namespace RdkShell
         if (!file)
         {
             Logger::log(Debug, "failed to get memory details");
-            fclose(file);
             return false;
         }
         char buffer[128];
@@ -147,13 +146,12 @@ namespace RdkShell
                 {
                     readMemory = true;	
                     availableKb = atoll(token);
-                    break;
                 }
                 else
 		{
                     Logger::log(Debug, "failed to get memory details");
-                    break;
                 }
+		break;
             }
         }
         if (!readMemory)
