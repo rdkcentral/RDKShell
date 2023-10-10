@@ -136,7 +136,7 @@ inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.generateKey"
 expectedResult='"success":true'
 testAPI "generateKeyAfterAddKeyIntercept" "$inputParams" "$expectedResult"
 sleep 2
-journalctl -a|grep -i startwpe|grep "Key 50 intercepted by client testapp2"
+journalctl -a|grep "Key 50 intercepted by client testapp2"
 
 if [ $? -eq 1 ]
 then
@@ -197,7 +197,7 @@ testAPI "addKeyListener" "$inputParams" "$expectedResult"
 inputParams='{"jsonrpc":"2.0","id":"3","method":"org.rdk.RDKShell.1.generateKey","params":{"keys":[{"keyCode": 48, "delay":"0.0"}]}}'
 expectedResult='"success":true'
 testAPI "generateKeyAfterAddKeyListener" "$inputParams" "$expectedResult"
-journalctl -a|grep -i startwpe|grep "Key 48 sent to listener testapp"
+journalctl -a|grep "Key 48 sent to listener testapp"
 
 if [ $? -eq 1 ]
 then
