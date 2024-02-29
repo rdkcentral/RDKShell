@@ -96,6 +96,16 @@ namespace RdkShell
         bool enabled;
     };
 
+    struct GenerateKeyEvent
+    {
+        GenerateKeyEvent(const std::string& client, uint32_t keyCode, uint32_t modifiers, double triggerTime) :
+            client(client) , triggerTime(triggerTime), keyCode(keyCode), modifiers(modifiers) {}
+        std::string client;
+        double triggerTime;
+        uint32_t keyCode;
+        uint32_t modifiers;
+    };
+
     typedef std::vector<CompositorInfo> CompositorList;
     typedef CompositorList::iterator CompositorListIterator;
 
@@ -137,6 +147,7 @@ namespace RdkShell
     bool gIgnoreKeyInputEnabled = false;
     std::shared_ptr<Cursor> gCursor = nullptr;
     KeyRepeatConfig gKeyRepeatConfig;
+    std::vector<GenerateKeyEvent> gGenerateKeyEvents;
 
     std::string standardizeName(const std::string& clientName)
     {
@@ -419,6 +430,34 @@ namespace RdkShell
                 }
 
             }
+        }
+    }
+
+    void updateGenerateKeyEvents()
+    {
+        double currentTime = RdkShell::seconds();
+        auto it = gGenerateKeyEvents.begin();
+        while (it != gGenerateKeyEvents.end())
+        {
+            if (it->triggerTime <= currentTime)
+            {
+                if (it->client.empty())
+                {
+                    CompositorController::onKeyRelease(it->keyCode, it->modifiers, 0, false);
+                }
+                else
+                {
+                    CompositorListIterator cit;
+                    if (getCompositorInfo(it->client, cit))
+                    {
+                        cit->compositor->onKeyRelease(it->keyCode, it->modifiers, 0);
+                    }
+                }
+
+                it = gGenerateKeyEvents.erase(it);
+            }
+            else
+                ++it;
         }
     }
 
@@ -1014,6 +1053,11 @@ namespace RdkShell
 
     bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::string virtualKey)
     {
+        return generateKey(client, keyCode, flags, virtualKey, 0.0);
+    }
+
+    bool CompositorController::generateKey(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::string virtualKey, double duration)
+    {
         bool ret = false;
         uint32_t code = keyCode, modifiers = flags;
         if (!virtualKey.empty())
@@ -1028,8 +1072,16 @@ namespace RdkShell
 
         if (client.empty())
         {
-            CompositorController::onKeyPress(code, modifiers, 0, false);
-            CompositorController::onKeyRelease(code, modifiers, 0, false);
+	    CompositorController::onKeyPress(code, modifiers, 0, false);
+	    if (duration == 0.0)
+            {
+                CompositorController::onKeyRelease(code, modifiers, 0, false);
+            }
+            else
+            {
+                GenerateKeyEvent event(client, code, modifiers, RdkShell::seconds() + duration);
+                gGenerateKeyEvents.push_back(event);
+            }
             ret = true;
         }
         else
@@ -1040,7 +1092,15 @@ namespace RdkShell
                 if (it->compositor != nullptr)
                 {
                     it->compositor->onKeyPress(code, modifiers, 0);
-                    it->compositor->onKeyRelease(code, modifiers, 0);
+		    if (duration == 0.0)
+                    {
+                        it->compositor->onKeyRelease(code, modifiers, 0);
+                    }
+                    else
+                    {
+                        GenerateKeyEvent event(client, code, modifiers, RdkShell::seconds() + duration);
+                        gGenerateKeyEvents.push_back(event);
+                    }
                     ret = true;
                 }
             }
@@ -1667,6 +1727,7 @@ namespace RdkShell
         resolveWaitingEasterEggs();
         RdkShell::Animator::instance()->animate();
         updateKeyRepeat();
+	updateGenerateKeyEvents();
 
         if (gEnableInactivityReporting)
         {
