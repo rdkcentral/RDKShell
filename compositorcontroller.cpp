@@ -68,9 +68,10 @@ namespace RdkShell
 
     struct KeyInterceptInfo
     {
-        KeyInterceptInfo() : keyCode(-1), flags(0), compositorInfo() {}
+        KeyInterceptInfo() : keyCode(-1), flags(0), always(true), compositorInfo() {}
         uint32_t keyCode;
         uint32_t flags;
+        bool always;
         struct CompositorInfo compositorInfo;
     };
 
@@ -277,14 +278,17 @@ namespace RdkShell
                 struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
                 if (info.flags == flags && info.compositorInfo.compositor->getInputEventsEnabled())
                 {
-                    Logger::log(Debug, "Key %d intercepted by client %s", keycode, info.compositorInfo.name.c_str());
-                    if (isPressed)
+                    if (info.always || info.compositorInfo.name == gFocusedCompositor.name)
                     {
-                        info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
-                    }
-                    else
-                    {
-                        info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
+                        Logger::log(Debug, "Key %d intercepted by client %s always: %d", keycode, info.compositorInfo.name.c_str(), info.always);
+                        if (isPressed)
+                        {
+                            info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
+                        }
+                        else
+                        {
+                            info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
+                        }
                     }
                     ret = true;
                 }
@@ -758,12 +762,19 @@ namespace RdkShell
     bool CompositorController::addKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
     {
         //Logger::log(LogLevel::Information,  "key intercept added " << keyCode << " flags " << flags << std::endl;
+        return setKeyIntercept(client, keyCode, flags, true);
+    }
+
+    bool CompositorController::setKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, const bool always)
+    {
+        //Logger::log(LogLevel::Information,  "setkey intercept added " << keyCode << " flags " << flags << std::endl;
         CompositorListIterator it;
         if (getCompositorInfo(client, it))
         {
             struct KeyInterceptInfo info;
             info.keyCode = keyCode;
             info.flags = flags;
+            info.always = always;
             info.compositorInfo = *it;
             if (gKeyInterceptInfoMap.end() == gKeyInterceptInfoMap.find(keyCode))
             {
@@ -776,11 +787,18 @@ namespace RdkShell
                 bool isEntryAvailable = false;
                 for (int i=0; i<gKeyInterceptInfoMap[keyCode].size(); i++)
                 {
-                    struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keyCode][i];
-                    if ((info.flags == flags) && (info.compositorInfo.name == clientDisplayName))
+                    struct KeyInterceptInfo& info_t = gKeyInterceptInfoMap[keyCode][i];
+                    if ((info_t.flags == flags) && (info_t.compositorInfo.name == clientDisplayName))
                     {
                         isEntryAvailable = true;
-                        break;
+                        if (info_t.always == always)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            gKeyInterceptInfoMap[keyCode][i] = info;
+                        }
                     }
                 }
                 if (false == isEntryAvailable)
