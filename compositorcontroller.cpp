@@ -68,10 +68,11 @@ namespace RdkShell
 
     struct KeyInterceptInfo
     {
-        KeyInterceptInfo() : keyCode(-1), flags(0), always(true), compositorInfo() {}
+        KeyInterceptInfo() : keyCode(-1), flags(0), always(true), client(), compositorInfo() {}
         uint32_t keyCode;
         uint32_t flags;
         bool always;
+        std::string client;
         struct CompositorInfo compositorInfo;
     };
 
@@ -276,21 +277,32 @@ namespace RdkShell
             for (int i=0; i<gKeyInterceptInfoMap[keycode].size(); i++)
             {
                 struct KeyInterceptInfo& info = gKeyInterceptInfoMap[keycode][i];
-                if (info.flags == flags && info.compositorInfo.compositor->getInputEventsEnabled())
+                if(info.compositorInfo.compositor == nullptr)
                 {
-                    if (info.always || info.compositorInfo.name == gFocusedCompositor.name)
+                    CompositorListIterator it;
+                    if (getCompositorInfo(info.client, it))
                     {
-                        Logger::log(Debug, "Key %d intercepted by client %s always: %d", keycode, info.compositorInfo.name.c_str(), info.always);
-                        if (isPressed)
-                        {
-                            info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
-                        }
-                        else
-                        {
-                            info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
-                        }
+                        info.compositorInfo = *it;
                     }
-                    ret = true;
+                }
+                if(info.compositorInfo.compositor != nullptr)
+                {
+                    if (info.flags == flags && info.compositorInfo.compositor->getInputEventsEnabled())
+                    {
+                        if (info.always || info.compositorInfo.name == gFocusedCompositor.name)
+                        {
+                            Logger::log(Debug, "Key %d intercepted by client %s always: %d", keycode, info.compositorInfo.name.c_str(), info.always);
+                            if (isPressed)
+                            {
+                                info.compositorInfo.compositor->onKeyPress(keycode, flags, metadata);
+                            }
+                            else
+                            {
+                                info.compositorInfo.compositor->onKeyRelease(keycode, flags, metadata);
+                            }
+                        }
+                        ret = true;
+                    }
                 }
             }
         }
@@ -718,13 +730,16 @@ namespace RdkShell
                 std::vector<KeyInterceptInfo>::iterator interceptMapEntry=interceptMap.begin();
                 while (interceptMapEntry != interceptMap.end())
                 {
-                    if ((*interceptMapEntry).compositorInfo.name == clientDisplayName)
+                    if ((*interceptMapEntry).client == clientDisplayName)
                     {
-                        interceptMapEntry = interceptMap.erase(interceptMapEntry);
+                        //interceptMapEntry = interceptMap.erase(interceptMapEntry);
+                        CompositorInfo info;
+                        (*interceptMapEntry).compositorInfo = info;
+                        interceptMapEntry++;
                     }
                     else
                     {
-                        interceptMapEntry++;
+			            interceptMapEntry++;
                     }
                 }
                 if (interceptMap.size() == 0)
@@ -767,48 +782,47 @@ namespace RdkShell
 
     bool CompositorController::setKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, const bool always)
     {
-        //Logger::log(LogLevel::Information,  "setkey intercept added " << keyCode << " flags " << flags << std::endl;
         CompositorListIterator it;
+        struct KeyInterceptInfo info;
+        info.keyCode = keyCode;
+        info.flags = flags;
+        info.always = always;
+        info.client = standardizeName(client);
         if (getCompositorInfo(client, it))
         {
-            struct KeyInterceptInfo info;
-            info.keyCode = keyCode;
-            info.flags = flags;
-            info.always = always;
             info.compositorInfo = *it;
-            if (gKeyInterceptInfoMap.end() == gKeyInterceptInfoMap.find(keyCode))
+        }
+        if (gKeyInterceptInfoMap.end() == gKeyInterceptInfoMap.find(keyCode))
+        {
+            gKeyInterceptInfoMap[keyCode] = std::vector<KeyInterceptInfo>();
+            gKeyInterceptInfoMap[keyCode].push_back(info);
+        }
+        else
+        {
+            std::string clientDisplayName = standardizeName(client);
+            bool isEntryAvailable = false;
+            for (int i=0; i<gKeyInterceptInfoMap[keyCode].size(); i++)
             {
-                gKeyInterceptInfoMap[keyCode] = std::vector<KeyInterceptInfo>();
-                gKeyInterceptInfoMap[keyCode].push_back(info);
-            }
-            else
-            {
-                std::string clientDisplayName = standardizeName(client);
-                bool isEntryAvailable = false;
-                for (int i=0; i<gKeyInterceptInfoMap[keyCode].size(); i++)
+                struct KeyInterceptInfo& info_t = gKeyInterceptInfoMap[keyCode][i];
+                if ((info_t.flags == flags) && (info_t.compositorInfo.name == clientDisplayName))
                 {
-                    struct KeyInterceptInfo& info_t = gKeyInterceptInfoMap[keyCode][i];
-                    if ((info_t.flags == flags) && (info_t.compositorInfo.name == clientDisplayName))
+                    isEntryAvailable = true;
+                    if (info_t.always == always)
                     {
-                        isEntryAvailable = true;
-                        if (info_t.always == always)
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            gKeyInterceptInfoMap[keyCode][i] = info;
-                        }
+                        break;
+                    }
+                    else
+                    {
+                        gKeyInterceptInfoMap[keyCode][i] = info;
                     }
                 }
-                if (false == isEntryAvailable)
-                {
-                    gKeyInterceptInfoMap[keyCode].push_back(info);
-                }
             }
-            return true;
+            if (false == isEntryAvailable)
+            {
+                gKeyInterceptInfoMap[keyCode].push_back(info);
+            }
         }
-        return false;
+        return true;
     }
 
     bool CompositorController::removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags)
