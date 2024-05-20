@@ -57,6 +57,7 @@ namespace RdkShell
             static bool getFocused(std::string& client);
             static bool kill(const std::string& client);
             static bool addKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
+            static bool setKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, const bool always);
             static bool removeKeyIntercept(const std::string& client, const uint32_t& keyCode, const uint32_t& flags);
             static bool addKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties);
             static bool addNativeKeyListener(const std::string& client, const uint32_t& keyCode, const uint32_t& flags, std::map<std::string, RdkShellData> &listenerProperties);
