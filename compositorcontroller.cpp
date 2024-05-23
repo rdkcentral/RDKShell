@@ -804,7 +804,7 @@ namespace RdkShell
             for (int i=0; i<gKeyInterceptInfoMap[keyCode].size(); i++)
             {
                 struct KeyInterceptInfo& info_t = gKeyInterceptInfoMap[keyCode][i];
-                if ((info_t.flags == flags) && (info_t.compositorInfo.name == clientDisplayName))
+                if ((info_t.flags == flags) && (info_t.client == clientDisplayName))
                 {
                     isEntryAvailable = true;
                     if (info_t.always == always)
@@ -836,7 +836,7 @@ namespace RdkShell
                 std::vector<KeyInterceptInfo>::iterator interceptInfoIterator = interceptInfo.begin();
                 while(interceptInfoIterator != interceptInfo.end())
                 {
-                    if ((*interceptInfoIterator).compositorInfo.name == clientDisplayName)
+                    if ((*interceptInfoIterator).client == clientDisplayName)
                     {
                          interceptInfoIterator = interceptInfo.erase(interceptInfoIterator);
                     }
@@ -887,7 +887,7 @@ namespace RdkShell
                 std::vector<KeyInterceptInfo>::iterator entryPos = gKeyInterceptInfoMap[keyCode].end();
                 for (std::vector<KeyInterceptInfo>::iterator it = gKeyInterceptInfoMap[keyCode].begin() ; it != gKeyInterceptInfoMap[keyCode].end(); ++it)
                 {
-                    if (((*it).flags == flags) && ((*it).compositorInfo.name == clientDisplayName))
+                    if (((*it).flags == flags) && ((*it).client == clientDisplayName))
                     {
                         entryPos = it;
                         isEntryAvailable = true;
