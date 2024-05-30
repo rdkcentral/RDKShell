@@ -1267,7 +1267,7 @@ namespace RdkShell
             it->compositor->setOpacity(o);
             return true;
         }
-        return true;
+        return false;
     }
 
 
@@ -1290,7 +1290,7 @@ namespace RdkShell
             it->compositor->setScale(scaleX, scaleY);
             return true;
         }
-        return true;
+        return false;
     }
 
     bool CompositorController::getHolePunch(const std::string& client, bool& holePunch)
