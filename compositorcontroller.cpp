@@ -408,6 +408,7 @@ namespace RdkShell
                   if (gRdkShellEventListener)
                   {
                       gRdkShellEventListener->onApplicationActivated(gFocusedCompositor.name);
+                      gRdkShellEventListener->onApplicationFocusChanged(gFocusedCompositor.name);
                   }
               }
           }
@@ -685,6 +686,7 @@ namespace RdkShell
         {
             client = gFocusedCompositor.name;
         }
+        Logger::log(LogLevel::Information,  "rdkshell_focus getFocused: the focus client is now %s", client.empty()?"none":client.c_str());
         return true;
     }
 
@@ -707,6 +709,10 @@ namespace RdkShell
 
             gFocusedCompositor = *it;
             gFocusedCompositor.compositor->setFocused(true);
+            if (gRdkShellEventListener)
+            {
+                gRdkShellEventListener->onApplicationFocusChanged(gFocusedCompositor.name);
+            }
             return true;
         }
         return false;
@@ -767,6 +773,10 @@ namespace RdkShell
                 // this may be changed to next available compositor
                 gFocusedCompositor.name = "";
                 gFocusedCompositor.compositor = nullptr;
+                if (gRdkShellEventListener)
+                {
+                    gRdkShellEventListener->onApplicationFocusChanged(gFocusedCompositor.name);
+                }
                 Logger::log(LogLevel::Information,  "rdkshell_focus kill: the focused client has been killed: %s.  there is no focused client.", clientDisplayName.c_str());
             }
             return true;
@@ -1544,6 +1554,10 @@ namespace RdkShell
             if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus))
             {
                 gFocusedCompositor = compositorInfo;
+                if (gRdkShellEventListener)
+                {
+                    gRdkShellEventListener->onApplicationFocusChanged(gFocusedCompositor.name);
+                }
                 Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
             }
 	    else if (focus)
@@ -1904,6 +1918,10 @@ namespace RdkShell
                 if ((!topmost && getNumCompositorInfo() == 0) || (topmost && focus))
                 {
                     gFocusedCompositor = compositorInfo;
+                    if (gRdkShellEventListener)
+                    {
+                        gRdkShellEventListener->onApplicationFocusChanged(gFocusedCompositor.name);
+                    }
                     Logger::log(LogLevel::Information,  "rdkshell_focus create: setting focus of first application created %s", gFocusedCompositor.name.c_str());
                 }
 
