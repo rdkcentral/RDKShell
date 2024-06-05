@@ -105,6 +105,18 @@ void setFocusHandler(Document& d, uWS::WebSocket<uWS::SERVER> *ws)
   sendResponse(ws, ret);
 }
 
+void getFocusedHandler(Document &d, uWS::WebSocket<uWS::SERVER> *ws)
+{
+  std::string client("");
+
+  CompositorController::getFocused(client);
+  std::stringstream str("");
+  str<<"{\"params\":{";
+  str<<"\"client\":"<<client;
+  str<<"}}";
+  notifyClient(ws, (char*)str.str().c_str(), str.str().length(), uWS::OpCode::TEXT);
+}
+
 void killHandler(Document& d, uWS::WebSocket<uWS::SERVER> *ws)
 {
   std::string client("");
@@ -437,6 +449,7 @@ void MessageHandler::initMsgHandlers() {
   mHandlerMap["moveBehind"] = moveBehindHandler;
   mHandlerMap["setFocus"] = setFocusHandler;
   mHandlerMap["kill"] = killHandler;
+  mHandlerMap["getFocused"] = getFocusedHandler;
   mHandlerMap["addKeyIntercept"] = addKeyInterceptHandler;
   mHandlerMap["removeKeyIntercept"] = removeKeyInterceptHandler;
   mHandlerMap["getScreenResolution"] = getScreenResolutionHandler;
