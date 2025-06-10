@@ -268,7 +268,7 @@ namespace RdkShell
                  listener->onSizeChangeComplete(client);
          }
     }
-    
+
     bool interceptKey(uint32_t keycode, uint32_t flags, uint64_t metadata, bool isPressed)
     {
         bool ret = false;
@@ -532,7 +532,7 @@ namespace RdkShell
         }
 
         Logger::log(LogLevel::Information,  "power key support enabled: %d", gPowerKeyEnabled);
- 
+
         char const *rdkshellFrontPanelButton = getenv("RDKSHELL_FRONT_PANEL_BUTTON_CODE");
 
         if (rdkshellFrontPanelButton)
@@ -1166,17 +1166,28 @@ namespace RdkShell
     {
         clients.clear();
 
-        for (const auto &client : gTopmostCompositorList)
+        std::unordered_set<std::string> deletedNames;
+        for (const auto& deleted : gDeletedCompositors)
         {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
+            deletedNames.insert(deleted.name);
         }
 
-        for ( const auto &client : gCompositorList)
+        for (const auto& client : gTopmostCompositorList)
         {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
+            if (deletedNames.find(client.name) == deletedNames.end())
+            {
+                clients.push_back(client.name);
+            }
         }
+
+        for (const auto& client : gCompositorList)
+        {
+            if (deletedNames.find(client.name) == deletedNames.end())
+            {
+                clients.push_back(client.name);
+            }
+        }
+
         return true;
     }
 
@@ -1184,16 +1195,26 @@ namespace RdkShell
     {
         clients.clear();
 
-        for (const auto &client : gTopmostCompositorList)
+        std::unordered_set<std::string> deletedNames;
+        for (const auto& deleted : gDeletedCompositors)
         {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
+            deletedNames.insert(deleted.name);
         }
 
-        for (const auto &client : gCompositorList)
+        for (const auto& client : gTopmostCompositorList)
         {
-            std::string clientName = client.name;
-            clients.push_back(clientName);
+            if (deletedNames.find(client.name) == deletedNames.end())
+            {
+                clients.push_back(client.name);
+            }
+        }
+
+        for (const auto& client : gCompositorList)
+        {
+            if (deletedNames.find(client.name) == deletedNames.end())
+            {
+                clients.push_back(client.name);
+            }
         }
         return true;
     }
@@ -1587,7 +1608,7 @@ namespace RdkShell
         for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
         {
             if (iter->image != nullptr)
-            {		    
+            {
                 if (drawWithRect)
                 {
                     iter->image->draw(rect);
@@ -2406,9 +2427,9 @@ namespace RdkShell
     {
         if (gWatermarkImages.size() == 0)
 	{
-            gWatermarkImages.insert(gWatermarkImages.begin(), image); 
+            gWatermarkImages.insert(gWatermarkImages.begin(), image);
             return true;
-	}	
+	}
         std::vector<WatermarkImage>::iterator iter = gWatermarkImages.end();
         for (iter=gWatermarkImages.begin(); iter != gWatermarkImages.end(); iter++)
         {
@@ -2417,12 +2438,12 @@ namespace RdkShell
                 break;
             }
         }
-        if (iter == gWatermarkImages.end()) 
+        if (iter == gWatermarkImages.end())
         {
             gWatermarkImages.push_back(image);
         }
         else
-	{	
+	{
             gWatermarkImages.insert(iter, image);
         }
         return true;
