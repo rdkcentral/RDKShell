@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <unordered_set>
 
 #define RDKSHELL_ANY_KEY 65536
 #define RDKSHELL_DEFAULT_INACTIVITY_TIMEOUT_IN_SECONDS 15*60
@@ -1855,20 +1856,20 @@ namespace RdkShell
             {
                 sendApplicationEvent(it->eventListeners[i], eventName, it->name);
             }
-	    if((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0))
+	    	if((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_CONNECTED) == 0))
             {
-		    it->compositor->updateSurfaceCount(true);
+		    	it->compositor->updateSurfaceCount(true);
             }
-	    else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
+	    	else if ((gRdkShellCompositorType == SURFACE) && (eventName.compare(RDKSHELL_EVENT_APPLICATION_DISCONNECTED) == 0))
             {
-		it->compositor->updateSurfaceCount(false);
-		bool SurfaceCount = it->compositor->getSurfaceCount();
+				it->compositor->updateSurfaceCount(false);
+				bool SurfaceCount = it->compositor->getSurfaceCount();
 
-		if((SurfaceCount == 0) && (it->autoDestroy == true ))
+				if((SurfaceCount == 0) && (it->autoDestroy == true ))
                 {
                   clientToKill = it->name;
                   killClient = true;
-	        }
+	        	}
             }
         }
         if (true == killClient)
